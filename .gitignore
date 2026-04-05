@@ -1,28 +1,31 @@
-# See https://help.github.com/ignore-files/ for more about ignoring files.
-
-#idea
-.idea
-
-# dependencies
-/node_modules
-
-# testing
-/coverage
-
-# production
-/build
-/documentation
-
-# misc
-.DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# upgrade tracking (keep private)
-REACT19_UPGRADE_RECIPE.md
-
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.*
+!.env.example
+data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

@@ -1,0 +1,27 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: erpsibella-api
+    environment:
+      API_PORT: 4001
+    volumes:
+      - erpsibella_data:/app/data
+    ports:
+      - "4001:4001"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: erpsibella-web
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  erpsibella_data:

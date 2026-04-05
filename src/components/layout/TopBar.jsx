@@ -1,0 +1,139 @@
+import React, { useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Layout, Button, Avatar, Dropdown, Space } from "antd";
+import { MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined, UserOutlined, FullscreenOutlined, FullscreenExitOutlined } from "@ant-design/icons";
+import { mainMenuItems, supplierMainMenuItems } from "../../erp/navigation";
+import { getAuthUser, logoutUser, onAuthChange } from "../../auth";
+
+const { Header } = Layout;
+
+const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [authUser, setAuthUser] = React.useState(() => getAuthUser());
+  const [isFullscreen, setIsFullscreen] = React.useState(() => Boolean(document.fullscreenElement));
+
+  React.useEffect(() => onAuthChange(() => setAuthUser(getAuthUser())), []);
+
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const visibleMenuItems = authUser?.role === "Tedarikci" ? supplierMainMenuItems : mainMenuItems;
+
+  const activeMainMenu = useMemo(
+    () =>
+      visibleMenuItems.find((item) =>
+        item.key.startsWith("/")
+          ? location.pathname === item.key || location.pathname.startsWith(`${item.key}/`)
+          : item.children?.some((child) => location.pathname === child.key || location.pathname.startsWith(`${child.key}/`)),
+      )?.key,
+    [location.pathname, visibleMenuItems],
+  );
+
+  const userMenu = {
+    items: [
+      { key: "profile", label: "Kullanici Tercihleri" },
+      { key: "logout", label: "Cikis Yap" },
+    ],
+    onClick: ({ key }) => {
+      if (key === "profile") {
+        navigate(authUser?.role === "Tedarikci" ? "/supplier/deliveries" : "/settings/users");
+      }
+      if (key === "logout") {
+        logoutUser();
+        navigate("/login", { replace: true });
+      }
+    },
+  };
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch {
+      // browser handles permission / unsupported cases
+    }
+  };
+
+  return (
+    <Header
+      className="erp-topbar"
+      style={{
+        padding: isTabletOrMobile ? "0 12px 0 0" : "0 20px 0 0",
+        background: "#fff",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        boxShadow: "0 1px 4px rgba(0,21,41,.06)",
+        zIndex: 9,
+        gap: 16,
+      }}
+    >
+      <Space size={8} style={{ paddingLeft: isTabletOrMobile ? 4 : 8 }} className="erp-topbar-left">
+        <Button
+          type="text"
+          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          onClick={() => setCollapsed(!collapsed)}
+          style={{ fontSize: 16, width: 56, height: 56 }}
+        />
+        <Space size={8} wrap className="erp-topbar-nav">
+          {visibleMenuItems.map((item) => {
+            if (!item.children) {
+              return (
+                <Button
+                  key={item.key}
+                  type={activeMainMenu === item.key ? "primary" : "text"}
+                  onClick={() => navigate(item.key)}
+                >
+                  {item.label}
+                </Button>
+              );
+            }
+
+            return (
+              <Dropdown
+                key={item.key}
+                menu={{
+                  items: item.children.map((child) => ({ key: child.key, label: child.label })),
+                  onClick: ({ key }) => navigate(key),
+                }}
+                trigger={["click"]}
+              >
+                <Button type={activeMainMenu === item.key ? "primary" : "text"}>
+                  {item.label}
+                </Button>
+              </Dropdown>
+            );
+          })}
+        </Space>
+      </Space>
+
+      <Space size={isTabletOrMobile ? "middle" : "large"} className="erp-topbar-right">
+        <Button
+          type="text"
+          icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Tam Ekrandan Cik" : "Tam Ekran"}
+        />
+        <BellOutlined style={{ fontSize: 18, color: "#595959" }} />
+        <Dropdown menu={userMenu} placement="bottomRight">
+          <Space style={{ cursor: "pointer" }} className="erp-topbar-user">
+            <Avatar icon={<UserOutlined />} />
+            {!isTabletOrMobile ? <span style={{ fontWeight: 600, color: "#262626" }}>{authUser?.fullName || "Kullanici"}</span> : null}
+          </Space>
+        </Dropdown>
+      </Space>
+    </Header>
+  );
+};
+
+export default TopBar;

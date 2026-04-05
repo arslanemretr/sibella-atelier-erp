@@ -1,0 +1,1082 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: #f7f8fb;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Ant Design Override for finer ERP Look */
+.ant-card {
+  border-radius: 12px;
+  box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03);
+  border: 1px solid #f0f0f0;
+}
+
+.ant-btn {
+  border-radius: 10px;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b7280;
+}
+
+.ant-layout-header {
+  line-height: normal;
+}
+
+.ant-form-item {
+  margin-bottom: 0;
+}
+
+.ant-card .ant-card-head {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ant-card .ant-card-head-title {
+  font-weight: 700;
+}
+
+.erp-filter-card {
+  border: 1px solid #eceff3 !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
+}
+
+.erp-filter-card .ant-card-body {
+  padding: 18px 20px;
+}
+
+.erp-filter-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.erp-filter-subtitle {
+  margin-top: 6px;
+  color: #8c8c8c;
+  font-size: 13px;
+}
+
+.erp-filter-card .ant-form-item-label > label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.erp-filter-card .ant-input-affix-wrapper,
+.erp-filter-card .ant-select-selector,
+.erp-filter-card .ant-picker {
+  border-radius: 10px !important;
+}
+
+@media (max-width: 768px) {
+  .erp-filter-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.erp-product-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  background: linear-gradient(180deg, #fffdfb 0%, #fff6f2 100%);
+  border-bottom: 1px solid #f4e8e3;
+}
+
+.erp-product-image {
+  width: 140px;
+  height: 140px;
+  object-fit: contain;
+}
+
+.erp-product-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+  border: 1px dashed #eadfd9;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fffdfb 0%, #fff6f2 100%);
+  cursor: zoom-in;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.erp-product-preview:hover {
+  border-color: #d86d5b;
+  background: linear-gradient(180deg, #fffaf7 0%, #fff1eb 100%);
+}
+
+.erp-product-image-large {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+}
+
+.erp-product-preview-modal {
+  min-height: 520px;
+  border-style: solid;
+  cursor: default;
+}
+
+.erp-product-preview-modal:hover {
+  border-color: #eadfd9;
+  background: linear-gradient(180deg, #fffdfb 0%, #fff6f2 100%);
+}
+
+.erp-product-image-zoom {
+  width: 100%;
+  max-height: 480px;
+  object-fit: contain;
+}
+
+.erp-image-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.erp-image-picker-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border: 1px solid #eadfd9;
+  border-radius: 12px;
+  background: #fff8f5;
+  cursor: pointer;
+}
+
+.erp-image-picker-thumb {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+
+.erp-readonly-card .ant-card-body {
+  padding: 16px;
+}
+
+.erp-product-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #595959;
+  font-size: 13px;
+}
+
+.erp-product-kanban-card.ant-card {
+  border-radius: 8px;
+}
+
+.erp-product-kanban-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 118px;
+}
+
+.erp-product-kanban-content {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.erp-product-kanban-title.ant-typography {
+  margin: 0;
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.erp-product-kanban-code.ant-typography {
+  margin: 0;
+  font-size: 13px;
+  color: #334155;
+}
+
+.erp-product-kanban-line.ant-typography {
+  margin: 0;
+  font-size: 13px;
+  color: #111827;
+}
+
+.erp-product-kanban-thumb {
+  flex: 0 0 68px;
+  width: 68px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: #fff7f3;
+}
+
+.erp-product-image-small {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.erp-supplier-kanban {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 118px;
+}
+
+.erp-supplier-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: #fff1eb;
+  color: #d86d5b;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 52px;
+}
+
+.erp-supplier-avatar-large {
+  width: 72px;
+  height: 72px;
+  font-size: 20px;
+  border-radius: 20px;
+  flex-basis: 72px;
+}
+
+.erp-supplier-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.erp-list-toolbar-card {
+  border: 1px solid #eceff3 !important;
+  background: #fff;
+}
+
+.erp-list-toolbar-card .ant-card-body {
+  padding: 14px 16px;
+}
+
+.erp-list-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.erp-list-toolbar-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 12px;
+  flex: 1 1 auto;
+  max-width: 760px;
+}
+
+.erp-list-toolbar-filters .ant-form-item-label > label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.erp-list-toolbar .ant-btn:not(.ant-btn-primary) {
+  background: #eef2f7;
+  border-color: #e2e8f0;
+  color: #334155;
+}
+
+.erp-list-toolbar .ant-btn-primary {
+  background: #ff6f61;
+  border-color: #ff6f61;
+}
+
+.erp-product-toolbar-single {
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.erp-product-toolbar-actions {
+  flex-wrap: nowrap;
+}
+
+.erp-product-toolbar-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 320px;
+  max-width: 460px;
+  margin-left: auto;
+}
+
+.erp-product-toolbar-search .ant-input-affix-wrapper {
+  border-radius: 10px;
+}
+
+.erp-list-table-card .ant-card-body {
+  padding: 14px 14px 0;
+}
+
+.erp-list-table-card .ant-table-wrapper {
+  border: 1px solid #edf1f5;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.erp-list-table-card .ant-table-content,
+.erp-list-table-card .ant-table-body,
+.ant-table-wrapper .ant-table-content,
+.ant-table-wrapper .ant-table-body {
+  overflow-x: auto;
+}
+
+.erp-list-table-card .ant-table {
+  min-width: 760px;
+}
+
+.erp-list-table-card .ant-table-thead > tr > th {
+  background: #fff;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.erp-link-cell {
+  color: #ff5c57;
+  font-weight: 700;
+}
+
+.erp-link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #ff5c57;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.erp-link-button:hover {
+  color: #d84d44;
+}
+
+.erp-clickable-row {
+  cursor: pointer;
+}
+
+.erp-clickable-row .ant-table-cell {
+  transition: background-color 0.2s ease;
+}
+
+.erp-clickable-row:hover .ant-table-cell {
+  background: #fff8f5 !important;
+}
+
+.erp-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.erp-icon-btn-edit {
+  color: #fff !important;
+  background: #f4b400 !important;
+}
+
+.erp-icon-btn-delete {
+  color: #fff !important;
+  background: #ff5c57 !important;
+}
+
+.erp-table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 2px 14px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.erp-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.erp-pos-shell {
+  display: grid;
+  grid-template-columns: 36% 1fr;
+  gap: 16px;
+  min-height: calc(100vh - 180px);
+}
+
+.erp-pos-left,
+.erp-pos-right {
+  background: #fff;
+  border: 1px solid #e8edf3;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.erp-pos-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.erp-pos-right {
+  display: flex;
+  flex-direction: column;
+}
+
+.erp-pos-order-header {
+  border-bottom: 1px solid #edf1f5;
+}
+
+.erp-pos-order-header-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+}
+
+.erp-pos-session-badge.ant-btn {
+  background: #ff8b7a;
+  border-color: #ff8b7a;
+  min-width: 82px;
+}
+
+.erp-pos-orders-title-btn.ant-btn {
+  background: #fff;
+  border-color: #dbe3ec;
+}
+
+.erp-pos-session-tabs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 10px;
+  overflow-x: auto;
+}
+
+.erp-pos-session-tabs .ant-btn {
+  min-height: 44px;
+  min-width: 78px;
+  white-space: nowrap;
+}
+
+.erp-pos-order-list {
+  flex: 1 1 auto;
+  min-height: 260px;
+  overflow: auto;
+}
+
+.erp-pos-active-order-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-bottom: 1px solid #edf1f5;
+  background: #f8fbff;
+}
+
+.erp-pos-active-order-banner-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.erp-pos-active-order-banner-row > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.erp-pos-order-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.erp-pos-order-item-head,
+.erp-pos-order-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.erp-pos-order-index {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.erp-pos-summary {
+  padding: 14px 12px;
+  border-top: 1px solid #edf1f5;
+}
+
+.erp-pos-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.erp-pos-summary-total {
+  margin-bottom: 0;
+  font-size: 20px;
+}
+
+.erp-pos-bottom-actions {
+  padding: 10px;
+  border-top: 1px solid #edf1f5;
+}
+
+.erp-pos-mini-actions {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.erp-pos-keypad {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid #dbe3ec;
+  margin-bottom: 12px;
+}
+
+.erp-pos-key {
+  min-height: 66px;
+  border: 0;
+  border-right: 1px solid #dbe3ec;
+  border-bottom: 1px solid #dbe3ec;
+  background: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.erp-pos-key.is-active {
+  background: #ebf8ff;
+}
+
+.erp-pos-keypad .erp-pos-key:nth-child(4n) {
+  border-right: 0;
+}
+
+.erp-pos-pay-btn.ant-btn {
+  width: 100%;
+  height: 72px;
+  border-radius: 12px;
+  background: #6d4b67;
+  border-color: #6d4b67;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.erp-pos-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.erp-pos-search {
+  flex: 1 1 auto;
+}
+
+.erp-pos-search .ant-input-affix-wrapper,
+.erp-pos-barcode .ant-input-affix-wrapper {
+  min-height: 48px;
+  border-radius: 12px;
+}
+
+.erp-pos-barcode {
+  width: 128px;
+}
+
+.erp-pos-user-avatar {
+  background: #1677ff;
+}
+
+.erp-pos-menu-btn {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.erp-pos-category-row {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.erp-pos-category-chip {
+  min-width: 144px;
+  min-height: 72px;
+  border: 0;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  cursor: pointer;
+}
+
+.erp-pos-category-chip.is-selected {
+  box-shadow: inset 0 0 0 2px #1677ff;
+}
+
+.erp-pos-product-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 12px 12px;
+  overflow: auto;
+}
+
+.erp-pos-product-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #d7dde5;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+  text-align: left;
+  cursor: pointer;
+}
+
+.erp-pos-product-image-wrap {
+  aspect-ratio: 1 / 1;
+  background: #faf7ef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.erp-pos-product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.erp-pos-product-name {
+  padding: 8px 10px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.erp-app-layout .ant-layout {
+  min-width: 0;
+}
+
+.erp-app-layout {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.erp-main-layout {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.erp-app-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.erp-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  flex: 0 0 64px;
+}
+
+.erp-topbar-left,
+.erp-topbar-right {
+  min-width: 0;
+}
+
+.erp-topbar-nav {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+}
+
+.erp-topbar-nav::-webkit-scrollbar {
+  height: 6px;
+}
+
+.erp-topbar-nav::-webkit-scrollbar-thumb {
+  background: #d9dfe7;
+  border-radius: 999px;
+}
+
+.erp-topbar-nav .ant-btn {
+  white-space: nowrap;
+}
+
+.erp-product-kanban-card {
+  height: 100%;
+}
+
+.erp-product-kanban-row,
+.erp-supplier-kanban {
+  min-width: 0;
+}
+
+.erp-product-kanban-title.ant-typography,
+.erp-product-kanban-code.ant-typography,
+.erp-product-kanban-line.ant-typography {
+  overflow-wrap: anywhere;
+}
+
+.ant-descriptions {
+  overflow-wrap: anywhere;
+}
+
+.ant-space {
+  max-width: 100%;
+}
+
+.ant-modal .ant-modal-content,
+.ant-drawer .ant-drawer-content {
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .erp-topbar {
+    padding-left: 0 !important;
+    height: auto !important;
+    min-height: 64px;
+    align-items: flex-start !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  .erp-topbar .ant-space-item {
+    max-width: 100%;
+  }
+
+  .erp-topbar-left {
+    flex: 1 1 auto;
+    align-items: flex-start !important;
+  }
+
+  .erp-topbar-right {
+    align-self: flex-start;
+  }
+
+  .erp-sidebar.ant-layout-sider {
+    max-width: 280px !important;
+  }
+
+  .erp-list-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .erp-product-toolbar-single,
+  .erp-product-toolbar-actions {
+    flex-wrap: wrap;
+  }
+
+  .erp-product-toolbar-search {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: nowrap;
+  }
+
+  .erp-list-toolbar-filters {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
+
+  .erp-product-cover {
+    min-height: 180px;
+  }
+
+  .erp-product-image-large {
+    width: 140px;
+    height: 140px;
+  }
+
+  .erp-image-picker-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .erp-product-kanban-thumb {
+    flex-basis: 56px;
+    width: 56px;
+    height: 56px;
+  }
+
+  .erp-product-image-small {
+    width: 40px;
+    height: 40px;
+  }
+
+  .erp-table-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .erp-list-table-card .ant-card-body {
+    padding: 10px 10px 0;
+  }
+
+  .erp-pos-shell {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .erp-pos-left {
+    order: 2;
+  }
+
+  .erp-pos-right {
+    order: 1;
+  }
+
+  .erp-pos-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .erp-pos-order-header-main {
+    flex-wrap: wrap;
+  }
+
+  .erp-pos-active-order-banner-row {
+    flex-direction: column;
+  }
+
+  .erp-pos-barcode {
+    width: calc(50% - 6px);
+  }
+
+  .erp-pos-category-chip {
+    min-width: 110px;
+    min-height: 64px;
+  }
+
+  .erp-pos-product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .erp-pos-pay-btn.ant-btn {
+    height: 60px;
+    font-size: 24px;
+  }
+
+  .ant-card .ant-card-head {
+    padding: 0 12px;
+  }
+
+  .ant-card .ant-card-body {
+    padding: 12px;
+  }
+
+  .ant-drawer-content-wrapper {
+    width: 100% !important;
+    max-width: 100%;
+  }
+
+  .ant-modal {
+    max-width: calc(100vw - 16px);
+    margin: 8px auto;
+  }
+}
+
+@media (max-width: 992px) {
+  .erp-list-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .erp-product-toolbar-single,
+  .erp-product-toolbar-actions {
+    flex-wrap: wrap;
+  }
+
+  .erp-product-toolbar-search {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .erp-list-toolbar-card .ant-card-body {
+    padding: 12px;
+  }
+
+  .erp-product-preview {
+    min-height: 200px;
+  }
+
+  .erp-pos-product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1200px) {
+  .erp-topbar {
+    height: auto !important;
+    min-height: 64px;
+    flex-wrap: wrap;
+    align-items: flex-start !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
+  .erp-topbar-left,
+  .erp-topbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .erp-topbar-nav {
+    width: calc(100vw - 120px);
+  }
+
+  .erp-pos-shell {
+    grid-template-columns: 42% 1fr;
+  }
+
+  .erp-pos-product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.erp-pos-opening-card {
+  border: 1px solid #e8edf3;
+  border-radius: 20px;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.erp-pos-opening-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+.erp-pos-open-session-btn.ant-btn {
+  min-width: 180px;
+  height: 52px;
+  background: #ff8b7a;
+  border-color: #ff8b7a;
+}
+
+.erp-login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(180deg, #fff7f4 0%, #f7fafc 100%);
+}
+
+.erp-login-card {
+  width: 100%;
+  max-width: 460px;
+  border: 1px solid #e8edf3;
+  border-radius: 24px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+}
+
+.erp-pos-order-item.is-selected {
+  border-color: #1677ff;
+  background: #f0f7ff;
+}
+
+.erp-pos-keypad-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #dbe3ec;
+  border-radius: 12px;
+  background: #f8fbff;
+  margin-bottom: 10px;
+}
+
+.erp-delivery-lines-table-wrap {
+  overflow-x: auto;
+}
+
+.erp-delivery-lines-table .ant-table-tbody > tr.erp-delivery-line-row {
+  cursor: pointer;
+}
+
+.erp-delivery-lines-table .ant-table-tbody > tr.erp-delivery-line-row > td {
+  vertical-align: middle;
+}
+
+.erp-delivery-lines-table .ant-table-tbody > tr.erp-delivery-line-row.is-active > td {
+  background: #fff6f2;
+}
+
+.erp-delivery-line-image-btn {
+  border: 1px solid #e8edf3;
+  border-radius: 12px;
+  background: #fff;
+  padding: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.erp-delivery-line-image {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+}
