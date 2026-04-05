@@ -45,6 +45,78 @@ function formatPdfMoney(value, currency = "TRY") {
   return `${formatPdfNumber(value)} ${currencyLabel}`;
 }
 
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let index = 0; index < bytes.byteLength; index += 1) {
+    binary += String.fromCharCode(bytes[index]);
+  }
+  return btoa(binary);
+}
+
+async function ensurePdfFont(doc) {
+  try {
+    if (doc.getFontList()?.NotoSans) {
+      doc.setFont("NotoSans", "normal");
+      return;
+    }
+
+    const response = await fetch("/fonts/NotoSans-Regular.ttf");
+    if (!response.ok) {
+      throw new Error("Font bulunamadi");
+    }
+
+    const buffer = await response.arrayBuffer();
+    const base64Font = arrayBufferToBase64(buffer);
+    doc.addFileToVFS("NotoSans-Regular.ttf", base64Font);
+    doc.addFont("NotoSans-Regular.ttf", "NotoSans", "normal");
+    doc.setFont("NotoSans", "normal");
+  } catch {
+    doc.setFont("helvetica", "normal");
+  }
+}
+
+async function drawPdfLogo(doc) {
+  try {
+    const response = await fetch("/pdf-logo.png");
+    if (!response.ok) {
+      throw new Error("Logo yok");
+    }
+
+    const blob = await response.blob();
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    if (typeof dataUrl === "string") {
+      doc.addImage(dataUrl, "PNG", 168, 14, 24, 24);
+      return;
+    }
+  } catch {
+    // fallback below
+  }
+
+  doc.setDrawColor(214, 222, 232);
+  doc.roundedRect(168, 14, 24, 24, 2, 2);
+  doc.setFontSize(9);
+  doc.text("LOGO", 180, 28, { align: "center" });
+}
+
+function drawTableHeader(doc, y) {
+  doc.setFontSize(10);
+  doc.setFillColor(246, 248, 251);
+  doc.rect(14, y - 5, 182, 8, "F");
+  doc.text("Gorsel", 16, y);
+  doc.text("Kod", 38, y);
+  doc.text("Urun Adi", 68, y);
+  doc.text("Fiyat", 132, y);
+  doc.text("Adet", 156, y);
+  doc.text("Tutar", 174, y);
+}
+
 function seedDeliveryLists() {
   return [];
 }
@@ -154,7 +226,7 @@ export function updateDeliveryList(deliveryListId, values) {
   return enrichRecord(updatedRecord);
 }
 
-export function createDeliveryPdf(recordOrId) {
+export async function createDeliveryPdf(recordOrId) {
   const deliveryRecord =
     typeof recordOrId === "string"
       ? enrichRecord(getDeliveryListById(recordOrId))
@@ -165,33 +237,36 @@ export function createDeliveryPdf(recordOrId) {
   }
 
   const doc = new jsPDF();
+  await ensurePdfFont(doc);
   let currentY = 18;
 
   doc.setFillColor(250, 242, 239);
-  doc.roundedRect(14, 12, 182, 22, 3, 3, "F");
+  doc.roundedRect(14, 12, 182, 30, 3, 3, "F");
+  await drawPdfLogo(doc);
   doc.setFontSize(18);
   doc.setTextColor(36, 36, 36);
-  doc.text("Sibella Teslim Formu", 18, 26);
+  doc.text("Teslim Formu", 105, 28, { align: "center" });
   doc.setFontSize(11);
-  doc.text(`Teslimat Kodu: ${deliveryRecord.deliveryNo}`, 138, 22);
-  doc.text(`Olusturma Tarihi: ${deliveryRecord.date}`, 138, 28);
-  currentY = 42;
+  currentY = 50;
 
   doc.setFillColor(255, 255, 255);
   doc.setDrawColor(220, 226, 235);
-  doc.roundedRect(14, currentY, 182, 38, 3, 3, "FD");
+  doc.roundedRect(14, currentY, 182, 52, 3, 3, "FD");
   currentY += 8;
 
   doc.setFontSize(11);
   const supplier = listSuppliers().find((item) => item.id === deliveryRecord.supplierId);
   const headerRows = [
-    `Teslimat No: ${deliveryRecord.deliveryNo}`,
+    `Teslimat Kodu: ${deliveryRecord.deliveryNo}`,
     `Tedarikci Firma: ${deliveryRecord.supplierName}`,
     `Yetkili Kisi: ${deliveryRecord.contactName || supplier?.contact || "-"}`,
     `E-posta: ${deliveryRecord.supplierEmail || supplier?.email || "-"}`,
     `Tarih: ${deliveryRecord.date}`,
+    `Durum: ${deliveryRecord.status || "Taslak"}`,
     `Gonderim Sekli: ${deliveryRecord.shippingMethod || "-"}`,
     `Kargo Takip No: ${deliveryRecord.trackingNo || "-"}`,
+    `Toplam Adet: ${deliveryRecord.totalQuantity}`,
+    `Toplam Tutar: ${formatPdfMoney(deliveryRecord.totalAmount, "TRY")}`,
   ];
 
   headerRows.forEach((row, index) => {
@@ -199,25 +274,24 @@ export function createDeliveryPdf(recordOrId) {
     const y = currentY + Math.floor(index / 2) * 7;
     doc.text(row, x, y);
   });
-  currentY += 28;
+  currentY += 48;
 
   doc.setFontSize(12);
   doc.text("Urunler", 14, currentY);
   currentY += 8;
 
-  doc.setFontSize(10);
-  doc.setFillColor(246, 248, 251);
-  doc.rect(14, currentY - 5, 182, 8, "F");
-  doc.text("Gorsel", 16, currentY);
-  doc.text("Kod", 38, currentY);
-  doc.text("Urun Adi", 68, currentY);
-  doc.text("Fiyat", 132, currentY);
-  doc.text("Adet", 156, currentY);
-  doc.text("Tutar", 174, currentY);
+  drawTableHeader(doc, currentY);
   currentY += 6;
 
   deliveryRecord.lines.forEach((line) => {
     const rowHeight = 18;
+    if (currentY > 260) {
+      doc.addPage();
+      currentY = 18;
+      drawTableHeader(doc, currentY);
+      currentY += 6;
+    }
+
     doc.setDrawColor(232, 237, 243);
     doc.rect(14, currentY - 4, 182, rowHeight);
 
@@ -232,7 +306,7 @@ export function createDeliveryPdf(recordOrId) {
     }
 
     doc.text(line.code || "-", 38, currentY + 3);
-    const nameLines = doc.splitTextToSize(line.name || "-", 58);
+    const nameLines = doc.splitTextToSize(String(line.name || "-"), 58);
     doc.text(nameLines.slice(0, 2), 68, currentY + 1);
     doc.text(formatPdfMoney(line.salePrice, line.saleCurrency), 148, currentY + 3, { align: "right" });
     doc.text(String(line.quantity || 0), 156, currentY + 3, { align: "center" });
@@ -246,18 +320,9 @@ export function createDeliveryPdf(recordOrId) {
     }
 
     currentY += rowHeight + 2;
-    if (currentY > 260) {
-      doc.addPage();
-      currentY = 18;
-    }
   });
 
-  currentY += 4;
-  doc.setFontSize(12);
-  doc.text(`Toplam Adet: ${deliveryRecord.totalQuantity}`, 14, currentY);
-  currentY += 7;
-  doc.text(`Toplam Tutar: ${formatPdfMoney(deliveryRecord.totalAmount, "TRY")}`, 14, currentY);
-  currentY += 10;
+  currentY += 8;
   doc.setFontSize(10);
   doc.text(`Not: ${deliveryRecord.note || "-"}`, 14, currentY);
   currentY += 20;

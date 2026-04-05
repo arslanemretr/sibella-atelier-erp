@@ -1323,6 +1323,89 @@ export function ProductEditorPage() {
   );
 }
 
+export function SupplierDashboardPage() {
+  const authUser = getAuthUser();
+  const supplierId = authUser?.supplierId || null;
+  const supplier = React.useMemo(() => getSupplierById(supplierId), [supplierId]);
+  const products = React.useMemo(() => (supplierId ? listProductsBySupplier(supplierId) : []), [supplierId]);
+  const deliveries = React.useMemo(() => (supplierId ? listDeliveryListsBySupplier(supplierId) : []), [supplierId]);
+
+  const totalStockQty = React.useMemo(
+    () => products.reduce((sum, product) => sum + Number(product.stock || 0), 0),
+    [products],
+  );
+  const totalStockValue = React.useMemo(
+    () => products.reduce((sum, product) => sum + (Number(product.stock || 0) * Number(product.cost || 0)), 0),
+    [products],
+  );
+  const waitingDeliveries = React.useMemo(
+    () => deliveries.filter((delivery) => delivery.status === "Onay Bekleniyor").length,
+    [deliveries],
+  );
+
+  const metrics = [
+    { title: "Toplam Urun", value: products.length },
+    { title: "Toplam Stok", value: totalStockQty },
+    { title: "Toplam Stok Degeri", value: formatDashboardMoney(totalStockValue) },
+    { title: "Onay Bekleyen Teslimat", value: waitingDeliveries },
+  ];
+
+  return (
+    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+      <div>
+        <Title level={3} style={{ marginBottom: 6 }}>Dashboard</Title>
+        <Text type="secondary">Tedarikci hesabinizdaki urun, stok ve teslimat ozetini buradan takip edebilirsiniz.</Text>
+      </div>
+
+      <Row gutter={[16, 16]}>
+        {metrics.map((metric) => (
+          <Col xs={24} sm={12} xl={6} key={metric.title}>
+            <Card bordered={false} className="erp-metric-card">
+              <Statistic title={metric.title} value={metric.value} />
+            </Card>
+          </Col>
+        ))}
+      </Row>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} xl={10}>
+          <Card title="Firma Bilgileri" bordered={false}>
+            <Descriptions column={1} size="small">
+              <Descriptions.Item label="Firma">{supplier?.company || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Yetkili">{supplier?.contact || authUser?.fullName || "-"}</Descriptions.Item>
+              <Descriptions.Item label="E-posta">{supplier?.email || authUser?.email || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Telefon">{supplier?.phone || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Sehir">{supplier?.city || "-"}</Descriptions.Item>
+            </Descriptions>
+          </Card>
+        </Col>
+        <Col xs={24} xl={14}>
+          <Card title="Son Teslimatlar" bordered={false}>
+            <Table
+              rowKey="id"
+              pagination={false}
+              size="small"
+              dataSource={deliveries.slice(0, 5)}
+              locale={{ emptyText: "Henuz teslimat kaydiniz bulunmuyor." }}
+              columns={[
+                { title: "Teslimat No", dataIndex: "deliveryNo", key: "deliveryNo" },
+                { title: "Tarih", dataIndex: "date", key: "date" },
+                { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 90 },
+                {
+                  title: "Durum",
+                  dataIndex: "status",
+                  key: "status",
+                  render: (value) => <Tag color={value === "Onay Bekleniyor" ? "gold" : value === "Onaylandi" ? "green" : "default"}>{value || "Taslak"}</Tag>,
+                },
+              ]}
+            />
+          </Card>
+        </Col>
+      </Row>
+    </Space>
+  );
+}
+
 export function SupplierListPage() {
   const navigate = useNavigate();
   const SAVED_FILTERS_KEY = "sibella.erp.supplierFilters.v1";
@@ -4703,20 +4786,18 @@ export function SupplierPortalProductListPage() {
     <Space direction="vertical" size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div>
-          <Title level={3} style={{ marginBottom: 6 }}>Urun Listem</Title>
-          <Text type="secondary">Yalnizca size ait urun kayitlarini gorur, duzenler ve onaya gonderebilirsiniz.</Text>
+          <Title level={3} style={{ marginBottom: 6 }}>Urunlerim</Title>
+          <Text type="secondary">Yalnizca size ait urun kayitlarini goruntuleyebilirsiniz.</Text>
         </div>
         <Space wrap>
           <Button icon={<ReloadOutlined />} onClick={refreshProducts}>Yenile</Button>
           <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/supplier/products/new")}>Urun Yukle</Button>
         </Space>
       </div>
 
       <Card bordered={false} className="erp-list-toolbar-card">
         <div className="erp-list-toolbar erp-product-toolbar-single">
           <Space wrap className="erp-product-toolbar-actions">
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/supplier/products/new")}>Yeni Urun</Button>
             <Button icon={<ReloadOutlined />} onClick={refreshProducts}>Yenile</Button>
           </Space>
           <div className="erp-product-toolbar-search">
@@ -4745,7 +4826,7 @@ export function SupplierPortalProductListPage() {
         />
         <div className="erp-table-footer">
           <span>Toplam Kayit: {filteredProducts.length}</span>
-          <span>Kaydi acarak guncelleyebilirsiniz.</span>
+          <span>Kaydi acarak ayrintilarini goruntuleyebilirsiniz.</span>
         </div>
       </Card>
     </Space>
@@ -4758,11 +4839,8 @@ export function SupplierPortalProductEditorPage() {
   const authUser = getAuthUser();
   const supplierId = authUser?.supplierId || null;
   const [form] = Form.useForm();
-  const [loading, setLoading] = React.useState(false);
   const [imagePreviewOpen, setImagePreviewOpen] = React.useState(false);
-  const fileInputRef = React.useRef(null);
   const isEditMode = Boolean(productId);
-  const systemParameters = React.useMemo(() => getSystemParameters(), []);
   const categoryOptions = React.useMemo(
     () => listMasterData("categories").filter((item) => item.status === "Aktif").map((item) => ({ value: item.id, label: item.fullPath })),
     [],
@@ -4772,7 +4850,6 @@ export function SupplierPortalProductEditorPage() {
     [],
   );
   const watchedImage = Form.useWatch("image", form) || "/products/baroque-necklace.svg";
-  const watchedSupplierId = Form.useWatch("supplierId", form);
 
   React.useEffect(() => {
     if (!supplierId) {
@@ -4781,26 +4858,8 @@ export function SupplierPortalProductEditorPage() {
       return;
     }
 
-    const baseValues = {
-      supplierId,
-      code: systemParameters.productCodeControlEnabled ? generateProductCodeForSupplier(supplierId) : "",
-      name: "",
-      salePrice: 0,
-      saleCurrency: "TRY",
-      image: "/products/baroque-necklace.svg",
-      categoryId: undefined,
-      collectionId: undefined,
-      notes: "",
-      workflowStatus: "Taslak",
-      status: "Aktif",
-      isForSale: true,
-      isForPurchase: true,
-      useInPos: true,
-      trackInventory: true,
-    };
-
     if (!isEditMode) {
-      form.setFieldsValue(baseValues);
+      navigate("/supplier/products", { replace: true });
       return;
     }
 
@@ -4812,95 +4871,27 @@ export function SupplierPortalProductEditorPage() {
     }
 
     form.setFieldsValue({
-      ...baseValues,
       ...product,
       supplierId,
     });
-  }, [form, isEditMode, navigate, productId, supplierId, systemParameters.productCodeControlEnabled]);
-
-  React.useEffect(() => {
-    if (!systemParameters.productCodeControlEnabled || !watchedSupplierId || isEditMode) {
-      return;
-    }
-
-    form.setFieldValue("code", generateProductCodeForSupplier(watchedSupplierId));
-  }, [form, isEditMode, systemParameters.productCodeControlEnabled, watchedSupplierId]);
-
-  const handleImageSelect = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleImageChange = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    if (!file.type.startsWith("image/")) {
-      message.error("Lutfen gecerli bir gorsel dosyasi secin.");
-      event.target.value = "";
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        form.setFieldValue("image", reader.result);
-        message.success("Gorsel yuklendi.");
-      }
-    };
-    reader.readAsDataURL(file);
-    event.target.value = "";
-  };
-
-  const handleSubmit = async (nextWorkflowStatus = "Taslak") => {
-    try {
-      setLoading(true);
-      const values = await form.validateFields();
-      const payload = {
-        ...values,
-        supplierId,
-        workflowStatus: nextWorkflowStatus,
-        createdBy: authUser?.id || null,
-      };
-      const duplicate = listProductsBySupplier(supplierId).find((item) => item.code === payload.code && item.id !== productId);
-      if (duplicate) {
-        message.error("Bu urun kodu daha once kullanilmis.");
-        return;
-      }
-
-      const savedProduct = isEditMode ? updateProduct(productId, payload) : createProduct(payload);
-      message.success(nextWorkflowStatus === "Onaya Gonderildi" ? "Kayit onaya gonderildi." : "Kayit taslak olarak saklandi.");
-      navigate(`/supplier/products/${savedProduct.id}`);
-    } catch {
-      // form validation handles errors
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [form, isEditMode, navigate, productId, supplierId]);
 
   return (
     <Space direction="vertical" size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div>
-          <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Urun Duzenle" : "Yeni Urun Yukle"}</Title>
-          <Text type="secondary">Urun gorseli, temel bilgiler ve satis fiyati ile kayit acabilir; taslak veya onay gonderimi yapabilirsiniz.</Text>
+          <Title level={3} style={{ marginBottom: 6 }}>Urun Karti</Title>
+          <Text type="secondary">Bu ekranda sadece size ait urun kartini goruntuleyebilirsiniz.</Text>
         </div>
         <Space wrap>
           <Button onClick={() => navigate("/supplier/products")}>Listeye Don</Button>
-          <Button onClick={() => handleSubmit("Taslak")} loading={loading}>Taslak Kaydet</Button>
-          <Button type="primary" onClick={() => handleSubmit("Onaya Gonderildi")} loading={loading}>Onaya Gonder</Button>
         </Space>
       </div>
 
       <Form form={form} layout="vertical">
-        <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageChange} />
         <Row gutter={[20, 20]}>
           <Col xs={24} xl={8}>
-            <Card
-              title="Urun Gorseli"
-              extra={<Button onClick={handleImageSelect}>{isEditMode ? "Gorsel Degistir" : "Gorsel Ekle"}</Button>}
-            >
+            <Card title="Urun Gorseli">
               <div
                 className="erp-product-preview"
                 onClick={() => setImagePreviewOpen(true)}
@@ -4935,12 +4926,12 @@ export function SupplierPortalProductEditorPage() {
                   </Col>
                   <Col xs={24} md={12}>
                     <Form.Item name="code" label="Urun Kodu" rules={[{ required: true, message: "Urun kodu zorunludur." }]}>
-                      <Input readOnly={systemParameters.productCodeControlEnabled} placeholder="MINA0001" />
+                      <Input disabled />
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={12}>
                     <Form.Item name="name" label="Urun Adi" rules={[{ required: true, message: "Urun adi zorunludur." }]}>
-                      <Input placeholder="Urun adini girin" />
+                      <Input disabled />
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={12}>
@@ -4952,22 +4943,22 @@ export function SupplierPortalProductEditorPage() {
                         { validator: (_, value) => Number(value || 0) > 0 ? Promise.resolve() : Promise.reject(new Error("Satis fiyati 0'dan buyuk olmali.")) },
                       ]}
                     >
-                      <InputNumber style={{ width: "100%" }} min={0} addonAfter="TRY" />
+                      <InputNumber style={{ width: "100%" }} min={0} addonAfter="TRY" disabled />
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={12}>
                     <Form.Item name="categoryId" label="Kategori">
-                      <Select options={categoryOptions} showSearch optionFilterProp="label" placeholder="Kategori seciniz" />
+                      <Select options={categoryOptions} showSearch optionFilterProp="label" placeholder="Kategori seciniz" disabled />
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={12}>
                     <Form.Item name="collectionId" label="Koleksiyon">
-                      <Select options={collectionOptions} showSearch optionFilterProp="label" placeholder="Koleksiyon seciniz" />
+                      <Select options={collectionOptions} showSearch optionFilterProp="label" placeholder="Koleksiyon seciniz" disabled />
                     </Form.Item>
                   </Col>
                   <Col xs={24}>
                     <Form.Item name="notes" label="Urun Aciklamasi / Bilgilendirme">
-                      <Input.TextArea rows={6} placeholder="Urunle ilgili aciklayici metni girin" />
+                      <Input.TextArea rows={6} disabled />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -4985,7 +4976,7 @@ export function SupplierPortalProductEditorPage() {
                   </Col>
                   <Col xs={24} md={12}>
                     <Form.Item name="status" label="Kart Durumu">
-                      <Select options={["Aktif", "Pasif"].map((value) => ({ value, label: value }))} />
+                      <Select options={["Aktif", "Pasif"].map((value) => ({ value, label: value }))} disabled />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -5011,8 +5002,7 @@ export function SupplierPortalProductEditorPage() {
 }
 
 export function SupplierDeliveryListsPage() {
-  const [detailOpen, setDetailOpen] = React.useState(false);
-  const [selectedRecord, setSelectedRecord] = React.useState(null);
+  const navigate = useNavigate();
   const [filters, setFilters] = React.useState({
     search: "",
     supplierId: undefined,
@@ -5051,7 +5041,7 @@ export function SupplierDeliveryListsPage() {
     });
   }, [filters, records]);
 
-  const handleStatusUpdate = (recordId, status) => {
+  const handleStatusUpdate = async (recordId, status) => {
     const record = getDeliveryListById(recordId);
     if (!record) {
       return;
@@ -5062,10 +5052,9 @@ export function SupplierDeliveryListsPage() {
       status,
     });
     if (status === "Onaylandi") {
-      createDeliveryPdf(updatedRecord);
+      await createDeliveryPdf(updatedRecord);
     }
     refreshRecords();
-    setSelectedRecord(updatedRecord);
     message.success(`Teslimat durumu "${status}" olarak guncellendi.`);
   };
 
@@ -5081,7 +5070,7 @@ export function SupplierDeliveryListsPage() {
           className="erp-link-button"
           onClick={(event) => {
             event.stopPropagation();
-            openDetailFromRow(setSelectedRecord, setDetailOpen, record);
+            navigate(`/supplier-portal/delivery-lists/${record.id}`);
           }}
         >
           {value}
@@ -5138,6 +5127,7 @@ export function SupplierDeliveryListsPage() {
       key: "actions",
       render: (_, record) => (
         <Space size={8}>
+          <Button type="text" onClick={(event) => { event.stopPropagation(); navigate(`/supplier-portal/delivery-lists/${record.id}`); }}>Teslimat Formu</Button>
           <Button type="text" onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Revizyon Istendi"); }}>Revizyon</Button>
           <Button type="text" onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Onaylandi"); }}>Onayla</Button>
           <Button type="text" onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Tamamlandi"); }}>Teslim Alindi</Button>
@@ -5197,45 +5187,15 @@ export function SupplierDeliveryListsPage() {
           pagination={false}
           locale={{ emptyText: "Tedarikci portalindan gelen kayit bulunmuyor." }}
           onRow={(record) => ({
-            onClick: () => openDetailFromRow(setSelectedRecord, setDetailOpen, record),
+            onClick: () => navigate(`/supplier-portal/delivery-lists/${record.id}`),
           })}
           rowClassName={() => "erp-clickable-row"}
         />
         <div className="erp-table-footer">
           <span>Toplam Kayit: {filteredRecords.length}</span>
-          <span>Satira tiklayarak detaylari inceleyebilirsiniz.</span>
+          <span>Satira tiklayarak teslimat formunu acabilirsiniz.</span>
         </div>
       </Card>
-
-      <Drawer
-        title="Teslimat Kaydi Detayi"
-        placement="right"
-        width={420}
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        extra={
-          selectedRecord ? (
-            <Space>
-              <Button onClick={() => handleStatusUpdate(selectedRecord.id, "Revizyon Istendi")}>Revizyon</Button>
-              <Button type="primary" onClick={() => handleStatusUpdate(selectedRecord.id, "Onaylandi")}>Onayla</Button>
-            </Space>
-          ) : null
-        }
-      >
-        {selectedRecord ? (
-          <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="Teslimat No">{selectedRecord.deliveryNo}</Descriptions.Item>
-            <Descriptions.Item label="Tedarikci">{selectedRecord.supplierName}</Descriptions.Item>
-            <Descriptions.Item label="Yetkili">{selectedRecord.contactName}</Descriptions.Item>
-            <Descriptions.Item label="Tarih">{selectedRecord.date}</Descriptions.Item>
-            <Descriptions.Item label="Gonderim">{selectedRecord.shippingMethod || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Takip No">{selectedRecord.trackingNo || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Durum">{selectedRecord.status || "Taslak"}</Descriptions.Item>
-            <Descriptions.Item label="Kalem">{selectedRecord.lineCount}</Descriptions.Item>
-            <Descriptions.Item label="Not">{selectedRecord.note || "-"}</Descriptions.Item>
-          </Descriptions>
-        ) : null}
-      </Drawer>
     </Space>
   );
 }
@@ -5376,8 +5336,10 @@ export function SupplierPortalDeliveryListPage() {
 
 export function SupplierPortalDeliveryEditorPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { deliveryId } = useParams();
   const authUser = getAuthUser();
+  const isAdminView = location.pathname.startsWith("/supplier-portal/");
   const supplierId = authUser?.supplierId || null;
   const isEditMode = Boolean(deliveryId);
   const [form] = Form.useForm();
@@ -5394,36 +5356,38 @@ export function SupplierPortalDeliveryEditorPage() {
   const [editIndex, setEditIndex] = React.useState(null);
   const [editOpen, setEditOpen] = React.useState(false);
   const [editLine, setEditLine] = React.useState(null);
+  const [promoteMode, setPromoteMode] = React.useState(false);
   const lineDraftInputRef = React.useRef(null);
   const editImageInputRef = React.useRef(null);
   const watchedLines = deliveryLines;
-
-  const supplier = React.useMemo(() => getSupplierById(supplierId), [supplierId]);
+  const targetRecord = React.useMemo(() => (isEditMode ? getDeliveryListById(deliveryId) : null), [deliveryId, isEditMode]);
+  const targetSupplierId = isAdminView ? (targetRecord?.supplierId || null) : supplierId;
+  const supplier = React.useMemo(() => getSupplierById(targetSupplierId), [targetSupplierId]);
   const productOptions = React.useMemo(
-    () => listProductsBySupplier(supplierId).map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` })),
-    [supplierId],
+    () => listProductsBySupplier(targetSupplierId).map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` })),
+    [targetSupplierId],
   );
   const totalAmount = React.useMemo(
     () => watchedLines.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.salePrice || 0)), 0),
     [watchedLines],
   );
   const currentStatus = Form.useWatch("status", form) || "Taslak";
-  const isDeliveryLocked = !["Taslak", "Revizyon Istendi"].includes(currentStatus);
+  const isDeliveryLocked = isAdminView || !["Taslak", "Revizyon Istendi"].includes(currentStatus);
 
   React.useEffect(() => {
-    if (!supplierId) {
+    if (!isAdminView && !supplierId) {
       message.error("Tedarikci eslesmesi bulunamadi.");
       navigate("/login", { replace: true });
       return;
     }
 
     const baseValues = {
-      supplierId,
+      supplierId: targetSupplierId,
       supplierName: supplier?.company || "",
       contactName: supplier?.contact || "",
       supplierEmail: supplier?.email || authUser?.email || "",
       date: new Date().toISOString().slice(0, 10),
-      deliveryNo: getNextDeliveryNoPreview(supplierId),
+      deliveryNo: getNextDeliveryNoPreview(targetSupplierId),
       shippingMethod: "Kargo",
       trackingNo: "",
       status: "Taslak",
@@ -5431,15 +5395,19 @@ export function SupplierPortalDeliveryEditorPage() {
     };
 
     if (!isEditMode) {
+      if (isAdminView) {
+        navigate("/supplier-portal/delivery-lists", { replace: true });
+        return;
+      }
       form.setFieldsValue(baseValues);
       setDeliveryLines([]);
       return;
     }
 
     const deliveryRecord = getDeliveryListById(deliveryId);
-    if (!deliveryRecord || deliveryRecord.supplierId !== supplierId) {
+    if (!deliveryRecord || (!isAdminView && deliveryRecord.supplierId !== supplierId)) {
       message.error("Bu teslimat kaydina erisim yetkiniz yok.");
-      navigate("/supplier/deliveries", { replace: true });
+      navigate(isAdminView ? "/supplier-portal/delivery-lists" : "/supplier/deliveries", { replace: true });
       return;
     }
 
@@ -5450,7 +5418,7 @@ export function SupplierPortalDeliveryEditorPage() {
       lines: loadedLines,
     });
     setDeliveryLines(loadedLines);
-  }, [authUser?.email, deliveryId, form, isEditMode, navigate, supplier?.company, supplier?.contact, supplier?.email, supplierId]);
+  }, [authUser?.email, deliveryId, form, isAdminView, isEditMode, navigate, supplier?.company, supplier?.contact, supplier?.email, supplierId, targetSupplierId]);
 
   const resetLineDraft = React.useCallback(() => {
     setLineDraft({
@@ -5523,6 +5491,7 @@ export function SupplierPortalDeliveryEditorPage() {
       {
         id: `line-${Date.now()}`,
         productId: lineDraft.productId || null,
+        isNewProduct: !lineDraft.productId,
         image: lineDraft.image,
         name: lineDraft.name,
         code: lineDraft.code,
@@ -5550,7 +5519,7 @@ export function SupplierPortalDeliveryEditorPage() {
   };
 
   const openEditDrawer = (index) => {
-    if (isDeliveryLocked) {
+    if (isDeliveryLocked && !isAdminView) {
       return;
     }
     const target = watchedLines[index];
@@ -5559,6 +5528,18 @@ export function SupplierPortalDeliveryEditorPage() {
     }
     setEditIndex(index);
     setEditLine({ ...target });
+    setPromoteMode(false);
+    setEditOpen(true);
+  };
+
+  const openPromoteDrawer = (index) => {
+    const target = watchedLines[index];
+    if (!target) {
+      return;
+    }
+    setEditIndex(index);
+    setEditLine({ ...target });
+    setPromoteMode(true);
     setEditOpen(true);
   };
 
@@ -5585,7 +5566,7 @@ export function SupplierPortalDeliveryEditorPage() {
   };
 
   const handleSaveEditLine = () => {
-    if (isDeliveryLocked) {
+    if (isDeliveryLocked && !isAdminView) {
       return;
     }
     if (editIndex === null || !editLine) {
@@ -5604,6 +5585,78 @@ export function SupplierPortalDeliveryEditorPage() {
     setEditOpen(false);
     setEditIndex(null);
     setEditLine(null);
+  };
+
+  const handlePromoteLineToProduct = () => {
+    if (!isAdminView || editIndex === null || !editLine || !targetSupplierId) {
+      return;
+    }
+    if (!editLine.name || !editLine.code) {
+      message.error("Urun adi ve urun kodu zorunludur.");
+      return;
+    }
+
+    const duplicate = listProductsBySupplier(targetSupplierId).find((product) => product.code === editLine.code && product.id !== editLine.productId);
+    if (duplicate) {
+      message.error("Bu urun kodu daha once kullanilmis.");
+      return;
+    }
+
+    const savedProduct = createProduct({
+      supplierId: targetSupplierId,
+      code: editLine.code,
+      name: editLine.name,
+      salePrice: editLine.salePrice,
+      saleCurrency: editLine.saleCurrency || "TRY",
+      cost: 0,
+      costCurrency: "TRY",
+      categoryId: null,
+      collectionId: null,
+      posCategoryId: null,
+      barcode: "",
+      supplierCode: editLine.code,
+      minStock: 0,
+      supplierLeadTime: 0,
+      productType: "konsinye",
+      salesTax: "%20",
+      image: editLine.image,
+      isForSale: true,
+      isForPurchase: true,
+      useInPos: true,
+      trackInventory: true,
+      status: "Aktif",
+      workflowStatus: "Onaylandi",
+      createdBy: authUser?.id || null,
+      notes: editLine.description || "",
+      features: [],
+    });
+
+    const currentLines = [...deliveryLines];
+    currentLines[editIndex] = {
+      ...currentLines[editIndex],
+      ...editLine,
+      productId: savedProduct.id,
+      isNewProduct: false,
+      code: savedProduct.code,
+      name: savedProduct.name,
+    };
+    setDeliveryLines(currentLines);
+    form.setFieldValue("lines", currentLines);
+    updateDeliveryList(deliveryId, {
+      ...form.getFieldsValue(),
+      supplierId: targetSupplierId,
+      supplierName: supplier?.company || "",
+      contactName: supplier?.contact || "",
+      supplierEmail: supplier?.email || "",
+      createdBy: targetRecord?.createdBy || authUser?.id || null,
+      status: form.getFieldValue("status") || targetRecord?.status || "Taslak",
+      lines: currentLines,
+    });
+    setEditOpen(false);
+    setEditIndex(null);
+    setEditLine(null);
+    setPromoteMode(false);
+    message.success("Satir urun kartina donusturuldu.");
   };
 
   const validateBeforeAction = async () => {
@@ -5628,7 +5681,7 @@ export function SupplierPortalDeliveryEditorPage() {
 
       const payload = {
         ...values,
-        supplierId,
+        supplierId: targetSupplierId,
         supplierName: supplier?.company || "",
         contactName: supplier?.contact || "",
         supplierEmail: supplier?.email || authUser?.email || "",
@@ -5638,10 +5691,10 @@ export function SupplierPortalDeliveryEditorPage() {
 
       const savedRecord = isEditMode ? updateDeliveryList(deliveryId, payload) : createDeliveryList(payload);
       if (shouldDownloadPdf || status === "Onay Bekleniyor") {
-        createDeliveryPdf(savedRecord);
+        await createDeliveryPdf(savedRecord);
       }
       message.success(status === "Onay Bekleniyor" ? "Teslimat onaya gonderildi." : "Teslimat kaydedildi.");
-      navigate(`/supplier/deliveries/${savedRecord.id}`);
+      navigate(isAdminView ? `/supplier-portal/delivery-lists/${savedRecord.id}` : `/supplier/deliveries/${savedRecord.id}`);
     } catch {
       // form validation handles UI
     } finally {
@@ -5653,19 +5706,25 @@ export function SupplierPortalDeliveryEditorPage() {
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div>
-          <Title level={3} style={{ marginBottom: 6 }}>Teslimat Olustur</Title>
-          <Text type="secondary">Teslimat genel bilgilerini doldurun, urunleri ekleyin ve hazir oldugunda satin alma birimine gonderin.</Text>
+          <Title level={3} style={{ marginBottom: 6 }}>{isAdminView ? "Teslimat Formu" : "Teslimat Olustur"}</Title>
+          <Text type="secondary">{isAdminView ? "Tedarikciden gelen teslimat satirlarini inceleyin, yeni urun adaylarini urun kartina donusturun." : "Teslimat genel bilgilerini doldurun, urunleri ekleyin ve hazir oldugunda satin alma birimine gonderin."}</Text>
         </div>
         <Space wrap>
           <Button icon={<DownloadOutlined />} onClick={() => handleSave(form.getFieldValue("status") || "Taslak", true)} loading={loading}>
             PDF Olarak Indir
           </Button>
-          <Button onClick={() => handleSave("Taslak")} loading={loading} disabled={isDeliveryLocked}>
-            Taslak Kaydet
-          </Button>
-          <Button type="primary" onClick={() => handleSave("Onay Bekleniyor")} loading={loading} disabled={isDeliveryLocked}>
-            Onaya Gonder
-          </Button>
+          {isAdminView ? (
+            <Button onClick={() => navigate("/supplier-portal/delivery-lists")}>Listeye Don</Button>
+          ) : (
+            <>
+              <Button onClick={() => handleSave("Taslak")} loading={loading} disabled={isDeliveryLocked}>
+                Taslak Kaydet
+              </Button>
+              <Button type="primary" onClick={() => handleSave("Onay Bekleniyor")} loading={loading} disabled={isDeliveryLocked}>
+                Onaya Gonder
+              </Button>
+            </>
+          )}
         </Space>
       </div>
 
@@ -5698,6 +5757,7 @@ export function SupplierPortalDeliveryEditorPage() {
         </Card>
 
         <Card title="Urun Listesi" bodyStyle={{ paddingTop: 16 }} style={{ marginTop: 12 }}>
+          {!isAdminView ? (
           <Card size="small" title="Urun Ekleme" style={{ marginBottom: 12 }}>
             <Row gutter={[12, 12]} align="bottom">
               <Col xs={24} md={7}>
@@ -5759,6 +5819,7 @@ export function SupplierPortalDeliveryEditorPage() {
               </Col>
             </Row>
           </Card>
+          ) : null}
 
           <Table
             rowKey={(record, index) => record.id || `delivery-line-${index}`}
@@ -5792,11 +5853,16 @@ export function SupplierPortalDeliveryEditorPage() {
               {
                 title: "Islemler",
                 key: "actions",
-                width: 150,
+                width: isAdminView ? 260 : 150,
                 render: (_, record) => (
-                    <Space size={4}>
-                    <Button type="link" onClick={() => openEditDrawer(record._rowIndex)} disabled={isDeliveryLocked}>Duzenle</Button>
-                    <Button danger type="text" onClick={() => handleDeleteLine(record._rowIndex)} disabled={isDeliveryLocked}>Sil</Button>
+                  <Space size={4}>
+                    <Button type="link" onClick={() => openEditDrawer(record._rowIndex)} disabled={isDeliveryLocked && !isAdminView}>Duzenle</Button>
+                    {isAdminView && record.isNewProduct && !record.productId ? (
+                      <Button type="link" onClick={() => openPromoteDrawer(record._rowIndex)}>Urun Olarak Ekle</Button>
+                    ) : null}
+                    {!isAdminView ? (
+                      <Button danger type="text" onClick={() => handleDeleteLine(record._rowIndex)} disabled={isDeliveryLocked}>Sil</Button>
+                    ) : null}
                   </Space>
                 ),
               },
@@ -5831,7 +5897,7 @@ export function SupplierPortalDeliveryEditorPage() {
       >
         {editLine ? (
           <Space direction="vertical" size={16} style={{ width: "100%" }}>
-            <div className="erp-product-preview" style={{ minHeight: 220 }} onClick={() => editImageInputRef.current?.click()} role="button" tabIndex={0}>
+            <div className="erp-product-preview" style={{ minHeight: 220 }} onClick={() => (!isDeliveryLocked || isAdminView) && editImageInputRef.current?.click()} role="button" tabIndex={0}>
               <img src={editLine.image || "/products/baroque-necklace.svg"} alt="Urun gorseli" className="erp-product-image-large" />
             </div>
             <input
@@ -5845,32 +5911,36 @@ export function SupplierPortalDeliveryEditorPage() {
                 event.target.value = "";
               }}
             />
-            <Button onClick={() => editImageInputRef.current?.click()} disabled={isDeliveryLocked}>Gorsel Degistir</Button>
+            <Button onClick={() => editImageInputRef.current?.click()} disabled={isDeliveryLocked && !isAdminView}>Gorsel Degistir</Button>
             <div>
               <Text strong>Urun Adi</Text>
-              <Input disabled={isDeliveryLocked} value={editLine.name} onChange={(event) => setEditLine((current) => ({ ...current, name: event.target.value }))} />
+              <Input disabled={isDeliveryLocked && !isAdminView} value={editLine.name} onChange={(event) => setEditLine((current) => ({ ...current, name: event.target.value }))} />
             </div>
             <div>
               <Text strong>Urun Kodu</Text>
-              <Input disabled={isDeliveryLocked} value={editLine.code} onChange={(event) => setEditLine((current) => ({ ...current, code: event.target.value }))} />
+              <Input disabled={isDeliveryLocked && !isAdminView} value={editLine.code} onChange={(event) => setEditLine((current) => ({ ...current, code: event.target.value }))} />
             </div>
             <Row gutter={12}>
               <Col span={12}>
                 <Text strong>Birim Fiyat</Text>
-                <InputNumber disabled={isDeliveryLocked} style={{ width: "100%" }} min={0} value={editLine.salePrice} onChange={(value) => setEditLine((current) => ({ ...current, salePrice: value || 0 }))} addonAfter="TRY" />
+                <InputNumber disabled={isDeliveryLocked && !isAdminView} style={{ width: "100%" }} min={0} value={editLine.salePrice} onChange={(value) => setEditLine((current) => ({ ...current, salePrice: value || 0 }))} addonAfter="TRY" />
               </Col>
               <Col span={12}>
                 <Text strong>Teslim Adedi</Text>
-                <InputNumber disabled={isDeliveryLocked} style={{ width: "100%" }} min={1} value={editLine.quantity} onChange={(value) => setEditLine((current) => ({ ...current, quantity: value || 1 }))} />
+                <InputNumber disabled={isDeliveryLocked && !isAdminView} style={{ width: "100%" }} min={1} value={editLine.quantity} onChange={(value) => setEditLine((current) => ({ ...current, quantity: value || 1 }))} />
               </Col>
             </Row>
             <div>
               <Text strong>Aciklama</Text>
-              <Input.TextArea disabled={isDeliveryLocked} rows={4} value={editLine.description} onChange={(event) => setEditLine((current) => ({ ...current, description: event.target.value }))} />
+              <Input.TextArea disabled={isDeliveryLocked && !isAdminView} rows={4} value={editLine.description} onChange={(event) => setEditLine((current) => ({ ...current, description: event.target.value }))} />
             </div>
             <Space style={{ justifyContent: "flex-end", width: "100%" }}>
               <Button onClick={() => setEditOpen(false)}>Vazgec</Button>
-              <Button type="primary" onClick={handleSaveEditLine} disabled={isDeliveryLocked}>Guncelle</Button>
+              {isAdminView && promoteMode && editLine.isNewProduct && !editLine.productId ? (
+                <Button type="primary" onClick={handlePromoteLineToProduct}>Urun Olarak Kaydet</Button>
+              ) : (
+                <Button type="primary" onClick={handleSaveEditLine} disabled={isDeliveryLocked && !isAdminView}>Guncelle</Button>
+              )}
             </Space>
           </Space>
         ) : null}

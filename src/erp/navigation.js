@@ -123,6 +123,8 @@ export const sidebarGroups = [
 ];
 
 export const supplierMainMenuItems = [
+  { key: "/supplier/dashboard", label: "Dashboard" },
+  { key: "/supplier/products", label: "Urunlerim" },
   { key: "/supplier/deliveries/new", label: "Teslimat Olustur" },
   { key: "/supplier/deliveries", label: "Teslimat Listesi" },
 ];
@@ -132,6 +134,8 @@ export const supplierSidebarGroups = [
     type: "group",
     label: "TEDARIKCI PORTALI",
     children: [
+      { key: "/supplier/dashboard", label: "Dashboard" },
+      { key: "/supplier/products", label: "Urunlerim" },
       { key: "/supplier/deliveries/new", label: "Teslimat Olustur" },
       { key: "/supplier/deliveries", label: "Teslimat Listesi" },
     ],

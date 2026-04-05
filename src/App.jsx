@@ -4,6 +4,7 @@ import AppLayout from "./components/layout/AppLayout";
 import { getAuthUser, isAuthenticated, onAuthChange } from "./auth";
 import {
   DashboardPage,
+  SupplierDashboardPage,
   PosScreenPage,
   PosSessionsPage,
   ProductEditorPage,
@@ -52,7 +53,7 @@ function ProtectedApp() {
     location.pathname === "/supplier" || location.pathname.startsWith("/supplier/");
 
   if (isSupplierUser && !isSupplierPortalRoute) {
-    return <Navigate to="/supplier/deliveries" replace />;
+    return <Navigate to="/supplier/dashboard" replace />;
   }
 
   if (!isSupplierUser && isSupplierPortalRoute) {
@@ -62,7 +63,7 @@ function ProtectedApp() {
   return (
     <AppLayout>
       <Routes>
-        <Route path="/" element={<Navigate to={isSupplierUser ? "/supplier/deliveries" : "/dashboard"} replace />} />
+        <Route path="/" element={<Navigate to={isSupplierUser ? "/supplier/dashboard" : "/dashboard"} replace />} />
         <Route path="/settings" element={<Navigate to="/settings/users" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
 
@@ -85,6 +86,7 @@ function ProtectedApp() {
         <Route path="/stock/entry/:stockEntryId" element={<StockEntryEditorPage />} />
         <Route path="/stock/list" element={<StockListPage />} />
         <Route path="/supplier-portal/delivery-lists" element={<SupplierDeliveryListsPage />} />
+        <Route path="/supplier-portal/delivery-lists/:deliveryId" element={<SupplierPortalDeliveryEditorPage />} />
 
         <Route path="/settings/users" element={<UserManagementPage />} />
         <Route path="/settings/categories" element={<SettingsDefinitionPage entityKey="categories" />} />
@@ -96,7 +98,7 @@ function ProtectedApp() {
         <Route path="/settings/parameters" element={<ParametersPage />} />
 
         <Route path="/supplier/products" element={<SupplierPortalProductListPage />} />
-        <Route path="/supplier/products/new" element={<SupplierPortalProductEditorPage />} />
+        <Route path="/supplier/dashboard" element={<SupplierDashboardPage />} />
         <Route path="/supplier/products/:productId" element={<SupplierPortalProductEditorPage />} />
         <Route path="/supplier/deliveries" element={<SupplierPortalDeliveryListPage />} />
         <Route path="/supplier/deliveries/new" element={<SupplierPortalDeliveryEditorPage />} />
