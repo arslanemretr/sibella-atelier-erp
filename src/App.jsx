@@ -1,17 +1,18 @@
 import React from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Spin } from "antd";
 import AppLayout from "./components/layout/AppLayout";
-import { getAuthUser, isAuthenticated, onAuthChange } from "./auth";
+import { getAuthUser, hasAuthLoaded, isAuthenticated, onAuthChange, restoreAuthSession } from "./auth";
 import {
   DashboardPage,
+  ContractsPage,
   SupplierDashboardPage,
   PosScreenPage,
   PosSessionsPage,
   ProductEditorPage,
   ProductListPage,
-  PurchaseEditorPage,
-  PurchaseListPage,
   ParametersPage,
+  SmtpSettingsPage,
   SettingsDefinitionPage,
   StockEntryListPage,
   StockEntryEditorPage,
@@ -32,16 +33,43 @@ function ProtectedApp() {
   const location = useLocation();
   const [authenticated, setAuthenticated] = React.useState(() => isAuthenticated());
   const [authUser, setAuthUser] = React.useState(() => getAuthUser());
+  const [authReady, setAuthReady] = React.useState(() => hasAuthLoaded());
 
   React.useEffect(() => {
     resetOperationalDataIfNeeded();
-    setAuthenticated(isAuthenticated());
-    setAuthUser(getAuthUser());
-    return onAuthChange(() => {
+    let active = true;
+
+    void restoreAuthSession().finally(() => {
+      if (!active) {
+        return;
+      }
       setAuthenticated(isAuthenticated());
       setAuthUser(getAuthUser());
+      setAuthReady(true);
     });
+
+    const unsubscribe = onAuthChange(() => {
+      if (!active) {
+        return;
+      }
+      setAuthenticated(isAuthenticated());
+      setAuthUser(getAuthUser());
+      setAuthReady(hasAuthLoaded());
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
+
+  if (!authReady) {
+    return (
+      <div className="erp-auth-loading">
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   if (!authenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />;
@@ -77,9 +105,7 @@ function ProtectedApp() {
         <Route path="/purchasing/suppliers" element={<SupplierListPage />} />
         <Route path="/purchasing/suppliers/new" element={<SupplierEditorPage />} />
         <Route path="/purchasing/suppliers/:supplierId" element={<SupplierEditorPage />} />
-        <Route path="/purchasing/list" element={<PurchaseListPage />} />
-        <Route path="/purchasing/entry" element={<PurchaseEditorPage />} />
-        <Route path="/purchasing/entry/:purchaseId" element={<PurchaseEditorPage />} />
+        <Route path="/purchasing/contracts" element={<ContractsPage />} />
 
         <Route path="/stock/entry" element={<StockEntryListPage />} />
         <Route path="/stock/entry/new" element={<StockEntryEditorPage />} />
@@ -96,6 +122,7 @@ function ProtectedApp() {
         <Route path="/settings/procurement-types" element={<SettingsDefinitionPage entityKey="procurement-types" />} />
         <Route path="/settings/payment-terms" element={<SettingsDefinitionPage entityKey="payment-terms" />} />
         <Route path="/settings/parameters" element={<ParametersPage />} />
+        <Route path="/settings/smtp" element={<SmtpSettingsPage />} />
 
         <Route path="/supplier/products" element={<SupplierPortalProductListPage />} />
         <Route path="/supplier/dashboard" element={<SupplierDashboardPage />} />

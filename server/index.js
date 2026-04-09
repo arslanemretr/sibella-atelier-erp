@@ -1,11 +1,24 @@
 /* global process */
 import express from "express";
+import {
+  handleForgotPasswordConfirm,
+  handleForgotPasswordRequest,
+  requireRole,
+  handleLogin,
+  handleLogout,
+  handleSession,
+  migrateLegacyPasswords,
+  requireAuth,
+} from "./auth.js";
+import { handleDashboardSummary } from "./dashboard.js";
 import { getStoreValue, listStoreKeys, setStoreValue } from "./db.js";
+import { handleSmtpTestEmail } from "./smtp.js";
 
 const app = express();
 const port = Number(process.env.API_PORT || 4001);
 
 app.use(express.json({ limit: "25mb" }));
+migrateLegacyPasswords();
 
 app.get("/api/health", (_req, res) => {
   res.json({
@@ -14,6 +27,16 @@ app.get("/api/health", (_req, res) => {
     date: new Date().toISOString(),
   });
 });
+
+app.post("/api/auth/login", handleLogin);
+app.get("/api/auth/session", handleSession);
+app.post("/api/auth/logout", handleLogout);
+app.post("/api/auth/forgot-password/request", handleForgotPasswordRequest);
+app.post("/api/auth/forgot-password/confirm", handleForgotPasswordConfirm);
+app.get("/api/dashboard/summary", requireRole("Yonetici", "Magaza", "Muhasebe"), handleDashboardSummary);
+app.post("/api/settings/smtp/test", requireRole("Yonetici"), handleSmtpTestEmail);
+
+app.use("/api/store", requireAuth);
 
 app.get("/api/store", (_req, res) => {
   res.json({

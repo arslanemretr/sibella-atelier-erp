@@ -15,7 +15,7 @@ import {
 } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import { listSuppliers } from "../erp/suppliersData";
-import { createUser, deleteUser, listUsers, updateUser } from "../erp/usersData";
+import { createUser, deleteUser, listUsersFresh, updateUser } from "../erp/usersData";
 
 const { Title, Text } = Typography;
 
@@ -24,7 +24,7 @@ const statusOptions = ["Aktif", "Pasif"].map((value) => ({ value, label: value }
 
 function UserManagementPage() {
   const [form] = Form.useForm();
-  const [users, setUsers] = React.useState(() => listUsers());
+  const [users, setUsers] = React.useState(() => listUsersFresh());
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editingUser, setEditingUser] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
@@ -34,7 +34,11 @@ function UserManagementPage() {
     [],
   );
 
-  const refreshUsers = () => setUsers(listUsers());
+  const refreshUsers = () => setUsers(listUsersFresh());
+
+  React.useEffect(() => {
+    refreshUsers();
+  }, []);
 
   const openCreate = () => {
     setEditingUser(null);
@@ -152,10 +156,28 @@ function UserManagementPage() {
           <Form.Item name="fullName" label="Ad Soyad" rules={[{ required: true, message: "Ad soyad zorunludur." }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="email" label="E-posta" rules={[{ required: true, message: "E-posta zorunludur." }]}>
+          <Form.Item
+            name="email"
+            label="E-posta"
+            rules={[
+              { required: true, message: "E-posta zorunludur." },
+              { type: "email", message: "Gecerli bir e-posta adresi girin." },
+            ]}
+          >
             <Input />
           </Form.Item>
-          <Form.Item name="password" label={editingUser ? "Yeni Sifre" : "Sifre"} rules={editingUser ? [] : [{ required: true, message: "Sifre zorunludur." }]}>
+          <Form.Item
+            name="password"
+            label={editingUser ? "Yeni Sifre" : "Sifre"}
+            rules={
+              editingUser
+                ? [{ min: 8, message: "Yeni sifre en az 8 karakter olmali." }]
+                : [
+                    { required: true, message: "Sifre zorunludur." },
+                    { min: 8, message: "Sifre en az 8 karakter olmali." },
+                  ]
+            }
+          >
             <Input.Password placeholder={editingUser ? "Degistirmek istemiyorsaniz bos birakin" : "Sifre"} />
           </Form.Item>
           <Form.Item name="role" label="Rol" rules={[{ required: true, message: "Rol seciniz." }]}>

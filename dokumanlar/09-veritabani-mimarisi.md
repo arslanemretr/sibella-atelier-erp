@@ -21,11 +21,13 @@ Kullanilan ana kayit anahtarlari:
 - `sibella.erp.suppliers.v1`
 - `sibella.erp.products.v1`
 - `sibella.erp.purchases.v2`
+- `sibella.erp.contracts.v1`
 - `sibella.erp.stockEntries.v2`
 - `sibella.erp.posSessions.v2`
 - `sibella.erp.posSales.v2`
 - `sibella.erp.deliveryLists.v1`
 - `sibella.erp.systemParameters.v1`
+- `sibella.erp.smtpSettings.v1`
 
 Bu veriler `kv_store` tablosunda tutulur:
 
@@ -48,6 +50,7 @@ Asagidaki moduller artik SQLite destekli API uzerinden calisir:
 - tedarikciler
 - urunler
 - satin alma kayitlari
+- konsinye sozlesmeler
 - stok giris kayitlari
 - POS oturumlari
 - POS satislari

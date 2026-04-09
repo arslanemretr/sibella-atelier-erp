@@ -8,7 +8,10 @@
     "server": "node server/index.js",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:schema:sqlite": "node scripts/export-sqlite-schema.mjs",
+    "db:migrate:pg": "node scripts/migrate-sqlite-to-postgres.mjs --apply-schema",
+    "db:migrate:pg:data": "node scripts/migrate-sqlite-to-postgres.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.1",
@@ -18,12 +21,14 @@
     "express": "^5.2.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.7.0",
+    "nodemailer": "^8.0.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-quill": "^2.0.0",
     "react-router-dom": "^7.13.2",
     "recharts": "^3.8.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

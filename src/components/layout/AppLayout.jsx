@@ -17,14 +17,18 @@ const AppLayout = ({ children }) => {
 
   return (
     <Layout className="erp-app-layout" style={{ minHeight: '100vh' }}>
-      <Sidebar collapsed={collapsed} isTabletOrMobile={isTabletOrMobile} />
+      <Sidebar
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        isTabletOrMobile={isTabletOrMobile}
+      />
       <Layout className="erp-main-layout">
         <TopBar collapsed={collapsed} setCollapsed={setCollapsed} isTabletOrMobile={isTabletOrMobile} />
         <Content
           className="erp-app-content"
           style={{
-            margin: isTabletOrMobile ? '12px' : '16px',
-            padding: isTabletOrMobile ? 12 : 20,
+            margin: isTabletOrMobile ? '8px' : '16px',
+            padding: isTabletOrMobile ? 10 : 20,
             minHeight: 280,
             background: 'transparent',
             borderRadius: '8px',

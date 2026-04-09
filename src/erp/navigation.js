@@ -22,8 +22,7 @@ export const mainMenuItems = [
     children: [
       { key: "/purchasing/suppliers", label: "Tedarikci Listesi" },
       { key: "/purchasing/suppliers/new", label: "Tedarikci Ekle" },
-      { key: "/purchasing/list", label: "Satinalma Listesi" },
-      { key: "/purchasing/entry", label: "Satinalma Giris" },
+      { key: "/purchasing/contracts", label: "Sozlesmeler" },
     ],
   },
   {
@@ -53,6 +52,7 @@ export const mainMenuItems = [
       { key: "/settings/procurement-types", label: "Tedarik Tipi Tanimlama" },
       { key: "/settings/payment-terms", label: "Odeme Kosulu Tanimlama" },
       { key: "/settings/parameters", label: "Parametreler" },
+      { key: "/settings/smtp", label: "SMTP ve E-posta" },
     ],
   },
 ];
@@ -85,8 +85,7 @@ export const sidebarGroups = [
         children: [
           { key: "/purchasing/suppliers", label: "Tedarikci Listesi" },
           { key: "/purchasing/suppliers/new", label: "Tedarikci Ekle" },
-          { key: "/purchasing/list", label: "Satinalma Listesi" },
-          { key: "/purchasing/entry", label: "Satinalma Giris" },
+          { key: "/purchasing/contracts", label: "Sozlesmeler" },
         ],
       },
       {
@@ -116,6 +115,7 @@ export const sidebarGroups = [
           { key: "/settings/procurement-types", label: "Tedarik Tipi Tanimlama" },
           { key: "/settings/payment-terms", label: "Odeme Kosulu Tanimlama" },
           { key: "/settings/parameters", label: "Parametreler" },
+          { key: "/settings/smtp", label: "SMTP ve E-posta" },
         ],
       },
     ],

@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import { hashPassword, isPasswordHash } from "./passwords.js";
 
 const dataDir = path.resolve(process.cwd(), "data");
 const dbPath = path.join(dataDir, "erp.sqlite");
@@ -189,6 +190,19 @@ db.exec(`
     FOREIGN KEY (product_id) REFERENCES products(id)
   );
 
+  CREATE TABLE IF NOT EXISTS consignment_contracts (
+    id TEXT PRIMARY KEY,
+    supplier_id TEXT,
+    start_date TEXT,
+    end_date TEXT,
+    commission_rate REAL,
+    pdf_name TEXT,
+    pdf_data_url TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+  );
+
   CREATE TABLE IF NOT EXISTS stock_entries (
     id TEXT PRIMARY KEY,
     document_no TEXT,
@@ -299,6 +313,19 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS system_parameters (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     product_code_control_enabled INTEGER,
+    updated_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS smtp_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    enabled INTEGER NOT NULL DEFAULT 0,
+    host TEXT,
+    port INTEGER,
+    secure INTEGER NOT NULL DEFAULT 0,
+    username TEXT,
+    password TEXT,
+    from_name TEXT,
+    from_email TEXT,
     updated_at TEXT
   );
 `);
@@ -459,10 +486,13 @@ const writeUsers = db.transaction((value) => {
   db.prepare("DELETE FROM users").run();
   value.forEach((item) => {
     ensureSupplier(item.supplierId || null);
+    const normalizedPassword = item.password
+      ? (isPasswordHash(item.password) ? item.password : hashPassword(item.password))
+      : "";
     db.prepare(`
       INSERT INTO users (id, full_name, email, password, role, supplier_id, status, last_login_at, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(item.id, item.fullName || "", item.email || "", item.password || "", item.role || "", item.supplierId || null, item.status || "", item.lastLoginAt || null, item.createdAt || "", item.updatedAt || "");
+    `).run(item.id, item.fullName || "", item.email || "", normalizedPassword, item.role || "", item.supplierId || null, item.status || "", item.lastLoginAt || null, item.createdAt || "", item.updatedAt || "");
   });
 });
 
@@ -470,6 +500,39 @@ function readUsers() {
   return listRows("SELECT * FROM users ORDER BY created_at DESC").map((row) => ({
     id: row.id, fullName: row.full_name, email: row.email, password: row.password, role: row.role, supplierId: row.supplier_id, status: row.status, lastLoginAt: row.last_login_at, createdAt: row.created_at, updatedAt: row.updated_at,
   }));
+}
+
+function mergeUsersByEmail(currentUsers, incomingUsers) {
+  const mergedByEmail = new Map();
+
+  [...currentUsers, ...incomingUsers].forEach((user) => {
+    const emailKey = String(user?.email || "").trim().toLowerCase();
+    const mapKey = emailKey || String(user?.id || "");
+
+    if (!mapKey) {
+      return;
+    }
+
+    const existing = mergedByEmail.get(mapKey);
+    mergedByEmail.set(mapKey, {
+      ...(existing || {}),
+      ...user,
+      id: existing?.id || user?.id,
+      fullName: user?.fullName || existing?.fullName || "",
+      email: user?.email || existing?.email || "",
+      password: user?.password || existing?.password || "",
+      role: user?.role || existing?.role || "",
+      supplierId: user?.supplierId ?? existing?.supplierId ?? null,
+      status: user?.status || existing?.status || "Aktif",
+      lastLoginAt: user?.lastLoginAt || existing?.lastLoginAt || null,
+      createdAt: existing?.createdAt || user?.createdAt || nowIso(),
+      updatedAt: nowIso(),
+    });
+  });
+
+  return Array.from(mergedByEmail.values()).sort((left, right) => {
+    return String(right.createdAt || "").localeCompare(String(left.createdAt || ""));
+  });
 }
 
 const writeSuppliers = db.transaction((value) => {
@@ -582,6 +645,41 @@ function readPurchases() {
     "purchase_id",
     "lines",
   );
+}
+
+const writeContractsTx = db.transaction((value) => {
+  db.prepare("DELETE FROM consignment_contracts").run();
+  value.forEach((item) => {
+    ensureSupplier(item.supplierId || null);
+    db.prepare(`
+      INSERT INTO consignment_contracts (id, supplier_id, start_date, end_date, commission_rate, pdf_name, pdf_data_url, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      item.id,
+      item.supplierId || null,
+      item.startDate || "",
+      item.endDate || "",
+      Number(item.commissionRate || 0),
+      item.pdfName || "",
+      item.pdfDataUrl || "",
+      item.createdAt || "",
+      item.updatedAt || "",
+    );
+  });
+});
+
+function readContracts() {
+  return listRows("SELECT * FROM consignment_contracts ORDER BY created_at DESC").map((row) => ({
+    id: row.id,
+    supplierId: row.supplier_id,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    commissionRate: row.commission_rate,
+    pdfName: row.pdf_name,
+    pdfDataUrl: row.pdf_data_url,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
 }
 
 const writeStockEntriesTx = db.transaction((value) => {
@@ -727,29 +825,80 @@ function readSystemParameters() {
   };
 }
 
+const writeSmtpSettingsTx = db.transaction((value) => {
+  db.prepare("DELETE FROM smtp_settings").run();
+  db.prepare(`
+    INSERT INTO smtp_settings (id, enabled, host, port, secure, username, password, from_name, from_email, updated_at)
+    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    boolToInt(value.enabled),
+    String(value.host || "").trim(),
+    Number(value.port || 587),
+    boolToInt(value.secure),
+    String(value.username || "").trim(),
+    String(value.password || ""),
+    String(value.fromName || "").trim(),
+    String(value.fromEmail || "").trim(),
+    nowIso(),
+  );
+});
+
+function readSmtpSettings() {
+  const row = getRow("SELECT * FROM smtp_settings WHERE id = 1");
+  if (!row) {
+    return {
+      enabled: false,
+      host: "",
+      port: 587,
+      secure: false,
+      username: "",
+      password: "",
+      fromName: "",
+      fromEmail: "",
+    };
+  }
+
+  return {
+    enabled: intToBool(row.enabled),
+    host: row.host || "",
+    port: Number(row.port || 587),
+    secure: intToBool(row.secure),
+    username: row.username || "",
+    password: row.password || "",
+    fromName: row.from_name || "",
+    fromEmail: row.from_email || "",
+  };
+}
+
 const handlers = {
   "sibella.erp.masterData.v1": { read: readMasterData, write: writeMasterData },
   "sibella.erp.users.v1": { read: readUsers, write: writeUsers },
   "sibella.erp.suppliers.v1": { read: readSuppliers, write: writeSuppliers },
   "sibella.erp.products.v1": { read: readProducts, write: writeProducts },
   "sibella.erp.purchases.v2": { read: readPurchases, write: writePurchasesTx },
+  "sibella.erp.contracts.v1": { read: readContracts, write: writeContractsTx },
   "sibella.erp.stockEntries.v2": { read: readStockEntries, write: writeStockEntriesTx },
   "sibella.erp.posSessions.v2": { read: readPosSessions, write: writePosSessionsTx },
   "sibella.erp.posSales.v2": { read: readPosSales, write: writePosSalesTx },
   "sibella.erp.deliveryLists.v1": { read: readDeliveryLists, write: writeDeliveryListsTx },
   "sibella.erp.systemParameters.v1": { read: readSystemParameters, write: writeSystemParametersTx },
+  "sibella.erp.smtpSettings.v1": { read: readSmtpSettings, write: writeSmtpSettingsTx },
 };
 
 export function getStoreValue(key) {
   const meta = getRow("SELECT updated_at FROM store_meta WHERE key = ?", [key]);
 
   if (!meta) {
-    const legacy = legacyValueFor(key);
-    if (legacy && handlers[key]) {
-      handlers[key].write(legacy.value);
+    if (key === "sibella.erp.users.v1") {
       updateMeta(key);
     } else {
-      return null;
+      const legacy = legacyValueFor(key);
+      if (legacy && handlers[key]) {
+        handlers[key].write(legacy.value);
+        updateMeta(key);
+      } else {
+        return null;
+      }
     }
   }
 

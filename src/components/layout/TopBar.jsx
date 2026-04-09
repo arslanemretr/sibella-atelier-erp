@@ -36,17 +36,32 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
     [location.pathname, visibleMenuItems],
   );
 
+  const activeMainMenuLabel = useMemo(() => {
+    for (const item of visibleMenuItems) {
+      if (item.key === activeMainMenu) {
+        return item.label;
+      }
+
+      const activeChild = item.children?.find((child) => child.key === activeMainMenu);
+      if (activeChild) {
+        return activeChild.label;
+      }
+    }
+
+    return authUser?.role === "Tedarikci" ? "Tedarikci Portali" : "ERP";
+  }, [activeMainMenu, authUser?.role, visibleMenuItems]);
+
   const userMenu = {
     items: [
       { key: "profile", label: "Kullanici Tercihleri" },
       { key: "logout", label: "Cikis Yap" },
     ],
-    onClick: ({ key }) => {
+    onClick: async ({ key }) => {
       if (key === "profile") {
-        navigate(authUser?.role === "Tedarikci" ? "/supplier/deliveries" : "/settings/users");
+        navigate(authUser?.role === "Tedarikci" ? "/supplier/dashboard" : "/settings/users");
       }
       if (key === "logout") {
-        logoutUser();
+        await logoutUser();
         navigate("/login", { replace: true });
       }
     },
@@ -85,36 +100,40 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
           onClick={() => setCollapsed(!collapsed)}
           style={{ fontSize: 16, width: 56, height: 56 }}
         />
-        <Space size={8} wrap className="erp-topbar-nav">
-          {visibleMenuItems.map((item) => {
-            if (!item.children) {
-              return (
-                <Button
-                  key={item.key}
-                  type={activeMainMenu === item.key ? "primary" : "text"}
-                  onClick={() => navigate(item.key)}
-                >
-                  {item.label}
-                </Button>
-              );
-            }
+        {isTabletOrMobile ? (
+          <div className="erp-topbar-mobile-title">{activeMainMenuLabel}</div>
+        ) : (
+          <Space size={8} wrap className="erp-topbar-nav">
+            {visibleMenuItems.map((item) => {
+              if (!item.children) {
+                return (
+                  <Button
+                    key={item.key}
+                    type={activeMainMenu === item.key ? "primary" : "text"}
+                    onClick={() => navigate(item.key)}
+                  >
+                    {item.label}
+                  </Button>
+                );
+              }
 
-            return (
-              <Dropdown
-                key={item.key}
-                menu={{
-                  items: item.children.map((child) => ({ key: child.key, label: child.label })),
-                  onClick: ({ key }) => navigate(key),
-                }}
-                trigger={["click"]}
-              >
-                <Button type={activeMainMenu === item.key ? "primary" : "text"}>
-                  {item.label}
-                </Button>
-              </Dropdown>
-            );
-          })}
-        </Space>
+              return (
+                <Dropdown
+                  key={item.key}
+                  menu={{
+                    items: item.children.map((child) => ({ key: child.key, label: child.label })),
+                    onClick: ({ key }) => navigate(key),
+                  }}
+                  trigger={["click"]}
+                >
+                  <Button type={activeMainMenu === item.key ? "primary" : "text"}>
+                    {item.label}
+                  </Button>
+                </Dropdown>
+              );
+            })}
+          </Space>
+        )}
       </Space>
 
       <Space size={isTabletOrMobile ? "middle" : "large"} className="erp-topbar-right">

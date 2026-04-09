@@ -1,16 +1,20 @@
 import React from "react";
+import dayjs from "dayjs";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { AutoComplete, Avatar, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Segmented, Select, Space, Statistic, Switch, Table, Tabs, Tag, Typography, message } from "antd";
-import { AppstoreOutlined, BarsOutlined, BarcodeOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, LeftOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { Alert, AutoComplete, Avatar, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Segmented, Select, Space, Statistic, Switch, Table, Tabs, Tag, Typography, message } from "antd";
+import { AppstoreOutlined, BarsOutlined, BarcodeOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined, FilterOutlined, LeftOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { getAuthUser } from "../auth";
+import { createContract, deleteContract, listContracts, updateContract } from "./contractsData";
+import { fetchDashboardSummary } from "./dashboardApi";
 import { createDeliveryList, createDeliveryPdf, getDeliveryListById, getNextDeliveryNoPreview, listDeliveryLists, listDeliveryListsBySupplier, updateDeliveryList } from "./deliveryListsData";
 import { createMasterData, listMasterData, masterDataDefinitions, updateMasterData } from "./masterData";
 import { buildPosProductCatalog, closePosSession, createPosSale, createPosSession, findProductByBarcode, getOpenPosSessions, listPosSales, listPosSessions } from "./posData";
 import { createProduct, deleteProduct, generateProductCodeForSupplier, getProductById, importProducts, listProducts, listProductsBySupplier, updateProduct } from "./productsData";
 import { createPurchase, getPurchaseById, listPurchases, updatePurchase } from "./purchasesData";
 import { createStockEntry, getStockEntryById, listStockEntries, updateStockEntry } from "./stockEntriesData";
-import { createSupplier, deleteSupplier, getSupplierById, importSuppliers, listSuppliers, updateSupplier } from "./suppliersData";
+import { createSupplier, deleteSupplier, getSupplierById, listSuppliers, updateSupplier } from "./suppliersData";
+import { getSmtpSettings, updateSmtpSettings } from "./smtpSettings";
 import { getSystemParameters, updateSystemParameters } from "./systemParameters";
 
 const { Title, Text } = Typography;
@@ -127,52 +131,55 @@ function formatDashboardMoney(value) {
 }
 
 export function DashboardPage() {
+  const defaultDateRange = React.useMemo(() => {
+    const end = dayjs();
+    return [end.subtract(29, "day"), end];
+  }, []);
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedMovement, setSelectedMovement] = React.useState(null);
-  const [dashboardData, setDashboardData] = React.useState(() => {
-    const products = listProducts();
-    const suppliers = listSuppliers();
-    const purchases = listPurchases();
-    const stockEntries = listStockEntries();
-    const posSessions = listPosSessions();
-    const posSales = listPosSales();
-    return { products, suppliers, purchases, stockEntries, posSessions, posSales };
+  const [metricDrawerOpen, setMetricDrawerOpen] = React.useState(false);
+  const [selectedMetric, setSelectedMetric] = React.useState(null);
+  const [dateRange, setDateRange] = React.useState(defaultDateRange);
+  const [dashboardLoading, setDashboardLoading] = React.useState(false);
+  const [dashboardError, setDashboardError] = React.useState("");
+  const [dashboardSummary, setDashboardSummary] = React.useState({
+    stats: [],
+    movements: [],
+    alerts: [],
+    metricDetails: {},
+    filters: null,
   });
 
-  const refreshDashboard = React.useCallback(() => {
-    setDashboardData({
-      products: listProducts(),
-      suppliers: listSuppliers(),
-      purchases: listPurchases(),
-      stockEntries: listStockEntries(),
-      posSessions: listPosSessions(),
-      posSales: listPosSales(),
-    });
-  }, []);
+  const refreshDashboard = React.useCallback(async (rangeOverride) => {
+    const activeRange = rangeOverride || dateRange || defaultDateRange;
+
+    try {
+      setDashboardLoading(true);
+      setDashboardError("");
+      const payload = await fetchDashboardSummary({
+        startDate: activeRange?.[0]?.format("YYYY-MM-DD"),
+        endDate: activeRange?.[1]?.format("YYYY-MM-DD"),
+      });
+      setDashboardSummary(payload);
+    } catch (error) {
+      setDashboardError(error?.message || "Dashboard verileri alinamadi.");
+    } finally {
+      setDashboardLoading(false);
+    }
+  }, [dateRange, defaultDateRange]);
 
   React.useEffect(() => {
-    refreshDashboard();
-  }, [refreshDashboard]);
+    void refreshDashboard(defaultDateRange);
+  }, [refreshDashboard, defaultDateRange]);
 
-  const { products, suppliers, purchases, stockEntries, posSessions, posSales } = dashboardData;
-  const today = new Date().toISOString().slice(0, 10);
-  const todaySalesTotal = posSales
-    .filter((sale) => String(sale.soldAt || "").slice(0, 10) === today)
-    .reduce((sum, sale) => sum + Number(sale.grandTotal || 0), 0);
-  const activeProductCount = products.filter((item) => item.status === "Aktif").length;
-  const lowStockCount = products.filter((item) => Number(item.stock || 0) <= Number(item.minStock || 0)).length;
-  const openPosCount = posSessions.filter((item) => item.status === "Açık" || item.status === "AÃ§Ä±k").length;
-  const purchaseCount = purchases.length;
-  const supplierCount = suppliers.length;
+  const stats = dashboardSummary.stats || [];
+  const movements = dashboardSummary.movements || [];
+  const alerts = dashboardSummary.alerts || [];
 
-  const stats = [
-    { title: "Gunluk Ciro", value: formatDashboardMoney(todaySalesTotal), color: "#1f9d66" },
-    { title: "Aktif Urun", value: String(activeProductCount), color: "#1677ff" },
-    { title: "Dusuk Stok", value: String(lowStockCount), color: "#d46b08" },
-    { title: "Acik Pos", value: String(openPosCount), color: "#722ed1" },
-    { title: "Tedarikci", value: String(supplierCount), color: "#0f766e" },
-    { title: "Satinalma Kaydi", value: String(purchaseCount), color: "#c2410c" },
-  ];
+  const openMetricDetail = (metricKey) => {
+    setSelectedMetric(metricKey);
+    setMetricDrawerOpen(true);
+  };
 
   const columns = [
     { title: "Modul", dataIndex: "module", key: "module", sorter: (a, b) => a.module.localeCompare(b.module, "tr") },
@@ -180,37 +187,6 @@ export function DashboardPage() {
     { title: "Aciklama", dataIndex: "description", key: "description", sorter: (a, b) => a.description.localeCompare(b.description, "tr") },
     { title: "Durum", dataIndex: "status", key: "status", render: (value) => <Tag color="blue">{value}</Tag> },
   ];
-  const movements = [
-    ...stockEntries.map((entry) => ({
-      key: `stock-${entry.id}`,
-      module: "Stok",
-      documentNo: entry.documentNo,
-      description: `${entry.sourcePartyName} - ${entry.lineCount} kalem stok girisi`,
-      status: entry.sourceType,
-      date: entry.date || entry.updatedAt,
-      amount: entry.totalAmountDisplay,
-    })),
-    ...purchases.map((purchase) => ({
-      key: `purchase-${purchase.id}`,
-      module: "Satinalma",
-      documentNo: purchase.documentNo,
-      description: `${purchase.supplierName} - ${purchase.lineCount} kalem alim`,
-      status: purchase.procurementTypeLabel || "Kayitli",
-      date: purchase.date || purchase.updatedAt,
-      amount: purchase.totalAmountDisplay,
-    })),
-    ...posSales.map((sale) => ({
-      key: `sale-${sale.id}`,
-      module: "POS",
-      documentNo: sale.receiptNo,
-      description: `${sale.customerName} - ${sale.lines.length} kalem satis`,
-      status: sale.paymentMethod || "Tamamlandi",
-      date: sale.soldAt,
-      amount: sale.grandTotalDisplay,
-    })),
-  ]
-    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-    .slice(0, 10);
 
   return (
     <Space direction="vertical" size={20} style={{ width: "100%" }}>
@@ -219,17 +195,81 @@ export function DashboardPage() {
         <Text type="secondary">Satis, stok, satin alma ve magaza akislarinin genel ozeti.</Text>
       </div>
 
+      <Card bordered={false}>
+        <Row gutter={[16, 16]} align="bottom">
+          <Col xs={24} md={12} xl={10}>
+            <Text type="secondary">Tarih Araligi</Text>
+            <DatePicker.RangePicker
+              value={dateRange}
+              allowClear={false}
+              style={{ width: "100%", marginTop: 8 }}
+              format="DD.MM.YYYY"
+              onChange={(value) => {
+                if (value?.[0] && value?.[1]) {
+                  setDateRange(value);
+                }
+              }}
+            />
+          </Col>
+          <Col xs={24} md={12} xl={14}>
+            <Space wrap style={{ width: "100%", justifyContent: "flex-end" }}>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => {
+                  setDateRange(defaultDateRange);
+                  void refreshDashboard(defaultDateRange);
+                }}
+              >
+                Son 30 Gun
+              </Button>
+              <Button type="primary" loading={dashboardLoading} onClick={() => { void refreshDashboard(); }}>
+                Ozeti Getir
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+        {dashboardSummary.filters ? (
+          <Text type="secondary" style={{ display: "block", marginTop: 12 }}>
+            Rapor araligi: {dashboardSummary.filters.startDate} - {dashboardSummary.filters.endDate}
+          </Text>
+        ) : null}
+      </Card>
+
+      {dashboardError ? (
+        <Alert
+          type="error"
+          showIcon
+          message="Dashboard yuklenemedi"
+          description={dashboardError}
+        />
+      ) : null}
+
+      {alerts.length > 0 ? (
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          {alerts.map((item) => (
+            <Alert
+              key={item.key}
+              type={item.severity === "warning" ? "warning" : "info"}
+              showIcon
+              message={item.title}
+              description={item.description}
+            />
+          ))}
+        </Space>
+      ) : null}
+
       <Row gutter={[16, 16]}>
         {stats.map((item) => (
           <Col xs={24} md={12} xl={8} xxl={4} key={item.title}>
-            <Card bordered={false}>
+            <Card bordered={false} className="erp-clickable-row" onClick={() => openMetricDetail(item.key)}>
               <Statistic title={item.title} value={item.value} valueStyle={{ color: item.color, fontWeight: 700 }} />
+              <Text type="secondary">Detayi gor</Text>
             </Card>
           </Col>
         ))}
       </Row>
 
-      <Card title="Son Hareketler" extra={<Button type="primary" onClick={refreshDashboard}>Yenile</Button>}>
+      <Card title="Son Hareketler" extra={<Button type="primary" loading={dashboardLoading} onClick={() => { void refreshDashboard(); }}>Yenile</Button>}>
         <Table
           rowKey="key"
           pagination={false}
@@ -262,6 +302,29 @@ export function DashboardPage() {
             </Descriptions.Item>
           </Descriptions>
         ) : null}
+      </Drawer>
+
+      <Drawer
+        title={(dashboardSummary.metricDetails?.[selectedMetric]?.title) || "Kart Detayi"}
+        placement="right"
+        width={460}
+        open={metricDrawerOpen}
+        onClose={() => setMetricDrawerOpen(false)}
+      >
+        {(dashboardSummary.metricDetails?.[selectedMetric]?.items || []).length > 0 ? (
+          <Descriptions column={1} size="small" bordered>
+            {(dashboardSummary.metricDetails?.[selectedMetric]?.items || []).map((item, index) => (
+              <Descriptions.Item key={`${selectedMetric}-${index}`} label={item.label}>
+                <Space direction="vertical" size={2}>
+                  <Text strong>{item.value}</Text>
+                  {item.hint ? <Text type="secondary">{item.hint}</Text> : null}
+                </Space>
+              </Descriptions.Item>
+            ))}
+          </Descriptions>
+        ) : (
+          <Empty description="Bu kart icin gosterilecek detay bulunmuyor." />
+        )}
       </Drawer>
     </Space>
   );
@@ -422,6 +485,7 @@ export function ProductListPage() {
   });
   const [selectedImportFile, setSelectedImportFile] = React.useState(null);
   const [importing, setImporting] = React.useState(false);
+  const [importTestResult, setImportTestResult] = React.useState(null);
 
   const categoryOptions = [{ value: "all", label: "Tumu" }, ...listMasterData("categories").map((item) => ({
     value: item.id,
@@ -457,11 +521,6 @@ export function ProductListPage() {
     });
   };
 
-  const handleRefresh = () => {
-    refreshProducts();
-    message.success("Urun listesi yenilendi.");
-  };
-
   const handleDelete = (productId) => {
     deleteProduct(productId);
     refreshProducts();
@@ -487,7 +546,54 @@ export function ProductListPage() {
   const handleDownloadTemplate = () => {
     const header = ["code", "name", "salePrice", "saleCurrency", "cost", "costCurrency", "categoryId", "collectionId", "posCategoryId", "supplierId", "barcode", "supplierCode", "minStock", "supplierLeadTime", "productType", "status", "image", "salesTax", "notes"];
     const example = ["SBL-100", "Ornek Urun", "1250", "TRY", "450", "TRY", "cat-001", "col-001", "poscat-001", "sup-001", "868000001000", "TED-001", "2", "7", "kendi", "Aktif", "/products/baroque-necklace.svg", "%20", "Ornek not"];
-    downloadWorkbook([header, example], "UrunSablon", "urun-import-sablonu.xlsx");
+
+    const categoryRows = [
+      ["categoryId", "categoryName"],
+      ...listMasterData("categories").map((item) => [item.id, item.fullPath || item.level1 || item.id]),
+    ];
+
+    const collectionRows = [
+      ["collectionId", "collectionName"],
+      ...listMasterData("collections").map((item) => [item.id, item.name || item.id]),
+    ];
+
+    const posCategoryRows = [
+      ["posCategoryId", "posCategoryName"],
+      ...listMasterData("pos-categories").map((item) => [item.id, item.name || item.id]),
+    ];
+
+    const suppliers = listSuppliers();
+    const supplierRows = [
+      ["supplierId", "supplierName", "supplierShortCode"],
+      ...suppliers.map((item) => [item.id, item.company || item.id, item.shortCode || ""]),
+    ];
+
+    const supplierCodeRows = [
+      ["supplierId", "supplierName", "supplierCodeExample", "description"],
+      ...suppliers.map((item) => [
+        item.id,
+        item.company || item.id,
+        item.shortCode || `${String(item.id || "SUP").toUpperCase()}-001`,
+        "Tedarikci urun kodu / firma ic kodu",
+      ]),
+    ];
+
+    const productTypeRows = [
+      ["productType", "productTypeName"],
+      ["kendi", "Kendi Uretim"],
+      ["tedarik", "Tedarik Edilen"],
+      ["konsinye", "Konsinye"],
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([header, example]), "UrunSablon");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(categoryRows), "categoryId");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(collectionRows), "collectionId");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(posCategoryRows), "posCategoryId");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(supplierRows), "supplierId");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(supplierCodeRows), "supplierCode");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(productTypeRows), "productType");
+    XLSX.writeFile(workbook, "urun-import-sablonu.xlsx");
     message.success("Urun sablonu indirildi.");
   };
 
@@ -515,6 +621,45 @@ export function ProductListPage() {
   const handleImportFileChange = (event) => {
     const file = event.target.files?.[0] || null;
     setSelectedImportFile(file);
+    setImportTestResult(null);
+  };
+
+  const handleImportTest = async () => {
+    if (!selectedImportFile) {
+      message.warning("Lutfen bir Excel dosyasi secin.");
+      return;
+    }
+
+    try {
+      const buffer = await selectedImportFile.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const firstSheetName = workbook.SheetNames[0];
+      const firstSheet = workbook.Sheets[firstSheetName];
+      const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
+      const [headerRow = [], ...dataRows] = rows;
+      const headers = headerRow.map((item) => String(item).trim());
+      const nonEmptyRows = dataRows.filter((row) => row.some((cell) => String(cell ?? "").trim()));
+
+      const requiredHeaders = ["code", "name", "salePrice", "cost"];
+      const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
+
+      const testSummary = {
+        fileName: selectedImportFile.name,
+        headerCount: headers.length,
+        rowCount: nonEmptyRows.length,
+        missingHeaders,
+      };
+      setImportTestResult(testSummary);
+
+      if (missingHeaders.length > 0) {
+        message.warning(`Test tamamlandi. Eksik basliklar: ${missingHeaders.join(", ")}`);
+      } else {
+        message.success(`Test tamamlandi. ${nonEmptyRows.length} satir ice aktarima uygun gorunuyor.`);
+      }
+    } catch {
+      setImportTestResult(null);
+      message.error("Dosya test edilirken hata olustu.");
+    }
   };
 
   const handleImport = async () => {
@@ -656,9 +801,6 @@ export function ProductListPage() {
         <div className="erp-list-toolbar erp-product-toolbar-single">
           <Space wrap className="erp-product-toolbar-actions">
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/products/new")}>Yeni Urun</Button>
-            <Button icon={<SearchOutlined />} onClick={() => message.info(`${filteredProducts.length} urun listeleniyor.`)}>Ara</Button>
-            <Button icon={<DeleteOutlined />} onClick={handleResetFilters}>Temizle</Button>
-            <Button icon={<ReloadOutlined />} onClick={handleRefresh}>Yenile</Button>
             <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
             <Button onClick={() => setImportModalOpen(true)}>Excel'den Aktar</Button>
           </Space>
@@ -829,15 +971,40 @@ export function ProductListPage() {
       <Modal
         title="Excel'den Aktar"
         open={importModalOpen}
-        onCancel={() => setImportModalOpen(false)}
+        onCancel={() => {
+          setImportModalOpen(false);
+          setImportTestResult(null);
+        }}
         footer={null}
       >
         <Space direction="vertical" size={16} style={{ width: "100%" }}>
           <Text type="secondary">Excel formatinda dosya secin veya once sablonu indirin.</Text>
           <input type="file" accept=".xlsx,.xls" onChange={handleImportFileChange} />
+          {importTestResult ? (
+            <Alert
+              type={importTestResult.missingHeaders.length > 0 ? "warning" : "success"}
+              showIcon
+              message="Dosya Test Sonucu"
+              description={(
+                <Space direction="vertical" size={2}>
+                  <Text>Dosya: <Text strong>{importTestResult.fileName}</Text></Text>
+                  <Text>Baslik Sayisi: <Text strong>{importTestResult.headerCount}</Text></Text>
+                  <Text>Veri Satiri: <Text strong>{importTestResult.rowCount}</Text></Text>
+                  {importTestResult.missingHeaders.length > 0 ? (
+                    <Text>Eksik Baslik: <Text strong>{importTestResult.missingHeaders.join(", ")}</Text></Text>
+                  ) : (
+                    <Text>Tum kritik basliklar mevcut.</Text>
+                  )}
+                </Space>
+              )}
+            />
+          ) : null}
           <Space style={{ justifyContent: "space-between", width: "100%" }}>
             <Button onClick={handleDownloadTemplate}>Sablon Indir</Button>
-            <Button type="primary" onClick={handleImport} loading={importing}>Iceri Aktar</Button>
+            <Space>
+              <Button onClick={handleImportTest}>Test Et</Button>
+              <Button type="primary" onClick={handleImport} loading={importing}>Iceri Aktar</Button>
+            </Space>
           </Space>
         </Space>
       </Modal>
@@ -1420,7 +1587,6 @@ export function SupplierListPage() {
     status: undefined,
   });
   const [filterModalOpen, setFilterModalOpen] = React.useState(false);
-  const [importModalOpen, setImportModalOpen] = React.useState(false);
   const [savedFilterName, setSavedFilterName] = React.useState("");
   const [savedFilters, setSavedFilters] = React.useState(() => {
     if (typeof window === "undefined") {
@@ -1433,9 +1599,6 @@ export function SupplierListPage() {
       return [];
     }
   });
-  const [selectedImportFile, setSelectedImportFile] = React.useState(null);
-  const [importing, setImporting] = React.useState(false);
-
   const procurementOptions = [{ value: "all", label: "Tumu" }, ...listMasterData("procurement-types").map((item) => ({
     value: item.id,
     label: item.name,
@@ -1468,11 +1631,6 @@ export function SupplierListPage() {
       paymentTermId: undefined,
       status: undefined,
     });
-  };
-
-  const handleRefresh = () => {
-    refreshSuppliers();
-    message.success("Tedarikci listesi yenilendi.");
   };
 
   const handleDelete = (supplierId) => {
@@ -1521,19 +1679,6 @@ export function SupplierListPage() {
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadTemplate = () => {
-    const header = ["company", "contact", "email", "phone", "city", "procurementTypeId", "paymentTermId", "status", "note"];
-    const example = ["Ornek Tedarikci", "Ayse Yilmaz", "ornek@tedarikci.com", "05320000000", "Istanbul", "proc-001", "pay-002", "Aktif", "Not alani"];
-    const csvContent = [header, example].map((row) => row.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "tedarikci-import-sablonu.csv";
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   const handleSaveFilterPreset = () => {
     if (!savedFilterName.trim()) {
       message.warning("Filtre adini girin.");
@@ -1553,43 +1698,6 @@ export function SupplierListPage() {
     setFilters(savedFilter.filters);
     setFilterModalOpen(false);
     message.success(`${savedFilter.name} filtresi uygulandi.`);
-  };
-
-  const handleImportFileChange = (event) => {
-    setSelectedImportFile(event.target.files?.[0] || null);
-  };
-
-  const handleImport = async () => {
-    if (!selectedImportFile) {
-      message.warning("Lutfen bir CSV dosyasi secin.");
-      return;
-    }
-
-    try {
-      setImporting(true);
-      const content = await selectedImportFile.text();
-      const [headerLine, ...dataLines] = content.split(/\r?\n/).filter(Boolean);
-      if (!headerLine) {
-        message.error("Dosya bos gorunuyor.");
-        return;
-      }
-
-      const headers = headerLine.split(",").map((item) => item.trim());
-      const importedRows = dataLines.map((line) => {
-        const values = line.split(",").map((item) => item.trim().replace(/^"|"$/g, ""));
-        return Object.fromEntries(headers.map((header, index) => [header, values[index] || ""]));
-      });
-
-      importSuppliers(importedRows);
-      refreshSuppliers();
-      setImportModalOpen(false);
-      setSelectedImportFile(null);
-      message.success(`${importedRows.length} tedarikci ice aktarildi.`);
-    } catch {
-      message.error("Dosya okunurken hata olustu.");
-    } finally {
-      setImporting(false);
-    }
   };
 
   const columns = [
@@ -1666,11 +1774,7 @@ export function SupplierListPage() {
         <div className="erp-list-toolbar erp-product-toolbar-single">
           <Space wrap className="erp-product-toolbar-actions">
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/purchasing/suppliers/new")}>Yeni Tedarikci</Button>
-            <Button icon={<SearchOutlined />} onClick={() => message.info(`${filteredSuppliers.length} tedarikci listeleniyor.`)}>Ara</Button>
-            <Button icon={<DeleteOutlined />} onClick={handleResetFilters}>Temizle</Button>
-            <Button icon={<ReloadOutlined />} onClick={handleRefresh}>Yenile</Button>
             <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-            <Button onClick={() => setImportModalOpen(true)}>Excel'den Aktar</Button>
           </Space>
 
           <div className="erp-product-toolbar-search">
@@ -1795,16 +1899,6 @@ export function SupplierListPage() {
         </Space>
       </Modal>
 
-      <Modal title="Excel'den Aktar" open={importModalOpen} onCancel={() => setImportModalOpen(false)} footer={null}>
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
-          <Text type="secondary">CSV formatinda dosya secin veya once sablonu indirin.</Text>
-          <input type="file" accept=".csv" onChange={handleImportFileChange} />
-          <Space style={{ justifyContent: "space-between", width: "100%" }}>
-            <Button onClick={handleDownloadTemplate}>Sablon Indir</Button>
-            <Button type="primary" onClick={handleImport} loading={importing}>Iceri Aktar</Button>
-          </Space>
-        </Space>
-      </Modal>
     </Space>
   );
 }
@@ -2016,6 +2110,429 @@ export function SupplierEditorPage() {
           </Col>
         </Row>
       </Form>
+    </Space>
+  );
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("PDF dosyasi okunamadi."));
+    reader.readAsDataURL(file);
+  });
+}
+
+export function ContractsPage() {
+  const [records, setRecords] = React.useState(() => listContracts());
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const [pdfModalOpen, setPdfModalOpen] = React.useState(false);
+  const [filterModalOpen, setFilterModalOpen] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [activePdf, setActivePdf] = React.useState(null);
+  const [activeRecord, setActiveRecord] = React.useState(null);
+  const [uploadedPdf, setUploadedPdf] = React.useState({ pdfName: "", pdfDataUrl: "" });
+  const [filters, setFilters] = React.useState({
+    search: "",
+    supplierId: undefined,
+  });
+  const [form] = Form.useForm();
+
+  const supplierOptions = listSuppliers()
+    .filter((item) => item.status !== "Pasif")
+    .map((item) => ({
+      value: item.id,
+      label: item.company,
+    }));
+
+  const refreshRecords = () => {
+    setRecords(listContracts());
+  };
+
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      search: "",
+      supplierId: undefined,
+    });
+  };
+
+  const openCreateModal = () => {
+    setActiveRecord(null);
+    setUploadedPdf({ pdfName: "", pdfDataUrl: "" });
+    form.resetFields();
+    setModalOpen(true);
+  };
+
+  const openEditModal = (record) => {
+    setActiveRecord(record);
+    setUploadedPdf({
+      pdfName: record.pdfName || "",
+      pdfDataUrl: record.pdfDataUrl || "",
+    });
+    form.setFieldsValue({
+      supplierId: record.supplierId,
+      startDate: record.startDate ? dayjs(record.startDate) : null,
+      endDate: record.endDate ? dayjs(record.endDate) : null,
+      commissionRate: Number(record.commissionRate || 0),
+    });
+    setModalOpen(true);
+  };
+
+  const handlePdfFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      message.error("Lutfen PDF dosyasi secin.");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      const pdfDataUrl = await readFileAsDataUrl(file);
+      setUploadedPdf({
+        pdfName: file.name,
+        pdfDataUrl,
+      });
+      message.success("PDF yuklendi.");
+    } catch {
+      message.error("PDF okunurken hata olustu.");
+    } finally {
+      event.target.value = "";
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setSaving(true);
+      const values = await form.validateFields();
+      const startDate = values.startDate?.format("YYYY-MM-DD");
+      const endDate = values.endDate?.format("YYYY-MM-DD");
+
+      if (startDate && endDate && dayjs(endDate).isBefore(dayjs(startDate), "day")) {
+        message.error("Bitis tarihi baslangic tarihinden once olamaz.");
+        return;
+      }
+
+      if (!uploadedPdf.pdfDataUrl) {
+        message.error("Lutfen sozlesme PDF dosyasini yukleyin.");
+        return;
+      }
+
+      const payload = {
+        supplierId: values.supplierId,
+        startDate,
+        endDate,
+        commissionRate: Number(values.commissionRate || 0),
+        pdfName: uploadedPdf.pdfName,
+        pdfDataUrl: uploadedPdf.pdfDataUrl,
+      };
+
+      if (activeRecord?.id) {
+        updateContract(activeRecord.id, payload);
+        message.success("Sozlesme guncellendi.");
+      } else {
+        createContract(payload);
+        message.success("Sozlesme kaydedildi.");
+      }
+
+      setModalOpen(false);
+      form.resetFields();
+      setUploadedPdf({ pdfName: "", pdfDataUrl: "" });
+      setActiveRecord(null);
+      refreshRecords();
+    } catch {
+      // form validation handles error display
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = (recordId) => {
+    deleteContract(recordId);
+    refreshRecords();
+    message.success("Sozlesme silindi.");
+  };
+
+  const filteredRecords = records.filter((record) => {
+    const normalizedSearch = filters.search.trim().toLowerCase();
+    const matchesSearch =
+      !normalizedSearch ||
+      [record.supplierName, record.pdfName, record.startDate, record.endDate]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+    const matchesSupplier = !filters.supplierId || filters.supplierId === "all" || record.supplierId === filters.supplierId;
+    return matchesSearch && matchesSupplier;
+  });
+
+  const handleExport = () => {
+    const header = ["Firma", "Baslangic", "Bitis", "Komisyon (%)", "PDF"];
+    const rows = filteredRecords.map((item) => [
+      item.supplierName || "",
+      item.startDate || "",
+      item.endDate || "",
+      Number(item.commissionRate || 0).toFixed(2),
+      item.pdfName || "",
+    ]);
+    const csvContent = [header, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "sozlesmeler.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const columns = [
+    {
+      title: "Firma",
+      dataIndex: "supplierName",
+      key: "supplierName",
+      sorter: (a, b) => String(a.supplierName || "").localeCompare(String(b.supplierName || ""), "tr"),
+    },
+    {
+      title: "Baslangic",
+      dataIndex: "startDate",
+      key: "startDate",
+      sorter: (a, b) => String(a.startDate || "").localeCompare(String(b.startDate || ""), "tr"),
+      render: (value) => (value ? dayjs(value).format("DD.MM.YYYY") : "-"),
+    },
+    {
+      title: "Bitis",
+      dataIndex: "endDate",
+      key: "endDate",
+      sorter: (a, b) => String(a.endDate || "").localeCompare(String(b.endDate || ""), "tr"),
+      render: (value) => (value ? dayjs(value).format("DD.MM.YYYY") : "-"),
+    },
+    {
+      title: "Komisyon (%)",
+      dataIndex: "commissionRate",
+      key: "commissionRate",
+      sorter: (a, b) => Number(a.commissionRate || 0) - Number(b.commissionRate || 0),
+      render: (value) => `${Number(value || 0).toFixed(2)}%`,
+    },
+    {
+      title: "PDF",
+      dataIndex: "pdfName",
+      key: "pdfName",
+      render: (_, record) =>
+        record.pdfDataUrl ? (
+          <Space>
+            <Text>{record.pdfName || "Sozlesme.pdf"}</Text>
+            <Button
+              type="link"
+              icon={<EyeOutlined />}
+              onClick={(event) => {
+                event.stopPropagation();
+                setActivePdf(record);
+                setPdfModalOpen(true);
+              }}
+            >
+              Ac
+            </Button>
+          </Space>
+        ) : (
+          "-"
+        ),
+    },
+    {
+      title: "Islemler",
+      key: "actions",
+      render: (_, record) => (
+        <Space size={8}>
+          <Button
+            type="text"
+            className="erp-icon-btn erp-icon-btn-edit"
+            icon={<EditOutlined />}
+            onClick={(event) => {
+              event.stopPropagation();
+              openEditModal(record);
+            }}
+          />
+          <Popconfirm title="Sozlesme silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => handleDelete(record.id)}>
+            <span onClick={preventRowClick}>
+              <Button type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} />
+            </span>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+        <div>
+          <Title level={3} style={{ marginBottom: 6 }}>Sozlesmeler</Title>
+          <Text type="secondary">Konsinye urun alim sozlesmeleri firma, tarih araligi ve komisyon orani ile takip edilir.</Text>
+        </div>
+        <Space>
+          <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>Sozlesme Ekle</Button>
+        </Space>
+      </div>
+
+      <Card bordered={false} className="erp-list-toolbar-card">
+        <div className="erp-list-toolbar erp-product-toolbar-single">
+          <Space wrap className="erp-product-toolbar-actions">
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>Yeni Sozlesme</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => { refreshRecords(); message.success("Sozlesmeler yenilendi."); }}>Yenile</Button>
+            <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+          </Space>
+
+          <div className="erp-product-toolbar-search">
+            <Input
+              prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
+              placeholder="Firma"
+              value={filters.search}
+              onChange={(event) => handleFilterChange("search", event.target.value)}
+              allowClear
+            />
+            <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
+          </div>
+        </div>
+      </Card>
+
+      <Card title="Tum Sozlesmeler" className="erp-list-table-card">
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={filteredRecords}
+          pagination={false}
+          locale={{ emptyText: "Henuz sozlesme kaydi bulunmuyor." }}
+          onRow={(record) => ({
+            onClick: () => openEditModal(record),
+          })}
+          rowClassName={() => "erp-clickable-row"}
+        />
+        <div className="erp-table-footer">
+          <Space>
+            <span>Sayfa Boyutu:</span>
+            <Select
+              defaultValue="100"
+              size="small"
+              style={{ width: 84 }}
+              options={["25", "50", "100"].map((value) => ({ value, label: value }))}
+            />
+          </Space>
+          <Space size={18}>
+            <span>1 - {filteredRecords.length} / {filteredRecords.length}</span>
+            <span>Sayfa 1 / 1</span>
+          </Space>
+        </div>
+      </Card>
+
+      <Modal title="Gelismis Filtreler" open={filterModalOpen} onCancel={() => setFilterModalOpen(false)} footer={null}>
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Row gutter={[12, 12]}>
+            <Col span={24}>
+              <Form.Item label="Firma">
+                <Select
+                  value={filters.supplierId}
+                  onChange={(value) => handleFilterChange("supplierId", value)}
+                  options={[{ value: "all", label: "Tumu" }, ...supplierOptions]}
+                  allowClear
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Space style={{ justifyContent: "space-between", width: "100%" }}>
+            <Button onClick={handleResetFilters}>Filtreleri Temizle</Button>
+            <Button type="primary" onClick={() => setFilterModalOpen(false)}>Uygula</Button>
+          </Space>
+        </Space>
+      </Modal>
+
+      <Modal
+        title={activeRecord ? "Sozlesme Duzenle" : "Yeni Sozlesme"}
+        open={modalOpen}
+        onCancel={() => {
+          setModalOpen(false);
+          setActiveRecord(null);
+          setUploadedPdf({ pdfName: "", pdfDataUrl: "" });
+        }}
+        onOk={handleSubmit}
+        okText={activeRecord ? "Guncelle" : "Kaydet"}
+        cancelText="Vazgec"
+        confirmLoading={saving}
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item
+            name="supplierId"
+            label="Ilgili Firma"
+            rules={[{ required: true, message: "Firma secin." }]}
+          >
+            <Select
+              placeholder="Firma secin"
+              options={supplierOptions}
+              showSearch
+              optionFilterProp="label"
+            />
+          </Form.Item>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item
+                name="startDate"
+                label="Sozlesme Baslangic Tarihi"
+                rules={[{ required: true, message: "Baslangic tarihi secin." }]}
+              >
+                <DatePicker style={{ width: "100%" }} format="DD.MM.YYYY" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="endDate"
+                label="Sozlesme Bitis Tarihi"
+                rules={[{ required: true, message: "Bitis tarihi secin." }]}
+              >
+                <DatePicker style={{ width: "100%" }} format="DD.MM.YYYY" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item
+            name="commissionRate"
+            label="Komisyon Orani (%)"
+            rules={[{ required: true, message: "Komisyon orani girin." }]}
+          >
+            <InputNumber style={{ width: "100%" }} min={0} max={100} step={0.01} precision={2} />
+          </Form.Item>
+          <Form.Item label="Sozlesme PDF Yukleme" required>
+            <Space direction="vertical" size={6} style={{ width: "100%" }}>
+              <input type="file" accept="application/pdf" onChange={handlePdfFileChange} />
+              <Text type="secondary">
+                {uploadedPdf.pdfName ? `Yuklenen dosya: ${uploadedPdf.pdfName}` : "PDF dosyasi secilmedi."}
+              </Text>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={activePdf?.pdfName || "Sozlesme PDF"}
+        open={pdfModalOpen}
+        onCancel={() => setPdfModalOpen(false)}
+        footer={null}
+        width={960}
+      >
+        {activePdf?.pdfDataUrl ? (
+          <object data={activePdf.pdfDataUrl} type="application/pdf" width="100%" height="640">
+            <a href={activePdf.pdfDataUrl} target="_blank" rel="noreferrer">PDF dosyasini yeni sekmede ac</a>
+          </object>
+        ) : (
+          <Text>PDF bulunamadi.</Text>
+        )}
+      </Modal>
     </Space>
   );
 }
@@ -2489,7 +3006,7 @@ function buildStockMovements() {
       totalAmount: Number(line.lineTotal || 0),
       totalAmountDisplay: line.lineTotalDisplay || formatMovementMoney(line.lineTotal),
       note: line.note || purchase.description || "",
-      detailPath: `/purchasing/entry/${purchase.id}`,
+      detailPath: "",
       sourceModule: "purchase",
       sourceId: purchase.id,
     })),
@@ -2569,6 +3086,13 @@ export function StockListPage() {
   }))];
 
   const refreshMovements = () => setMovements(buildStockMovements());
+  const openDetailPath = (detailPath) => {
+    if (!detailPath) {
+      message.info("Bu hareket tipi icin detay ekrani bulunmuyor.");
+      return;
+    }
+    navigate(detailPath);
+  };
 
   const persistSavedFilters = (nextSavedFilters) => {
     setSavedFilters(nextSavedFilters);
@@ -2673,7 +3197,7 @@ export function StockListPage() {
           className="erp-link-button"
           onClick={(event) => {
             event.stopPropagation();
-            navigate(record.detailPath);
+            openDetailPath(record.detailPath);
           }}
         >
           {value}
@@ -2713,7 +3237,7 @@ export function StockListPage() {
             icon={<EditOutlined />}
             onClick={(event) => {
               event.stopPropagation();
-              navigate(record.detailPath);
+              openDetailPath(record.detailPath);
             }}
           />
         </Space>
@@ -5997,6 +6521,165 @@ export function ParametersPage() {
             </Col>
           </Row>
         </Form>
+      </Card>
+    </Space>
+  );
+}
+
+export function SmtpSettingsPage() {
+  const [smtpForm] = Form.useForm();
+  const [testForm] = Form.useForm();
+  const [testing, setTesting] = React.useState(false);
+
+  React.useEffect(() => {
+    smtpForm.setFieldsValue(getSmtpSettings());
+  }, [smtpForm]);
+
+  const handleSubmit = async () => {
+    try {
+      const smtpValues = await smtpForm.validateFields();
+      updateSmtpSettings(smtpValues);
+      message.success("SMTP ayarlari kaydedildi.");
+    } catch {
+      // validation handled by form
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    try {
+      const values = await testForm.validateFields();
+      setTesting(true);
+      const response = await fetch("/api/settings/smtp/test", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toEmail: values.toEmail }),
+      });
+
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
+      }
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Test maili gonderilemedi.");
+      }
+
+      message.success(payload?.message || "Test maili gonderildi.");
+    } catch (error) {
+      if (error?.errorFields) {
+        return;
+      }
+      message.error(error?.message || "Test maili gonderilemedi.");
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+        <div>
+          <Title level={3} style={{ marginBottom: 6 }}>SMTP ve E-posta</Title>
+          <Text type="secondary">Sifre yenileme kodu gonderimi icin SMTP ayarlarinizi bu ekrandan yonetin.</Text>
+        </div>
+        <Button type="primary" onClick={handleSubmit}>Kaydet</Button>
+      </div>
+
+      <Card title="SMTP Ayarlari" extra={<Tag color="gold">Sifremi Unuttum Maili</Tag>}>
+        <Form
+          form={smtpForm}
+          layout="vertical"
+          initialValues={getSmtpSettings()}
+        >
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={12} xl={8}>
+              <Card size="small" title="SMTP Durumu">
+                <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                  <Text type="secondary">
+                    Aktif oldugunda sifre yenileme kodlari ekranda gosterilmek yerine e-posta ile gonderilir.
+                  </Text>
+                  <Form.Item name="enabled" valuePropName="checked" style={{ marginBottom: 0 }}>
+                    <Switch checkedChildren="Aktif" unCheckedChildren="Pasif" />
+                  </Form.Item>
+                </Space>
+              </Card>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item name="host" label="SMTP Host" rules={[{ required: true, message: "SMTP host zorunludur." }]}>
+                <Input placeholder="smtp.gmail.com" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={4}>
+              <Form.Item name="port" label="Port" rules={[{ required: true, message: "Port zorunludur." }]}>
+                <InputNumber min={1} max={65535} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={4}>
+              <Form.Item name="secure" label="Secure" valuePropName="checked">
+                <Switch checkedChildren="SSL/TLS" unCheckedChildren="STARTTLS" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item name="username" label="Kullanici" rules={[{ required: true, message: "SMTP kullanici zorunludur." }]}>
+                <Input placeholder="ornek@alanadi.com" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item name="password" label="Sifre / App Password" rules={[{ required: true, message: "SMTP sifresi zorunludur." }]}>
+                <Input.Password />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item name="fromName" label="Gonderen Adi">
+                <Input placeholder="Sibella Atelier" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item
+                name="fromEmail"
+                label="Gonderen E-posta"
+                rules={[
+                  { required: true, message: "Gonderen e-posta zorunludur." },
+                  { type: "email", message: "Gecerli bir e-posta girin." },
+                ]}
+              >
+                <Input placeholder="noreply@sibella.com" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Card>
+
+      <Card title="SMTP Testi" extra={<Tag color="green">Dogrulama</Tag>}>
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          <Text type="secondary">
+            Once SMTP ayarlarini kaydedin, ardindan test e-posta adresi girerek test maili gonderin.
+          </Text>
+          <Form form={testForm} layout="vertical">
+            <Row gutter={[12, 12]} align="bottom">
+              <Col xs={24} md={16} xl={12}>
+                <Form.Item
+                  name="toEmail"
+                  label="Test E-posta Adresi"
+                  rules={[
+                    { required: true, message: "Test e-posta adresi zorunludur." },
+                    { type: "email", message: "Gecerli bir e-posta adresi girin." },
+                  ]}
+                >
+                  <Input placeholder="ornek@alanadi.com" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8} xl={4}>
+                <Button type="primary" block loading={testing} onClick={handleSendTestEmail}>
+                  Test Maili Gonder
+                </Button>
+              </Col>
+            </Row>
+          </Form>
+        </Space>
       </Card>
     </Space>
   );

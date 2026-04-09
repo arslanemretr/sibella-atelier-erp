@@ -1,4 +1,4 @@
-import { readPersistentStore, writePersistentStore } from "./serverStore";
+import { clearPersistentStoreCache, readPersistentStore, writePersistentStore } from "./serverStore";
 
 const STORAGE_KEY = "sibella.erp.users.v1";
 
@@ -66,19 +66,12 @@ function seedUsers() {
 }
 
 function loadStore() {
-  const parsed = readPersistentStore(STORAGE_KEY, seedUsers());
-  const mergedByEmail = new Map(parsed.map((item) => [String(item.email || "").toLowerCase(), item]));
+  return readPersistentStore(STORAGE_KEY, seedUsers());
+}
 
-  seedUsers().forEach((seededUser) => {
-    const key = String(seededUser.email || "").toLowerCase();
-    if (!mergedByEmail.has(key)) {
-      mergedByEmail.set(key, seededUser);
-    }
-  });
-
-  const mergedUsers = Array.from(mergedByEmail.values());
-  writePersistentStore(STORAGE_KEY, mergedUsers);
-  return mergedUsers;
+function loadFreshStore() {
+  clearPersistentStoreCache(STORAGE_KEY);
+  return loadStore();
 }
 
 function saveStore(records) {
@@ -102,6 +95,10 @@ function normalizeUser(values, existingUser) {
 
 export function listUsers() {
   return loadStore();
+}
+
+export function listUsersFresh() {
+  return loadFreshStore();
 }
 
 export function getUserById(userId) {
