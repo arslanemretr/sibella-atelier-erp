@@ -66,6 +66,10 @@ const BOOL_COLUMNS = new Set([
   "login_attempts.success",
 ]);
 
+const sqliteTables = new Set(
+  sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((row) => row.name),
+);
+
 function quoteIdent(identifier) {
   return `"${String(identifier).replace(/"/g, "\"\"")}"`;
 }
@@ -95,10 +99,6 @@ function normalizeValue(table, column, value) {
 }
 
 async function migrateTable(table) {
-  const sqliteTables = new Set(
-    sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((row) => row.name),
-  );
-
   if (!sqliteTables.has(table)) {
     console.log(`- ${table}: SQLite tarafinda bulunamadi, atlandi.`);
     return;
@@ -127,6 +127,13 @@ async function run() {
   await client.query("BEGIN");
 
   try {
+    const foundMappedTableCount = TABLE_ORDER.filter((table) => sqliteTables.has(table)).length;
+    if (foundMappedTableCount === 0) {
+      throw new Error(
+        "SQLite dosyasinda beklenen tablolar bulunamadi. Muhtemelen eksik kopya alindi (WAL/SHM dahil degil) veya SQLITE_PATH yanlis.",
+      );
+    }
+
     if (applySchema) {
       const schemaSql = fs.readFileSync(schemaPath, "utf8");
       await client.query(schemaSql);
