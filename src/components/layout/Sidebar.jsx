@@ -1,27 +1,75 @@
 import React from "react";
 import { Drawer, Layout, Menu } from "antd";
-import { AppstoreOutlined, SettingOutlined, ShoppingCartOutlined, ShopOutlined, TableOutlined, UserOutlined } from "@ant-design/icons";
+import {
+  Boxes,
+  ClipboardList,
+  FolderTree,
+  HandCoins,
+  Layers3,
+  LayoutDashboard,
+  Mail,
+  MonitorSmartphone,
+  Package,
+  PackagePlus,
+  ScanLine,
+  Settings2,
+  ShieldUser,
+  Truck,
+  Users,
+} from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { sidebarGroups, supplierSidebarGroups } from "../../erp/navigation";
 import { getAuthUser, onAuthChange } from "../../auth";
 
 const { Sider } = Layout;
 
+function menuIcon(IconComponent) {
+  return <IconComponent size={18} strokeWidth={2.1} />;
+}
+
 const iconMap = {
-  Dashboard: <AppstoreOutlined />,
-  Urunler: <ShopOutlined />,
-  Pos: <TableOutlined />,
-  Satinalma: <ShoppingCartOutlined />,
-  Stok: <ShopOutlined />,
-  "Tedarikci Portal": <UserOutlined />,
-  Ayarlar: <SettingOutlined />,
-  Kullanici: <UserOutlined />,
+  "/dashboard": menuIcon(LayoutDashboard),
+  products: menuIcon(Boxes),
+  "products-group": menuIcon(Boxes),
+  "/products/list": menuIcon(Package),
+  "/products/new": menuIcon(PackagePlus),
+  pos: menuIcon(MonitorSmartphone),
+  "pos-group": menuIcon(MonitorSmartphone),
+  "/pos/sessions": menuIcon(ClipboardList),
+  "/pos/store": menuIcon(MonitorSmartphone),
+  purchasing: menuIcon(HandCoins),
+  "purchasing-group": menuIcon(HandCoins),
+  "/purchasing/suppliers": menuIcon(Truck),
+  "/purchasing/suppliers/new": menuIcon(Users),
+  "/purchasing/contracts": menuIcon(ClipboardList),
+  stock: menuIcon(Package),
+  "stock-group": menuIcon(Package),
+  "/stock/entry": menuIcon(PackagePlus),
+  "/stock/list": menuIcon(ClipboardList),
+  "supplier-portal": menuIcon(ShieldUser),
+  "supplier-portal-group": menuIcon(ShieldUser),
+  "/supplier-portal/delivery-lists": menuIcon(Truck),
+  settings: menuIcon(Settings2),
+  "settings-group": menuIcon(Settings2),
+  "/settings/users": menuIcon(Users),
+  "/settings/categories": menuIcon(FolderTree),
+  "/settings/collections": menuIcon(Layers3),
+  "/settings/pos-categories": menuIcon(Boxes),
+  "/settings/barcode-standards": menuIcon(ScanLine),
+  "/settings/procurement-types": menuIcon(HandCoins),
+  "/settings/payment-terms": menuIcon(ClipboardList),
+  "/settings/parameters": menuIcon(Settings2),
+  "/settings/smtp": menuIcon(Mail),
+  "/supplier/dashboard": menuIcon(LayoutDashboard),
+  "/supplier/products": menuIcon(Package),
+  "/supplier/deliveries/new": menuIcon(PackagePlus),
+  "/supplier/deliveries": menuIcon(Truck),
 };
 
 function withIcons(items) {
   return items.map((item) => ({
     ...item,
-    icon: iconMap[item.label] || item.icon,
+    icon: iconMap[item.key] || iconMap[item.label] || item.icon,
     children: item.children ? withIcons(item.children) : undefined,
   }));
 }
