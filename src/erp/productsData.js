@@ -398,13 +398,15 @@ export function importProducts(rows) {
 
   const nextStore = Array.from(storeByCode.values());
   saveStore(nextStore);
-  return nextStore.map(enrichProduct);
+  const movementByProductId = buildProductMovementDeltaMap();
+  return nextStore.map((product) => enrichProduct(product, movementByProductId));
 }
 
 export function applyProductStockAdjustments(adjustments) {
   // Stok artik hareketlerden hesaplanir; geriye donuk API uyumu icin no-op.
+  const movementByProductId = buildProductMovementDeltaMap();
   if (!Array.isArray(adjustments) || !adjustments.length) {
-    return loadStore().map(enrichProduct);
+    return loadStore().map((product) => enrichProduct(product, movementByProductId));
   }
-  return loadStore().map(enrichProduct);
+  return loadStore().map((product) => enrichProduct(product, movementByProductId));
 }
