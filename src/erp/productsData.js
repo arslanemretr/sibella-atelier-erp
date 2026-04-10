@@ -229,8 +229,8 @@ function addMovementDelta(map, productId, delta) {
 }
 
 function buildProductMovementDeltaMap() {
-  const stockEntries = readPersistentStore(STOCK_ENTRIES_STORAGE_KEY, []);
-  const posSales = readPersistentStore(POS_SALES_STORAGE_KEY, []);
+  const stockEntries = readPersistentStore(STOCK_ENTRIES_STORAGE_KEY, [], { forceRefresh: true });
+  const posSales = readPersistentStore(POS_SALES_STORAGE_KEY, [], { forceRefresh: true });
   const movementByProductId = new Map();
 
   stockEntries.forEach((entry) => {

@@ -78,12 +78,13 @@ function requestJson(method, url, body) {
   }
 }
 
-export function readPersistentStore(storageKey, seedValue) {
+export function readPersistentStore(storageKey, seedValue, options = {}) {
+  const { forceRefresh = false } = options;
   if (typeof window === "undefined") {
     return clone(seedValue);
   }
 
-  if (cache.has(storageKey)) {
+  if (!forceRefresh && cache.has(storageKey)) {
     return clone(cache.get(storageKey));
   }
 
