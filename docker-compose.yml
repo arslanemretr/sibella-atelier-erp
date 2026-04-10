@@ -6,6 +6,7 @@ services:
     container_name: erpsibella-api
     environment:
       API_PORT: 4001
+      DATABASE_URL: ${DATABASE_URL:-}
     volumes:
       - erpsibella_data:/app/data
     ports:

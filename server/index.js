@@ -11,7 +11,7 @@ import {
   requireAuth,
 } from "./auth.js";
 import { handleDashboardSummary } from "./dashboard.js";
-import { getStoreValue, listStoreKeys, setStoreValue } from "./db.js";
+import { getDatabaseRuntimeInfo, getStoreValue, listStoreKeys, setStoreValue } from "./db.js";
 import { handleSmtpTestEmail } from "./smtp.js";
 
 const app = express();
@@ -21,10 +21,12 @@ app.use(express.json({ limit: "25mb" }));
 migrateLegacyPasswords();
 
 app.get("/api/health", (_req, res) => {
+  const runtime = getDatabaseRuntimeInfo();
   res.json({
     ok: true,
     service: "erp-db-api",
     date: new Date().toISOString(),
+    db: runtime,
   });
 });
 

@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import { Pool } from "pg";
 import { hashPassword, isPasswordHash } from "./passwords.js";
 
 const dataDir = path.resolve(process.cwd(), "data");
@@ -14,6 +15,15 @@ if (!fs.existsSync(dataDir)) {
 export const db = new Database(dbPath);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
+
+const postgresUrl = String(process.env.DATABASE_URL || "").trim();
+const postgresMirrorEnabled = Boolean(postgresUrl);
+const pgPool = postgresMirrorEnabled
+  ? new Pool({
+    connectionString: postgresUrl,
+  })
+  : null;
+let pgStoreReadyPromise = null;
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS kv_store (
@@ -332,6 +342,59 @@ db.exec(`
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function ensurePostgresStoreTables() {
+  if (!pgPool) {
+    return Promise.resolve();
+  }
+
+  if (!pgStoreReadyPromise) {
+    pgStoreReadyPromise = (async () => {
+      await pgPool.query(`
+        CREATE TABLE IF NOT EXISTS kv_store (
+          key TEXT PRIMARY KEY,
+          value JSONB NOT NULL,
+          updated_at TIMESTAMPTZ NOT NULL
+        );
+      `);
+      await pgPool.query(`
+        CREATE TABLE IF NOT EXISTS store_meta (
+          key TEXT PRIMARY KEY,
+          updated_at TIMESTAMPTZ NOT NULL
+        );
+      `);
+    })().catch((error) => {
+      pgStoreReadyPromise = null;
+      throw error;
+    });
+  }
+
+  return pgStoreReadyPromise;
+}
+
+async function mirrorStoreValueToPostgres(key, value, updatedAt) {
+  if (!pgPool) {
+    return;
+  }
+
+  try {
+    await ensurePostgresStoreTables();
+    await pgPool.query(`
+      INSERT INTO kv_store (key, value, updated_at)
+      VALUES ($1, $2::jsonb, $3::timestamptz)
+      ON CONFLICT (key)
+      DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at
+    `, [key, JSON.stringify(value), updatedAt]);
+    await pgPool.query(`
+      INSERT INTO store_meta (key, updated_at)
+      VALUES ($1, $2::timestamptz)
+      ON CONFLICT (key)
+      DO UPDATE SET updated_at = EXCLUDED.updated_at
+    `, [key, updatedAt]);
+  } catch (error) {
+    console.error(`[pg-mirror] ${key} mirror hatasi:`, error?.message || error);
+  }
 }
 
 function boolToInt(value) {
@@ -922,14 +985,23 @@ export function setStoreValue(key, value) {
 
   handler.write(value);
   updateMeta(key);
+  const updatedAt = getRow("SELECT updated_at FROM store_meta WHERE key = ?", [key])?.updated_at || nowIso();
+  void mirrorStoreValueToPostgres(key, value, updatedAt);
 
   return {
     key,
     value,
-    updatedAt: getRow("SELECT updated_at FROM store_meta WHERE key = ?", [key])?.updated_at || nowIso(),
+    updatedAt,
   };
 }
 
 export function listStoreKeys() {
   return listRows("SELECT key, updated_at FROM store_meta ORDER BY key");
+}
+
+export function getDatabaseRuntimeInfo() {
+  return {
+    sqlitePath: dbPath,
+    postgresMirrorEnabled,
+  };
 }

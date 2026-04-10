@@ -51,3 +51,9 @@ npm run db:migrate:pg:data
   - `products`
   - `delivery_lists`
   - `consignment_contracts`
+
+## Mevcut Runtime Durumu (Faz-1)
+
+- Uygulama calisma aninda halen SQLite tabanli calisir.
+- `DATABASE_URL` tanimliysa store yazmalari PostgreSQL `kv_store/store_meta` tablolarina da mirror edilir.
+- Bu faz amaci kesintisiz gecis ve veri dogrulamadir.
