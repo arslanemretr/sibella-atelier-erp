@@ -83,6 +83,37 @@ async function saveUsersStore(users) {
   await setStoreValue(USERS_STORE_KEY, users);
 }
 
+async function ensureUserRowForAuth(user) {
+  if (!user?.id || !user?.email) {
+    return;
+  }
+
+  await sqlExec(`
+    INSERT INTO users (id, full_name, email, password, role, supplier_id, status, last_login_at, created_at, updated_at)
+    VALUES ($1, $2, $3, $4, $5, NULL, $6, $7::timestamptz, $8::timestamptz, $9::timestamptz)
+    ON CONFLICT (email)
+    DO UPDATE SET
+      id = EXCLUDED.id,
+      full_name = EXCLUDED.full_name,
+      password = EXCLUDED.password,
+      role = EXCLUDED.role,
+      supplier_id = NULL,
+      status = EXCLUDED.status,
+      last_login_at = EXCLUDED.last_login_at,
+      updated_at = EXCLUDED.updated_at
+  `, [
+    user.id,
+    user.fullName || "",
+    String(user.email || "").trim().toLowerCase(),
+    user.password || "",
+    user.role || "Magaza",
+    user.status || "Aktif",
+    user.lastLoginAt || null,
+    user.createdAt || nowIso(),
+    user.updatedAt || nowIso(),
+  ]);
+}
+
 async function updateUserInStore(userId, updater) {
   const users = await loadUsersStore();
   const index = users.findIndex((item) => item.id === userId);
@@ -196,6 +227,10 @@ export async function migrateLegacyPasswords() {
 
   if (changed) {
     await saveUsersStore(nextUsers);
+  }
+
+  for (const user of (changed ? nextUsers : users)) {
+    await ensureUserRowForAuth(user);
   }
 }
 
@@ -335,6 +370,7 @@ export async function handleLogin(req, res) {
     }));
   }
 
+  await ensureUserRowForAuth(updatedUser);
   await createSessionForUser(updatedUser, req, res);
   const loginAt = nowIso();
   updatedUser = await updateUserInStore(updatedUser.id, (target) => ({
