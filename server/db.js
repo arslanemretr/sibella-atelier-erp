@@ -358,8 +358,9 @@ const backfillBuilders = {
 
 async function ensureKeyInitialized(key) {
   await ensureInitialized();
-  const existing = await sqlOne("SELECT key, updated_at FROM store_meta WHERE key = $1", [key]);
-  if (existing) {
+  const existingMeta = await sqlOne("SELECT key, updated_at FROM store_meta WHERE key = $1", [key]);
+  const existingValue = await sqlOne("SELECT key FROM kv_store WHERE key = $1", [key]);
+  if (existingMeta && existingValue) {
     return;
   }
 
