@@ -233,13 +233,11 @@ function buildProductMovementDeltaMap() {
   const posSales = readPersistentStore(POS_SALES_STORAGE_KEY, []);
   const movementByProductId = new Map();
 
-  stockEntries
-    .filter((entry) => entry?.status === "Tamamlandi")
-    .forEach((entry) => {
-      (entry?.lines || []).forEach((line) => {
-        addMovementDelta(movementByProductId, line?.productId, toNumber(line?.quantity));
-      });
+  stockEntries.forEach((entry) => {
+    (entry?.lines || []).forEach((line) => {
+      addMovementDelta(movementByProductId, line?.productId, toNumber(line?.quantity));
     });
+  });
 
   posSales.forEach((sale) => {
     (sale?.lines || []).forEach((line) => {
@@ -250,45 +248,17 @@ function buildProductMovementDeltaMap() {
   return movementByProductId;
 }
 
-function ensureOpeningStocks(products, movementByProductId) {
-  let changed = false;
-  const nextProducts = products.map((product) => {
-    if (product?.openingStock !== undefined && product?.openingStock !== null) {
-      return product;
-    }
-
-    changed = true;
-    const movementDelta = toNumber(movementByProductId.get(product.id));
-    const currentStock = toNumber(product.stock);
-    return {
-      ...product,
-      openingStock: currentStock - movementDelta,
-      updatedAt: product.updatedAt || nowIso(),
-    };
-  });
-
-  return { nextProducts, changed };
-}
-
 function calculateProductStock(product, movementByProductId) {
   if (!product?.trackInventory) {
     return toNumber(product?.stock);
   }
 
-  const openingStock = toNumber(product?.openingStock);
   const movementDelta = toNumber(movementByProductId.get(product.id));
-  return Math.max(0, openingStock + movementDelta);
+  return Math.max(0, movementDelta);
 }
 
 function loadStore() {
-  const records = readPersistentStore(STORAGE_KEY, seedProducts());
-  const movementByProductId = buildProductMovementDeltaMap();
-  const { nextProducts, changed } = ensureOpeningStocks(records, movementByProductId);
-  if (changed) {
-    writePersistentStore(STORAGE_KEY, nextProducts);
-  }
-
-  return nextProducts;
+  return readPersistentStore(STORAGE_KEY, seedProducts());
 }
 
 function saveStore(records) {
@@ -320,10 +290,6 @@ function enrichProduct(product, movementByProductId = buildProductMovementDeltaM
 }
 
 function normalizeProduct(values, existingProduct) {
-  const hasStockInput = values?.stock !== undefined && values?.stock !== null && values?.stock !== "";
-  const initialStock = hasStockInput ? Number(values.stock) : 0;
-  const openingStock = existingProduct?.openingStock ?? initialStock;
-
   return {
     id: existingProduct?.id || createId("prd"),
     code: values.code || "",
@@ -340,8 +306,7 @@ function normalizeProduct(values, existingProduct) {
     supplierCode: values.supplierCode || "",
     minStock: Number(values.minStock || 0),
     supplierLeadTime: Number(values.supplierLeadTime || 0),
-    stock: existingProduct?.stock ?? openingStock,
-    openingStock,
+    stock: existingProduct?.stock ?? Number(values.stock || 0),
     productType: values.productType || "kendi",
     salesTax: values.salesTax || "%20",
     image: values.image || "/products/baroque-necklace.svg",
