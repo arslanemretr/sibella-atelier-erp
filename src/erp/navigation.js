@@ -60,7 +60,6 @@ export const mainMenuItems = [
 export const sidebarGroups = [
   {
     type: "group",
-    label: "ERP MENUSU",
     children: [
       { key: "/dashboard", label: "Dashboard" },
       {
