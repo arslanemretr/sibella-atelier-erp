@@ -1,8 +1,8 @@
 import React from "react";
 import dayjs from "dayjs";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Alert, AutoComplete, Avatar, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Segmented, Select, Space, Statistic, Switch, Table, Tabs, Tag, Typography, message } from "antd";
-import { AppstoreOutlined, BarsOutlined, BarcodeOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined, FilterOutlined, LeftOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { Alert, AutoComplete, Avatar, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Segmented, Select, Space, Statistic, Switch, Table, Tabs, Tag, Tooltip, Typography, message } from "antd";
+import { AppstoreOutlined, BarsOutlined, BarcodeOutlined, CheckOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined, FilterOutlined, InboxOutlined, LeftOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { getAuthUser } from "../auth";
 import { createContract, deleteContract, listContracts, updateContract } from "./contractsData";
@@ -5691,16 +5691,24 @@ export function SupplierDeliveryListsPage() {
       key: "actions",
       render: (_, record) => (
         <Space size={8}>
-          <Button type="text" onClick={(event) => { event.stopPropagation(); navigate(`/supplier-portal/delivery-lists/${record.id}`); }}>Teslimat Formu</Button>
-          <Button type="text" onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Revizyon Istendi"); }}>Revizyon</Button>
-          <Button type="text" onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Onaylandi"); }}>Onayla</Button>
-          <Button
-            type="text"
-            disabled={(record.status || "Taslak") !== "Onaylandi" || Boolean(record.stockEntryId || record.inventoryPostedAt)}
-            onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Tamamlandi"); }}
-          >
-            Teslim Alindi
-          </Button>
+          <Tooltip title="Teslimat Formu">
+            <Button type="text" className="erp-icon-btn" icon={<EyeOutlined />} onClick={(event) => { event.stopPropagation(); navigate(`/supplier-portal/delivery-lists/${record.id}`); }} />
+          </Tooltip>
+          <Tooltip title="Revizyon">
+            <Button type="text" className="erp-icon-btn" icon={<EditOutlined />} onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Revizyon Istendi"); }} />
+          </Tooltip>
+          <Tooltip title="Onayla">
+            <Button type="text" className="erp-icon-btn erp-icon-btn-edit" icon={<CheckOutlined />} onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Onaylandi"); }} />
+          </Tooltip>
+          <Tooltip title="Teslim Alindi">
+            <Button
+              type="text"
+              className="erp-icon-btn"
+              icon={<InboxOutlined />}
+              disabled={(record.status || "Taslak") !== "Onaylandi" || Boolean(record.stockEntryId || record.inventoryPostedAt)}
+              onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Tamamlandi"); }}
+            />
+          </Tooltip>
         </Space>
       ),
     },
@@ -5921,6 +5929,10 @@ export function SupplierPortalDeliveryEditorPage() {
     name: "",
     code: "",
     salePrice: 0,
+    categoryId: undefined,
+    categoryLabel: "",
+    collectionId: undefined,
+    collectionLabel: "",
     quantity: 1,
   });
   const [editIndex, setEditIndex] = React.useState(null);
@@ -5933,8 +5945,30 @@ export function SupplierPortalDeliveryEditorPage() {
   const targetRecord = React.useMemo(() => (isEditMode ? getDeliveryListById(deliveryId) : null), [deliveryId, isEditMode]);
   const targetSupplierId = isAdminView ? (targetRecord?.supplierId || null) : supplierId;
   const supplier = React.useMemo(() => getSupplierById(targetSupplierId), [targetSupplierId]);
+  const categoryOptions = React.useMemo(
+    () => listMasterData("categories")
+      .map((item) => ({ value: item.id, label: item.fullPath || item.level1 || item.id }))
+      .sort((a, b) => a.label.localeCompare(b.label, "tr")),
+    [],
+  );
+  const collectionOptions = React.useMemo(
+    () => listMasterData("collections")
+      .map((item) => ({ value: item.id, label: item.name || item.id }))
+      .sort((a, b) => a.label.localeCompare(b.label, "tr")),
+    [],
+  );
+  const categoryLabelMap = React.useMemo(
+    () => Object.fromEntries(categoryOptions.map((item) => [item.value, item.label])),
+    [categoryOptions],
+  );
+  const collectionLabelMap = React.useMemo(
+    () => Object.fromEntries(collectionOptions.map((item) => [item.value, item.label])),
+    [collectionOptions],
+  );
   const productOptions = React.useMemo(
-    () => listProductsBySupplier(targetSupplierId).map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` })),
+    () => listProductsBySupplier(targetSupplierId)
+      .sort((a, b) => a.name.localeCompare(b.name, "tr"))
+      .map((item) => ({ value: item.id, label: `${item.name} - ${item.code}`, product: item })),
     [targetSupplierId],
   );
   const totalAmount = React.useMemo(
@@ -5997,6 +6031,10 @@ export function SupplierPortalDeliveryEditorPage() {
       name: "",
       code: "",
       salePrice: 0,
+      categoryId: undefined,
+      categoryLabel: "",
+      collectionId: undefined,
+      collectionLabel: "",
       quantity: 1,
     });
   }, []);
@@ -6005,7 +6043,7 @@ export function SupplierPortalDeliveryEditorPage() {
     if (isDeliveryLocked) {
       return;
     }
-    const product = getProductById(productId);
+    const product = listProductsBySupplier(targetSupplierId).find((item) => item.id === productId) || getProductById(productId);
     if (!product) {
       return;
     }
@@ -6017,6 +6055,10 @@ export function SupplierPortalDeliveryEditorPage() {
       name: product.name || "",
       code: product.code || "",
       salePrice: Number(product.salePrice || 0),
+      categoryId: product.categoryId || undefined,
+      categoryLabel: product.categoryLabel || categoryLabelMap[product.categoryId] || "",
+      collectionId: product.collectionId || undefined,
+      collectionLabel: product.collectionLabel || collectionLabelMap[product.collectionId] || "",
     }));
   };
 
@@ -6067,6 +6109,10 @@ export function SupplierPortalDeliveryEditorPage() {
         code: lineDraft.code,
         salePrice: Number(lineDraft.salePrice),
         saleCurrency: "TRY",
+        categoryId: lineDraft.categoryId || null,
+        categoryLabel: lineDraft.categoryLabel || "",
+        collectionId: lineDraft.collectionId || null,
+        collectionLabel: lineDraft.collectionLabel || "",
         quantity: Number(lineDraft.quantity),
         description: "",
       },
@@ -6149,6 +6195,8 @@ export function SupplierPortalDeliveryEditorPage() {
       ...editLine,
       salePrice: Number(editLine.salePrice || 0),
       quantity: Number(editLine.quantity || 0),
+      categoryLabel: categoryLabelMap[editLine.categoryId] || editLine.categoryLabel || "",
+      collectionLabel: collectionLabelMap[editLine.collectionId] || editLine.collectionLabel || "",
     };
     setDeliveryLines(currentLines);
     form.setFieldValue("lines", currentLines);
@@ -6180,8 +6228,8 @@ export function SupplierPortalDeliveryEditorPage() {
       saleCurrency: editLine.saleCurrency || "TRY",
       cost: 0,
       costCurrency: "TRY",
-      categoryId: null,
-      collectionId: null,
+      categoryId: editLine.categoryId || null,
+      collectionId: editLine.collectionId || null,
       posCategoryId: null,
       barcode: "",
       supplierCode: editLine.code,
@@ -6209,6 +6257,10 @@ export function SupplierPortalDeliveryEditorPage() {
       isNewProduct: false,
       code: savedProduct.code,
       name: savedProduct.name,
+      categoryId: savedProduct.categoryId || editLine.categoryId || null,
+      categoryLabel: savedProduct.categoryLabel || categoryLabelMap[editLine.categoryId] || editLine.categoryLabel || "",
+      collectionId: savedProduct.collectionId || editLine.collectionId || null,
+      collectionLabel: savedProduct.collectionLabel || collectionLabelMap[editLine.collectionId] || editLine.collectionLabel || "",
     };
     setDeliveryLines(currentLines);
     form.setFieldValue("lines", currentLines);
@@ -6265,8 +6317,11 @@ export function SupplierPortalDeliveryEditorPage() {
       }
       message.success(status === "Onay Bekleniyor" ? "Teslimat onaya gonderildi." : "Teslimat kaydedildi.");
       navigate(isAdminView ? `/supplier-portal/delivery-lists/${savedRecord.id}` : `/supplier/deliveries/${savedRecord.id}`);
-    } catch {
-      // form validation handles UI
+    } catch (error) {
+      if (error?.errorFields) {
+        return;
+      }
+      message.error(error?.message || "Teslimat kaydedilirken hata olustu.");
     } finally {
       setLoading(false);
     }
@@ -6357,8 +6412,25 @@ export function SupplierPortalDeliveryEditorPage() {
                 <Input disabled={isDeliveryLocked} value={lineDraft.code} onChange={(event) => setLineDraft((current) => ({ ...current, code: event.target.value }))} />
               </Col>
               <Col xs={24} md={4}>
-                <div style={{ marginBottom: 8, fontWeight: 500 }}>Birim Fiyat</div>
+                <div style={{ marginBottom: 8, fontWeight: 500 }}>Satis Fiyati</div>
                 <InputNumber disabled={isDeliveryLocked} style={{ width: "100%" }} min={0} value={lineDraft.salePrice} onChange={(value) => setLineDraft((current) => ({ ...current, salePrice: value || 0 }))} addonAfter="TRY" />
+              </Col>
+              <Col xs={24} md={5}>
+                <div style={{ marginBottom: 8, fontWeight: 500 }}>Kategori</div>
+                <Select
+                  disabled={isDeliveryLocked}
+                  value={lineDraft.categoryId}
+                  options={categoryOptions}
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="Kategori seciniz"
+                  allowClear
+                  onChange={(value) => setLineDraft((current) => ({
+                    ...current,
+                    categoryId: value,
+                    categoryLabel: value ? categoryLabelMap[value] || "" : "",
+                  }))}
+                />
               </Col>
               <Col xs={24} md={3}>
                 <div style={{ marginBottom: 8, fontWeight: 500 }}>Teslim Adedi</div>
@@ -6383,7 +6455,7 @@ export function SupplierPortalDeliveryEditorPage() {
                 />
               </Col>
               <Col xs={24} md={2}>
-                <Button type="primary" block onClick={handleAddLine} disabled={isDeliveryLocked}>
+                <Button type="primary" block onClick={handleAddLine} disabled={isDeliveryLocked} style={{ marginTop: 30 }}>
                   Ekle
                 </Button>
               </Col>
@@ -6404,9 +6476,19 @@ export function SupplierPortalDeliveryEditorPage() {
                 render: (value) => <img src={value || "/products/baroque-necklace.svg"} alt="Urun" className="erp-delivery-line-image" />,
               },
               { title: "Urun Kodu", dataIndex: "code", key: "code", width: 140 },
-              { title: "Urun Adi", dataIndex: "name", key: "name" },
               {
-                title: "Birim Fiyat",
+                title: "Urun Adi",
+                dataIndex: "name",
+                key: "name",
+                render: (_, record) => (
+                  <Space direction="vertical" size={0}>
+                    <Text strong>{record.name}</Text>
+                    <Text type="secondary">{record.categoryLabel || "-"}</Text>
+                  </Space>
+                ),
+              },
+              {
+                title: "Satis Fiyati",
                 dataIndex: "salePrice",
                 key: "salePrice",
                 width: 140,
@@ -6426,12 +6508,18 @@ export function SupplierPortalDeliveryEditorPage() {
                 width: isAdminView ? 260 : 150,
                 render: (_, record) => (
                   <Space size={4}>
-                    <Button type="link" onClick={() => openEditDrawer(record._rowIndex)} disabled={isDeliveryLocked && !isAdminView}>Duzenle</Button>
+                    <Tooltip title="Duzenle">
+                      <Button type="text" className="erp-icon-btn erp-icon-btn-edit" icon={<EditOutlined />} onClick={() => openEditDrawer(record._rowIndex)} disabled={isDeliveryLocked && !isAdminView} />
+                    </Tooltip>
                     {isAdminView && record.isNewProduct && !record.productId ? (
-                      <Button type="link" onClick={() => openPromoteDrawer(record._rowIndex)}>Urun Olarak Ekle</Button>
+                      <Tooltip title="Urun Olarak Ekle">
+                        <Button type="text" className="erp-icon-btn" icon={<PlusCircleOutlined />} onClick={() => openPromoteDrawer(record._rowIndex)} />
+                      </Tooltip>
                     ) : null}
                     {!isAdminView ? (
-                      <Button danger type="text" onClick={() => handleDeleteLine(record._rowIndex)} disabled={isDeliveryLocked}>Sil</Button>
+                      <Tooltip title="Sil">
+                        <Button danger type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} onClick={() => handleDeleteLine(record._rowIndex)} disabled={isDeliveryLocked} />
+                      </Tooltip>
                     ) : null}
                   </Space>
                 ),
@@ -6492,7 +6580,45 @@ export function SupplierPortalDeliveryEditorPage() {
             </div>
             <Row gutter={12}>
               <Col span={12}>
-                <Text strong>Birim Fiyat</Text>
+                <Text strong>Kategori</Text>
+                <Select
+                  disabled={isDeliveryLocked && !isAdminView}
+                  style={{ width: "100%" }}
+                  value={editLine.categoryId}
+                  options={categoryOptions}
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="Kategori seciniz"
+                  allowClear
+                  onChange={(value) => setEditLine((current) => ({
+                    ...current,
+                    categoryId: value,
+                    categoryLabel: value ? categoryLabelMap[value] || "" : "",
+                  }))}
+                />
+              </Col>
+              <Col span={12}>
+                <Text strong>Koleksiyon</Text>
+                <Select
+                  disabled={isDeliveryLocked && !isAdminView}
+                  style={{ width: "100%" }}
+                  value={editLine.collectionId}
+                  options={collectionOptions}
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="Koleksiyon seciniz"
+                  allowClear
+                  onChange={(value) => setEditLine((current) => ({
+                    ...current,
+                    collectionId: value,
+                    collectionLabel: value ? collectionLabelMap[value] || "" : "",
+                  }))}
+                />
+              </Col>
+            </Row>
+            <Row gutter={12}>
+              <Col span={12}>
+                <Text strong>Satis Fiyati</Text>
                 <InputNumber disabled={isDeliveryLocked && !isAdminView} style={{ width: "100%" }} min={0} value={editLine.salePrice} onChange={(value) => setEditLine((current) => ({ ...current, salePrice: value || 0 }))} addonAfter="TRY" />
               </Col>
               <Col span={12}>

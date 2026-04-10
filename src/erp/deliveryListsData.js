@@ -143,6 +143,10 @@ function normalizeLine(line, index) {
     salePrice: Number(line.salePrice ?? selectedProduct?.salePrice ?? 0),
     saleCurrency: line.saleCurrency || selectedProduct?.saleCurrency || "TRY",
     quantity: Number(line.quantity || 1),
+    categoryId: line.categoryId ?? selectedProduct?.categoryId ?? null,
+    categoryLabel: line.categoryLabel || selectedProduct?.categoryLabel || "",
+    collectionId: line.collectionId ?? selectedProduct?.collectionId ?? null,
+    collectionLabel: line.collectionLabel || selectedProduct?.collectionLabel || "",
     description: line.description || "",
     sortOrder: index + 1,
   };
