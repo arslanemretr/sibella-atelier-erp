@@ -19,7 +19,11 @@ function showStoreError(text) {
 
 function requestJson(method, url, body) {
   const xhr = new XMLHttpRequest();
-  xhr.open(method, url, false);
+  const finalUrl =
+    method === "GET"
+      ? `${url}${url.includes("?") ? "&" : "?"}_=${Date.now()}`
+      : url;
+  xhr.open(method, finalUrl, false);
   xhr.setRequestHeader("Content-Type", "application/json");
 
   try {
