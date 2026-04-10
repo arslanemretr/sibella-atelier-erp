@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { db } from "./db.js";
+import { getStoreValue, setStoreValue, sqlExec, sqlOne } from "./db.js";
 import { isSmtpConfigured, sendPasswordResetEmail } from "./mailer.js";
 import { hashPassword, isPasswordHash, verifyPassword } from "./passwords.js";
 
@@ -8,41 +8,7 @@ const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
 const FAILED_LOGIN_WINDOW_MS = 1000 * 60 * 15;
 const FAILED_LOGIN_LIMIT = 5;
 const PASSWORD_RESET_TTL_MS = 1000 * 60 * 10;
-db.exec(`
-  CREATE TABLE IF NOT EXISTS auth_sessions (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    token_hash TEXT NOT NULL UNIQUE,
-    created_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    last_seen_at TEXT NOT NULL,
-    user_agent TEXT,
-    ip_address TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-  );
-
-  CREATE TABLE IF NOT EXISTS login_attempts (
-    id TEXT PRIMARY KEY,
-    email TEXT NOT NULL,
-    ip_address TEXT,
-    attempted_at TEXT NOT NULL,
-    success INTEGER NOT NULL,
-    failure_reason TEXT,
-    user_id TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS password_reset_tokens (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    token_hash TEXT NOT NULL UNIQUE,
-    created_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    used_at TEXT,
-    requested_ip TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-  );
-`);
+const USERS_STORE_KEY = "sibella.erp.users.v1";
 
 function nowIso() {
   return new Date().toISOString();
@@ -54,24 +20,6 @@ function createId(prefix) {
 
 function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
-}
-
-function migrateUserPasswordIfNeeded(user) {
-  if (!user?.id || !user.password || isPasswordHash(user.password)) {
-    return;
-  }
-
-  const hashedPassword = hashPassword(user.password);
-  db.prepare(`
-    UPDATE users
-    SET password = ?, updated_at = ?
-    WHERE id = ?
-  `).run(hashedPassword, nowIso(), user.id);
-}
-
-export function migrateLegacyPasswords() {
-  const users = db.prepare("SELECT id, password FROM users WHERE password IS NOT NULL AND password <> ''").all();
-  users.forEach((user) => migrateUserPasswordIfNeeded(user));
 }
 
 function serializeCookie(name, value, options = {}) {
@@ -95,13 +43,11 @@ function getCookieValue(req, name) {
   if (!header) {
     return null;
   }
-
   const parts = header.split(";").map((item) => item.trim());
   const target = parts.find((item) => item.startsWith(`${name}=`));
   if (!target) {
     return null;
   }
-
   return decodeURIComponent(target.slice(name.length + 1));
 }
 
@@ -113,50 +59,81 @@ function getClientIp(req) {
   return req.socket?.remoteAddress || null;
 }
 
-function sanitizeUser(row) {
-  if (!row) {
+function sanitizeUser(user) {
+  if (!user) {
     return null;
   }
-
   return {
-    id: row.id,
-    fullName: row.full_name,
-    email: row.email,
-    role: row.role,
-    supplierId: row.supplier_id || null,
-    status: row.status,
-    lastLoginAt: row.last_login_at || null,
+    id: user.id,
+    fullName: user.fullName || "",
+    email: user.email || "",
+    role: user.role || "",
+    supplierId: user.supplierId || null,
+    status: user.status || "",
+    lastLoginAt: user.lastLoginAt || null,
   };
 }
 
-function recordLoginAttempt({ email, success, failureReason = null, userId = null, ipAddress = null }) {
-  db.prepare(`
+async function loadUsersStore() {
+  const usersRecord = await getStoreValue(USERS_STORE_KEY);
+  return Array.isArray(usersRecord?.value) ? usersRecord.value : [];
+}
+
+async function saveUsersStore(users) {
+  await setStoreValue(USERS_STORE_KEY, users);
+}
+
+async function updateUserInStore(userId, updater) {
+  const users = await loadUsersStore();
+  const index = users.findIndex((item) => item.id === userId);
+  if (index < 0) {
+    return null;
+  }
+  const nextUsers = [...users];
+  nextUsers[index] = updater({ ...nextUsers[index] });
+  await saveUsersStore(nextUsers);
+  return nextUsers[index];
+}
+
+function clearSessionCookie(res) {
+  res.setHeader("Set-Cookie", serializeCookie(AUTH_COOKIE_NAME, "", {
+    httpOnly: true,
+    sameSite: "Lax",
+    path: "/",
+    maxAge: 0,
+    secure: process.env.NODE_ENV === "production",
+  }));
+}
+
+async function recordLoginAttempt({ email, success, failureReason = null, userId = null, ipAddress = null }) {
+  await sqlExec(`
     INSERT INTO login_attempts (id, email, ip_address, attempted_at, success, failure_reason, user_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(createId("login"), String(email || "").trim().toLowerCase(), ipAddress, nowIso(), success ? 1 : 0, failureReason, userId);
+    VALUES ($1, $2, $3, $4::timestamptz, $5, $6, $7)
+  `, [createId("login"), String(email || "").trim().toLowerCase(), ipAddress, nowIso(), Boolean(success), failureReason, userId]);
 }
 
-function countRecentFailedAttempts(email, ipAddress) {
+async function countRecentFailedAttempts(email, ipAddress) {
   const cutoff = new Date(Date.now() - FAILED_LOGIN_WINDOW_MS).toISOString();
-  return db.prepare(`
-    SELECT COUNT(*) AS attempt_count
+  const row = await sqlOne(`
+    SELECT COUNT(*)::int AS attempt_count
     FROM login_attempts
-    WHERE email = ?
-      AND COALESCE(ip_address, '') = COALESCE(?, '')
-      AND success = 0
-      AND attempted_at >= ?
-  `).get(String(email || "").trim().toLowerCase(), ipAddress, cutoff)?.attempt_count || 0;
+    WHERE email = $1
+      AND COALESCE(ip_address, '') = COALESCE($2, '')
+      AND success = FALSE
+      AND attempted_at >= $3::timestamptz
+  `, [String(email || "").trim().toLowerCase(), ipAddress, cutoff]);
+  return Number(row?.attempt_count || 0);
 }
 
-function clearExpiredPasswordResetTokens() {
-  db.prepare(`
+async function clearExpiredPasswordResetTokens() {
+  await sqlExec(`
     DELETE FROM password_reset_tokens
-    WHERE expires_at < ?
+    WHERE expires_at < $1::timestamptz
        OR used_at IS NOT NULL
-  `).run(nowIso());
+  `, [nowIso()]);
 }
 
-function createSessionForUser(user, req, res) {
+async function createSessionForUser(user, req, res) {
   const rawToken = crypto.randomBytes(32).toString("base64url");
   const tokenHash = sha256(rawToken);
   const createdAt = nowIso();
@@ -172,10 +149,10 @@ function createSessionForUser(user, req, res) {
     ipAddress: getClientIp(req),
   };
 
-  db.prepare(`
+  await sqlExec(`
     INSERT INTO auth_sessions (id, user_id, token_hash, created_at, expires_at, last_seen_at, user_agent, ip_address)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+    VALUES ($1, $2, $3, $4::timestamptz, $5::timestamptz, $6::timestamptz, $7, $8)
+  `, [
     session.id,
     session.userId,
     session.tokenHash,
@@ -184,7 +161,7 @@ function createSessionForUser(user, req, res) {
     session.lastSeenAt,
     session.userAgent,
     session.ipAddress,
-  );
+  ]);
 
   res.setHeader("Set-Cookie", serializeCookie(AUTH_COOKIE_NAME, encodeURIComponent(rawToken), {
     httpOnly: true,
@@ -193,85 +170,70 @@ function createSessionForUser(user, req, res) {
     maxAge: SESSION_TTL_MS / 1000,
     secure: process.env.NODE_ENV === "production",
   }));
-
-  return session;
 }
 
-function clearSessionCookie(res) {
-  res.setHeader("Set-Cookie", serializeCookie(AUTH_COOKIE_NAME, "", {
-    httpOnly: true,
-    sameSite: "Lax",
-    path: "/",
-    maxAge: 0,
-    secure: process.env.NODE_ENV === "production",
-  }));
-}
-
-function deleteSessionByToken(rawToken) {
+async function deleteSessionByToken(rawToken) {
   if (!rawToken) {
     return;
   }
-
-  db.prepare("DELETE FROM auth_sessions WHERE token_hash = ?").run(sha256(rawToken));
+  await sqlExec("DELETE FROM auth_sessions WHERE token_hash = $1", [sha256(rawToken)]);
 }
 
-export function getAuthenticatedUser(req) {
+export async function migrateLegacyPasswords() {
+  const users = await loadUsersStore();
+  let changed = false;
+  const nextUsers = users.map((user) => {
+    if (!user?.password || isPasswordHash(user.password)) {
+      return user;
+    }
+    changed = true;
+    return {
+      ...user,
+      password: hashPassword(user.password),
+      updatedAt: nowIso(),
+    };
+  });
+
+  if (changed) {
+    await saveUsersStore(nextUsers);
+  }
+}
+
+export async function getAuthenticatedUser(req) {
   const rawToken = getCookieValue(req, AUTH_COOKIE_NAME);
   if (!rawToken) {
     return null;
   }
 
-  const session = db.prepare(`
-    SELECT s.*, u.id AS user_id_real, u.full_name, u.email, u.role, u.supplier_id, u.status, u.last_login_at
-    FROM auth_sessions s
-    JOIN users u ON u.id = s.user_id
-    WHERE s.token_hash = ?
-  `).get(sha256(rawToken));
+  const session = await sqlOne(`
+    SELECT *
+    FROM auth_sessions
+    WHERE token_hash = $1
+  `, [sha256(rawToken)]);
 
   if (!session) {
     return null;
   }
 
-  if (session.expires_at <= nowIso() || session.status !== "Aktif") {
-    deleteSessionByToken(rawToken);
+  const users = await loadUsersStore();
+  const user = users.find((item) => item.id === session.user_id);
+  if (!user || user.status !== "Aktif" || session.expires_at <= nowIso()) {
+    await deleteSessionByToken(rawToken);
     return null;
   }
 
-  db.prepare(`
+  await sqlExec(`
     UPDATE auth_sessions
-    SET last_seen_at = ?
-    WHERE id = ?
-  `).run(nowIso(), session.id);
+    SET last_seen_at = $1::timestamptz
+    WHERE id = $2
+  `, [nowIso(), session.id]);
 
-  return sanitizeUser({
-    id: session.user_id_real,
-    full_name: session.full_name,
-    email: session.email,
-    role: session.role,
-    supplier_id: session.supplier_id,
-    status: session.status,
-    last_login_at: session.last_login_at,
-  });
+  return sanitizeUser(user);
 }
 
 export function requireAuth(req, res, next) {
-  const user = getAuthenticatedUser(req);
-  if (!user) {
-    clearSessionCookie(res);
-    return res.status(401).json({
-      ok: false,
-      code: "AUTH_REQUIRED",
-      message: "Oturum bulunamadi veya suresi doldu.",
-    });
-  }
-
-  req.authUser = user;
-  return next();
-}
-
-export function requireRole(...allowedRoles) {
-  return (req, res, next) => {
-    const user = getAuthenticatedUser(req);
+  void (async () => {
+    const user = await getAuthenticatedUser(req);
     if (!user) {
       clearSessionCookie(res);
       return res.status(401).json({
@@ -280,21 +242,39 @@ export function requireRole(...allowedRoles) {
         message: "Oturum bulunamadi veya suresi doldu.",
       });
     }
-
-    if (!allowedRoles.includes(user.role)) {
-      return res.status(403).json({
-        ok: false,
-        code: "FORBIDDEN",
-        message: "Bu kaynaga erisim yetkiniz bulunmuyor.",
-      });
-    }
-
     req.authUser = user;
     return next();
+  })().catch(next);
+}
+
+export function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    void (async () => {
+      const user = await getAuthenticatedUser(req);
+      if (!user) {
+        clearSessionCookie(res);
+        return res.status(401).json({
+          ok: false,
+          code: "AUTH_REQUIRED",
+          message: "Oturum bulunamadi veya suresi doldu.",
+        });
+      }
+
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({
+          ok: false,
+          code: "FORBIDDEN",
+          message: "Bu kaynaga erisim yetkiniz bulunmuyor.",
+        });
+      }
+
+      req.authUser = user;
+      return next();
+    })().catch(next);
   };
 }
 
-export function handleLogin(req, res) {
+export async function handleLogin(req, res) {
   const email = String(req.body?.email || "").trim().toLowerCase();
   const password = String(req.body?.password || "");
   const ipAddress = getClientIp(req);
@@ -307,7 +287,7 @@ export function handleLogin(req, res) {
     });
   }
 
-  if (countRecentFailedAttempts(email, ipAddress) >= FAILED_LOGIN_LIMIT) {
+  if ((await countRecentFailedAttempts(email, ipAddress)) >= FAILED_LOGIN_LIMIT) {
     return res.status(429).json({
       ok: false,
       code: "TOO_MANY_ATTEMPTS",
@@ -315,9 +295,11 @@ export function handleLogin(req, res) {
     });
   }
 
-  const user = db.prepare("SELECT * FROM users WHERE lower(email) = ?").get(email);
+  const users = await loadUsersStore();
+  const user = users.find((item) => String(item.email || "").trim().toLowerCase() === email);
+
   if (!user) {
-    recordLoginAttempt({ email, success: false, failureReason: "USER_NOT_FOUND", ipAddress });
+    await recordLoginAttempt({ email, success: false, failureReason: "USER_NOT_FOUND", ipAddress });
     return res.status(401).json({
       ok: false,
       code: "INVALID_CREDENTIALS",
@@ -326,7 +308,7 @@ export function handleLogin(req, res) {
   }
 
   if (user.status !== "Aktif") {
-    recordLoginAttempt({ email, success: false, failureReason: "USER_PASSIVE", userId: user.id, ipAddress });
+    await recordLoginAttempt({ email, success: false, failureReason: "USER_PASSIVE", userId: user.id, ipAddress });
     return res.status(403).json({
       ok: false,
       code: "USER_PASSIVE",
@@ -336,7 +318,7 @@ export function handleLogin(req, res) {
 
   const passwordMatches = verifyPassword(password, user.password);
   if (!passwordMatches) {
-    recordLoginAttempt({ email, success: false, failureReason: "INVALID_PASSWORD", userId: user.id, ipAddress });
+    await recordLoginAttempt({ email, success: false, failureReason: "INVALID_PASSWORD", userId: user.id, ipAddress });
     return res.status(401).json({
       ok: false,
       code: "INVALID_CREDENTIALS",
@@ -344,30 +326,36 @@ export function handleLogin(req, res) {
     });
   }
 
-  migrateUserPasswordIfNeeded(user);
-  createSessionForUser(user, req, res);
+  let updatedUser = user;
+  if (!isPasswordHash(user.password)) {
+    updatedUser = await updateUserInStore(user.id, (target) => ({
+      ...target,
+      password: hashPassword(target.password || ""),
+      updatedAt: nowIso(),
+    }));
+  }
+
+  await createSessionForUser(updatedUser, req, res);
   const loginAt = nowIso();
-  db.prepare(`
-    UPDATE users
-    SET last_login_at = ?, updated_at = ?
-    WHERE id = ?
-  `).run(loginAt, loginAt, user.id);
-  recordLoginAttempt({ email, success: true, userId: user.id, ipAddress });
+  updatedUser = await updateUserInStore(updatedUser.id, (target) => ({
+    ...target,
+    lastLoginAt: loginAt,
+    updatedAt: loginAt,
+  }));
+
+  await recordLoginAttempt({ email, success: true, userId: updatedUser.id, ipAddress });
 
   return res.json({
     ok: true,
     user: {
-      ...sanitizeUser({
-        ...user,
-        last_login_at: loginAt,
-      }),
+      ...sanitizeUser(updatedUser),
       loggedInAt: loginAt,
     },
   });
 }
 
-export function handleSession(req, res) {
-  const user = getAuthenticatedUser(req);
+export async function handleSession(req, res) {
+  const user = await getAuthenticatedUser(req);
   if (!user) {
     clearSessionCookie(res);
     return res.status(401).json({
@@ -376,23 +364,17 @@ export function handleSession(req, res) {
       message: "Aktif oturum bulunamadi.",
     });
   }
-
-  return res.json({
-    ok: true,
-    user,
-  });
+  return res.json({ ok: true, user });
 }
 
-export function handleLogout(req, res) {
+export async function handleLogout(req, res) {
   const rawToken = getCookieValue(req, AUTH_COOKIE_NAME);
-  deleteSessionByToken(rawToken);
+  await deleteSessionByToken(rawToken);
   clearSessionCookie(res);
-  return res.json({
-    ok: true,
-  });
+  return res.json({ ok: true });
 }
 
-export function handleForgotPasswordRequest(req, res) {
+export async function handleForgotPasswordRequest(req, res) {
   const email = String(req.body?.email || "").trim().toLowerCase();
   const ipAddress = getClientIp(req);
 
@@ -404,8 +386,9 @@ export function handleForgotPasswordRequest(req, res) {
     });
   }
 
-  clearExpiredPasswordResetTokens();
-  const user = db.prepare("SELECT * FROM users WHERE lower(email) = ?").get(email);
+  await clearExpiredPasswordResetTokens();
+  const users = await loadUsersStore();
+  const user = users.find((item) => String(item.email || "").trim().toLowerCase() === email);
 
   if (!user || user.status !== "Aktif") {
     return res.json({
@@ -414,20 +397,19 @@ export function handleForgotPasswordRequest(req, res) {
     });
   }
 
-  db.prepare("DELETE FROM password_reset_tokens WHERE user_id = ? AND used_at IS NULL").run(user.id);
+  await sqlExec("DELETE FROM password_reset_tokens WHERE user_id = $1 AND used_at IS NULL", [user.id]);
 
   const resetCode = crypto.randomBytes(4).toString("hex").toUpperCase();
   const tokenHash = sha256(resetCode);
   const createdAt = nowIso();
   const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS).toISOString();
 
-  db.prepare(`
+  await sqlExec(`
     INSERT INTO password_reset_tokens (id, user_id, token_hash, created_at, expires_at, used_at, requested_ip)
-    VALUES (?, ?, ?, ?, ?, NULL, ?)
-  `).run(createId("reset"), user.id, tokenHash, createdAt, expiresAt, ipAddress);
+    VALUES ($1, $2, $3, $4::timestamptz, $5::timestamptz, NULL, $6)
+  `, [createId("reset"), user.id, tokenHash, createdAt, expiresAt, ipAddress]);
 
-  const smtpEnabled = isSmtpConfigured();
-
+  const smtpEnabled = await isSmtpConfigured();
   if (!smtpEnabled) {
     return res.json({
       ok: true,
@@ -438,11 +420,13 @@ export function handleForgotPasswordRequest(req, res) {
     });
   }
 
-  sendPasswordResetEmail({
-    toEmail: user.email,
-    resetCode,
-    expiresAt,
-  }).then((result) => {
+  try {
+    const result = await sendPasswordResetEmail({
+      toEmail: user.email,
+      resetCode,
+      expiresAt,
+    });
+
     if (!result?.sent) {
       return res.status(500).json({
         ok: false,
@@ -451,22 +435,22 @@ export function handleForgotPasswordRequest(req, res) {
       });
     }
 
-    res.json({
+    return res.json({
       ok: true,
       message: "Sifre yenileme kodu e-posta adresinize gonderildi.",
       delivery: "email",
       expiresAt,
     });
-  }).catch(() => {
-    res.status(500).json({
+  } catch {
+    return res.status(500).json({
       ok: false,
       code: "EMAIL_SEND_FAILED",
       message: "Sifre yenileme e-postasi gonderilemedi. SMTP ayarlarinizi kontrol edin.",
     });
-  });
+  }
 }
 
-export function handleForgotPasswordConfirm(req, res) {
+export async function handleForgotPasswordConfirm(req, res) {
   const email = String(req.body?.email || "").trim().toLowerCase();
   const resetCode = String(req.body?.resetCode || "").trim().toUpperCase();
   const nextPassword = String(req.body?.nextPassword || "");
@@ -487,8 +471,9 @@ export function handleForgotPasswordConfirm(req, res) {
     });
   }
 
-  clearExpiredPasswordResetTokens();
-  const user = db.prepare("SELECT * FROM users WHERE lower(email) = ?").get(email);
+  await clearExpiredPasswordResetTokens();
+  const users = await loadUsersStore();
+  const user = users.find((item) => String(item.email || "").trim().toLowerCase() === email);
   if (!user || user.status !== "Aktif") {
     return res.status(400).json({
       ok: false,
@@ -497,14 +482,14 @@ export function handleForgotPasswordConfirm(req, res) {
     });
   }
 
-  const resetRecord = db.prepare(`
+  const resetRecord = await sqlOne(`
     SELECT *
     FROM password_reset_tokens
-    WHERE user_id = ?
-      AND token_hash = ?
+    WHERE user_id = $1
+      AND token_hash = $2
       AND used_at IS NULL
-      AND expires_at >= ?
-  `).get(user.id, sha256(resetCode), nowIso());
+      AND expires_at >= $3::timestamptz
+  `, [user.id, sha256(resetCode), nowIso()]);
 
   if (!resetRecord) {
     return res.status(400).json({
@@ -515,19 +500,19 @@ export function handleForgotPasswordConfirm(req, res) {
   }
 
   const updatedAt = nowIso();
-  db.prepare(`
-    UPDATE users
-    SET password = ?, updated_at = ?
-    WHERE id = ?
-  `).run(hashPassword(nextPassword), updatedAt, user.id);
+  await updateUserInStore(user.id, (target) => ({
+    ...target,
+    password: hashPassword(nextPassword),
+    updatedAt,
+  }));
 
-  db.prepare(`
+  await sqlExec(`
     UPDATE password_reset_tokens
-    SET used_at = ?
-    WHERE id = ?
-  `).run(updatedAt, resetRecord.id);
+    SET used_at = $1::timestamptz
+    WHERE id = $2
+  `, [updatedAt, resetRecord.id]);
 
-  db.prepare("DELETE FROM auth_sessions WHERE user_id = ?").run(user.id);
+  await sqlExec("DELETE FROM auth_sessions WHERE user_id = $1", [user.id]);
 
   return res.json({
     ok: true,

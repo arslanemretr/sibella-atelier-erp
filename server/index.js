@@ -18,7 +18,10 @@ const app = express();
 const port = Number(process.env.API_PORT || 4001);
 
 app.use(express.json({ limit: "25mb" }));
-migrateLegacyPasswords();
+
+void migrateLegacyPasswords().catch((error) => {
+  console.error("Legacy password migration hatasi:", error?.message || error);
+});
 
 app.get("/api/health", (_req, res) => {
   const runtime = getDatabaseRuntimeInfo();
@@ -40,14 +43,14 @@ app.post("/api/settings/smtp/test", requireRole("Yonetici"), handleSmtpTestEmail
 
 app.use("/api/store", requireAuth);
 
-app.get("/api/store", (_req, res) => {
+app.get("/api/store", async (_req, res) => {
   res.json({
-    items: listStoreKeys(),
+    items: await listStoreKeys(),
   });
 });
 
-app.get("/api/store/:key", (req, res) => {
-  const record = getStoreValue(req.params.key);
+app.get("/api/store/:key", async (req, res) => {
+  const record = await getStoreValue(req.params.key);
   if (!record) {
     return res.status(404).json({
       ok: false,
@@ -62,7 +65,7 @@ app.get("/api/store/:key", (req, res) => {
   });
 });
 
-app.put("/api/store/:key", (req, res) => {
+app.put("/api/store/:key", async (req, res) => {
   const { value } = req.body || {};
   if (typeof value === "undefined") {
     return res.status(400).json({
@@ -71,7 +74,7 @@ app.put("/api/store/:key", (req, res) => {
     });
   }
 
-  const saved = setStoreValue(req.params.key, value);
+  const saved = await setStoreValue(req.params.key, value);
   return res.json({
     ok: true,
     ...saved,

@@ -1,5 +1,7 @@
 import nodemailer from "nodemailer";
-import { db } from "./db.js";
+import { getStoreValue } from "./db.js";
+
+const SMTP_STORE_KEY = "sibella.erp.smtpSettings.v1";
 
 function envBool(value, fallback = false) {
   if (value === undefined || value === null || value === "") {
@@ -8,32 +10,28 @@ function envBool(value, fallback = false) {
   return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
 }
 
-function getSmtpSettingsFromDb() {
-  const row = db.prepare(`
-    SELECT enabled, host, port, secure, username, password, from_name, from_email
-    FROM smtp_settings
-    WHERE id = 1
-  `).get();
-
-  if (!row || !row.enabled) {
+async function getSmtpSettingsFromStore() {
+  const record = await getStoreValue(SMTP_STORE_KEY);
+  const settings = record?.value;
+  if (!settings || !settings.enabled) {
     return null;
   }
 
   return {
-    host: String(row.host || "").trim(),
-    port: Number(row.port || 587),
-    secure: Boolean(row.secure),
-    username: String(row.username || "").trim(),
-    password: String(row.password || ""),
-    fromName: String(row.from_name || "").trim(),
-    fromEmail: String(row.from_email || "").trim(),
+    host: String(settings.host || "").trim(),
+    port: Number(settings.port || 587),
+    secure: Boolean(settings.secure),
+    username: String(settings.username || "").trim(),
+    password: String(settings.password || ""),
+    fromName: String(settings.fromName || "").trim(),
+    fromEmail: String(settings.fromEmail || "").trim(),
   };
 }
 
-function getSmtpSettings() {
-  const dbSettings = getSmtpSettingsFromDb();
-  if (dbSettings) {
-    return dbSettings;
+async function getSmtpSettings() {
+  const storeSettings = await getSmtpSettingsFromStore();
+  if (storeSettings) {
+    return storeSettings;
   }
 
   if (!process.env.SMTP_HOST) {
@@ -63,8 +61,8 @@ function createTransportFromSettings(settings) {
   });
 }
 
-export function isSmtpConfigured() {
-  const settings = getSmtpSettings();
+export async function isSmtpConfigured() {
+  const settings = await getSmtpSettings();
   return Boolean(
     settings &&
     settings.host &&
@@ -76,16 +74,13 @@ export function isSmtpConfigured() {
 }
 
 export async function sendPasswordResetEmail({ toEmail, resetCode, expiresAt }) {
-  const settings = getSmtpSettings();
+  const settings = await getSmtpSettings();
   if (!settings) {
     return { sent: false, reason: "SMTP_NOT_CONFIGURED" };
   }
 
   const transporter = createTransportFromSettings(settings);
-
-  const expiryText = expiresAt
-    ? new Date(expiresAt).toLocaleString("tr-TR")
-    : "-";
+  const expiryText = expiresAt ? new Date(expiresAt).toLocaleString("tr-TR") : "-";
 
   const info = await transporter.sendMail({
     from: settings.fromName
@@ -113,7 +108,7 @@ export async function sendPasswordResetEmail({ toEmail, resetCode, expiresAt }) 
 }
 
 export async function sendSmtpTestEmail({ toEmail }) {
-  const settings = getSmtpSettings();
+  const settings = await getSmtpSettings();
   if (!settings) {
     return { sent: false, reason: "SMTP_NOT_CONFIGURED" };
   }
