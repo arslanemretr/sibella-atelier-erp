@@ -3,7 +3,6 @@ import { listSuppliers } from "./suppliersData";
 import { readPersistentStore, writePersistentStore } from "./serverStore";
 
 const STORAGE_KEY = "sibella.erp.products.v1";
-const PURCHASES_STORAGE_KEY = "sibella.erp.purchases.v2";
 const STOCK_ENTRIES_STORAGE_KEY = "sibella.erp.stockEntries.v2";
 const POS_SALES_STORAGE_KEY = "sibella.erp.posSales.v2";
 
@@ -230,16 +229,9 @@ function addMovementDelta(map, productId, delta) {
 }
 
 function buildProductMovementDeltaMap() {
-  const purchases = readPersistentStore(PURCHASES_STORAGE_KEY, []);
   const stockEntries = readPersistentStore(STOCK_ENTRIES_STORAGE_KEY, []);
   const posSales = readPersistentStore(POS_SALES_STORAGE_KEY, []);
   const movementByProductId = new Map();
-
-  purchases.forEach((purchase) => {
-    (purchase?.lines || []).forEach((line) => {
-      addMovementDelta(movementByProductId, line?.productId, toNumber(line?.quantity));
-    });
-  });
 
   stockEntries
     .filter((entry) => entry?.status === "Tamamlandi")
