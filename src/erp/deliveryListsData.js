@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { createStockEntry } from "./stockEntriesData";
 import { getProductById } from "./productsData";
 import { readPersistentStore, writePersistentStore } from "./serverStore";
 import { getSupplierById, listSuppliers } from "./suppliersData";
@@ -181,6 +182,8 @@ function normalizeDeliveryRecord(values, existingRecord) {
     trackingNo: values.trackingNo || existingRecord?.trackingNo || "",
     note: values.note || existingRecord?.note || "",
     status: values.status || existingRecord?.status || "Taslak",
+    stockEntryId: values.stockEntryId || existingRecord?.stockEntryId || null,
+    inventoryPostedAt: values.inventoryPostedAt || existingRecord?.inventoryPostedAt || null,
     createdBy: values.createdBy || existingRecord?.createdBy || null,
     lines,
     createdAt: existingRecord?.createdAt || nowIso(),
@@ -222,6 +225,49 @@ export function updateDeliveryList(deliveryListId, values) {
   }
 
   const updatedRecord = normalizeDeliveryRecord(values, existingRecord);
+  saveStore(store.map((item) => (item.id === deliveryListId ? updatedRecord : item)));
+  return enrichRecord(updatedRecord);
+}
+
+export function completeDeliveryReceipt(deliveryListId) {
+  const store = loadStore();
+  const existingRecord = store.find((item) => item.id === deliveryListId);
+  if (!existingRecord) {
+    throw new Error("Teslimat kaydi bulunamadi.");
+  }
+
+  if (existingRecord.stockEntryId || existingRecord.inventoryPostedAt) {
+    return enrichRecord(existingRecord);
+  }
+
+  const invalidLines = (existingRecord.lines || []).filter((line) => !line?.productId);
+  if (invalidLines.length > 0) {
+    throw new Error("Bazi satirlar urun kartina bagli degil. Teslim almadan once urunleri eslestirin.");
+  }
+
+  const stockEntry = createStockEntry({
+    documentNo: `STK-${existingRecord.deliveryNo || existingRecord.id}`,
+    sourcePartyId: existingRecord.supplierId || null,
+    date: existingRecord.date || new Date().toISOString().slice(0, 10),
+    stockType: "Urun",
+    sourceType: "Tedarikci Teslimati",
+    status: "Tamamlandi",
+    note: existingRecord.note || `Teslimat formundan olusturuldu: ${existingRecord.deliveryNo || existingRecord.id}`,
+    lines: (existingRecord.lines || []).map((line) => ({
+      productId: line.productId,
+      quantity: Number(line.quantity || 0),
+      unitCost: 0,
+      note: line.description || "",
+    })),
+  });
+
+  const updatedRecord = normalizeDeliveryRecord({
+    ...existingRecord,
+    status: "Tamamlandi",
+    stockEntryId: stockEntry.id,
+    inventoryPostedAt: nowIso(),
+  }, existingRecord);
+
   saveStore(store.map((item) => (item.id === deliveryListId ? updatedRecord : item)));
   return enrichRecord(updatedRecord);
 }

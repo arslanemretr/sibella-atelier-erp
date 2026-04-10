@@ -7,7 +7,7 @@ import * as XLSX from "xlsx";
 import { getAuthUser } from "../auth";
 import { createContract, deleteContract, listContracts, updateContract } from "./contractsData";
 import { fetchDashboardSummary } from "./dashboardApi";
-import { createDeliveryList, createDeliveryPdf, getDeliveryListById, getNextDeliveryNoPreview, listDeliveryLists, listDeliveryListsBySupplier, updateDeliveryList } from "./deliveryListsData";
+import { completeDeliveryReceipt, createDeliveryList, createDeliveryPdf, getDeliveryListById, getNextDeliveryNoPreview, listDeliveryLists, listDeliveryListsBySupplier, updateDeliveryList } from "./deliveryListsData";
 import { createMasterData, listMasterData, masterDataDefinitions, updateMasterData } from "./masterData";
 import { buildPosProductCatalog, closePosSession, createPosSale, createPosSession, findProductByBarcode, getOpenPosSessions, listPosSales, listPosSessions } from "./posData";
 import { createProduct, deleteProduct, generateProductCodeForSupplier, getProductById, importProducts, listProducts, listProductsBySupplier, updateProduct } from "./productsData";
@@ -497,9 +497,29 @@ export function ProductListPage() {
   }))];
   const statusOptions = ["Tumu", "Aktif", "Pasif"].map((value) => ({ value, label: value }));
 
-  const refreshProducts = () => {
+  const refreshProducts = React.useCallback(() => {
     setProducts(listProducts());
-  };
+  }, []);
+
+  React.useEffect(() => {
+    refreshProducts();
+
+    const handleFocus = () => {
+      refreshProducts();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshProducts();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshProducts]);
 
   const persistSavedFilters = (nextSavedFilters) => {
     setSavedFilters(nextSavedFilters);
@@ -5571,15 +5591,35 @@ export function SupplierDeliveryListsPage() {
       return;
     }
 
-    const updatedRecord = updateDeliveryList(recordId, {
-      ...record,
-      status,
-    });
-    if (status === "Onaylandi") {
-      await createDeliveryPdf(updatedRecord);
+    let updatedRecord = null;
+    if (status === "Tamamlandi") {
+      if ((record.status || "Taslak") !== "Onaylandi") {
+        message.warning("Teslim alma islemi sadece onayli kayitlar icin yapilabilir.");
+        return;
+      }
+
+      try {
+        updatedRecord = completeDeliveryReceipt(recordId);
+      } catch (error) {
+        message.error(error?.message || "Teslimat stoğa aktarilirken hata olustu.");
+        return;
+      }
+    } else {
+      updatedRecord = updateDeliveryList(recordId, {
+        ...record,
+        status,
+      });
+      if (status === "Onaylandi") {
+        await createDeliveryPdf(updatedRecord);
+      }
     }
+
     refreshRecords();
-    message.success(`Teslimat durumu "${status}" olarak guncellendi.`);
+    message.success(
+      status === "Tamamlandi"
+        ? "Teslimat tamamlandi ve stok hareketlerine aktarildi."
+        : `Teslimat durumu "${status}" olarak guncellendi.`,
+    );
   };
 
   const columns = [
@@ -5654,7 +5694,13 @@ export function SupplierDeliveryListsPage() {
           <Button type="text" onClick={(event) => { event.stopPropagation(); navigate(`/supplier-portal/delivery-lists/${record.id}`); }}>Teslimat Formu</Button>
           <Button type="text" onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Revizyon Istendi"); }}>Revizyon</Button>
           <Button type="text" onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Onaylandi"); }}>Onayla</Button>
-          <Button type="text" onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Tamamlandi"); }}>Teslim Alindi</Button>
+          <Button
+            type="text"
+            disabled={(record.status || "Taslak") !== "Onaylandi" || Boolean(record.stockEntryId || record.inventoryPostedAt)}
+            onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Tamamlandi"); }}
+          >
+            Teslim Alindi
+          </Button>
         </Space>
       ),
     },
