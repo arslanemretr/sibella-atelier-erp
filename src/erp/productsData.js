@@ -3,6 +3,9 @@ import { listSuppliers } from "./suppliersData";
 import { readPersistentStore, writePersistentStore } from "./serverStore";
 
 const STORAGE_KEY = "sibella.erp.products.v1";
+const PURCHASES_STORAGE_KEY = "sibella.erp.purchases.v2";
+const STOCK_ENTRIES_STORAGE_KEY = "sibella.erp.stockEntries.v2";
+const POS_SALES_STORAGE_KEY = "sibella.erp.posSales.v2";
 
 function createId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -213,8 +216,87 @@ function seedProducts() {
   ];
 }
 
+function toNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function addMovementDelta(map, productId, delta) {
+  if (!productId) {
+    return;
+  }
+
+  map.set(productId, toNumber(map.get(productId)) + toNumber(delta));
+}
+
+function buildProductMovementDeltaMap() {
+  const purchases = readPersistentStore(PURCHASES_STORAGE_KEY, []);
+  const stockEntries = readPersistentStore(STOCK_ENTRIES_STORAGE_KEY, []);
+  const posSales = readPersistentStore(POS_SALES_STORAGE_KEY, []);
+  const movementByProductId = new Map();
+
+  purchases.forEach((purchase) => {
+    (purchase?.lines || []).forEach((line) => {
+      addMovementDelta(movementByProductId, line?.productId, toNumber(line?.quantity));
+    });
+  });
+
+  stockEntries
+    .filter((entry) => entry?.status === "Tamamlandi")
+    .forEach((entry) => {
+      (entry?.lines || []).forEach((line) => {
+        addMovementDelta(movementByProductId, line?.productId, toNumber(line?.quantity));
+      });
+    });
+
+  posSales.forEach((sale) => {
+    (sale?.lines || []).forEach((line) => {
+      addMovementDelta(movementByProductId, line?.productId, -toNumber(line?.quantity));
+    });
+  });
+
+  return movementByProductId;
+}
+
+function ensureOpeningStocks(products, movementByProductId) {
+  let changed = false;
+  const nextProducts = products.map((product) => {
+    if (product?.openingStock !== undefined && product?.openingStock !== null) {
+      return product;
+    }
+
+    changed = true;
+    const movementDelta = toNumber(movementByProductId.get(product.id));
+    const currentStock = toNumber(product.stock);
+    return {
+      ...product,
+      openingStock: currentStock - movementDelta,
+      updatedAt: product.updatedAt || nowIso(),
+    };
+  });
+
+  return { nextProducts, changed };
+}
+
+function calculateProductStock(product, movementByProductId) {
+  if (!product?.trackInventory) {
+    return toNumber(product?.stock);
+  }
+
+  const openingStock = toNumber(product?.openingStock);
+  const movementDelta = toNumber(movementByProductId.get(product.id));
+  return Math.max(0, openingStock + movementDelta);
+}
+
 function loadStore() {
-  return readPersistentStore(STORAGE_KEY, seedProducts());
+  const records = readPersistentStore(STORAGE_KEY, seedProducts());
+  const movementByProductId = buildProductMovementDeltaMap();
+  const { nextProducts, changed } = ensureOpeningStocks(records, movementByProductId);
+  if (changed) {
+    writePersistentStore(STORAGE_KEY, nextProducts);
+  }
+
+  return nextProducts;
 }
 
 function saveStore(records) {
@@ -225,25 +307,31 @@ function mapLookup(entityKey, idKey, labelKey) {
   return Object.fromEntries(listMasterData(entityKey).map((item) => [item[idKey], item[labelKey]]));
 }
 
-function enrichProduct(product) {
+function enrichProduct(product, movementByProductId = buildProductMovementDeltaMap()) {
   const categoryMap = mapLookup("categories", "id", "fullPath");
   const collectionMap = mapLookup("collections", "id", "name");
   const posCategoryMap = mapLookup("pos-categories", "id", "name");
   const supplierMap = Object.fromEntries(listSuppliers().map((item) => [item.id, item.company]));
+  const liveStock = calculateProductStock(product, movementByProductId);
 
   return {
     ...product,
+    stock: liveStock,
     categoryLabel: categoryMap[product.categoryId] || "-",
     collectionLabel: collectionMap[product.collectionId] || "-",
     posCategoryLabel: posCategoryMap[product.posCategoryId] || "-",
     supplierLabel: supplierMap[product.supplierId] || "-",
     priceDisplay: formatMoney(product.salePrice, product.saleCurrency),
     costDisplay: formatMoney(product.cost, product.costCurrency),
-    stockDisplay: String(product.stock ?? 0),
+    stockDisplay: String(liveStock),
   };
 }
 
 function normalizeProduct(values, existingProduct) {
+  const hasStockInput = values?.stock !== undefined && values?.stock !== null && values?.stock !== "";
+  const initialStock = hasStockInput ? Number(values.stock) : 0;
+  const openingStock = existingProduct?.openingStock ?? initialStock;
+
   return {
     id: existingProduct?.id || createId("prd"),
     code: values.code || "",
@@ -260,7 +348,8 @@ function normalizeProduct(values, existingProduct) {
     supplierCode: values.supplierCode || "",
     minStock: Number(values.minStock || 0),
     supplierLeadTime: Number(values.supplierLeadTime || 0),
-    stock: existingProduct?.stock ?? 0,
+    stock: existingProduct?.stock ?? openingStock,
+    openingStock,
     productType: values.productType || "kendi",
     salesTax: values.salesTax || "%20",
     image: values.image || "/products/baroque-necklace.svg",
@@ -285,13 +374,15 @@ function normalizeProduct(values, existingProduct) {
 }
 
 export function listProducts() {
-  return loadStore().map(enrichProduct);
+  const movementByProductId = buildProductMovementDeltaMap();
+  return loadStore().map((product) => enrichProduct(product, movementByProductId));
 }
 
 export function listProductsBySupplier(supplierId) {
+  const movementByProductId = buildProductMovementDeltaMap();
   return loadStore()
     .filter((item) => item.supplierId === supplierId)
-    .map(enrichProduct);
+    .map((product) => enrichProduct(product, movementByProductId));
 }
 
 export function getProductById(productId) {
@@ -354,21 +445,9 @@ export function importProducts(rows) {
 }
 
 export function applyProductStockAdjustments(adjustments) {
-  const store = loadStore();
-  const adjustmentMap = new Map(adjustments.map((item) => [item.productId, Number(item.delta || 0)]));
-  const nextStore = store.map((item) => {
-    const delta = adjustmentMap.get(item.id);
-    if (!delta) {
-      return item;
-    }
-
-    return {
-      ...item,
-      stock: Math.max(0, Number(item.stock || 0) + delta),
-      updatedAt: nowIso(),
-    };
-  });
-
-  saveStore(nextStore);
-  return nextStore.map(enrichProduct);
+  // Stok artik hareketlerden hesaplanir; geriye donuk API uyumu icin no-op.
+  if (!Array.isArray(adjustments) || !adjustments.length) {
+    return loadStore().map(enrichProduct);
+  }
+  return loadStore().map(enrichProduct);
 }
