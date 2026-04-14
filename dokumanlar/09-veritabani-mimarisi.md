@@ -17,7 +17,7 @@ Mevcut frontend modulleri bozulmadan korunmustur. Bunun icin her module ozel sto
 Kullanilan ana kayit anahtarlari:
 
 - `sibella.erp.masterData.v1`
-- `sibella.erp.users.v1`
+- Kullanici verisi artik dogrudan `users` tablosunda tutulur
 - `sibella.erp.suppliers.v1`
 - `sibella.erp.products.v1`
 - `sibella.erp.purchases.v2`

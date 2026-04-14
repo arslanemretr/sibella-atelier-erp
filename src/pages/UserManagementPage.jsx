@@ -14,7 +14,7 @@ import {
   message,
 } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
-import { listSuppliers } from "../erp/suppliersData";
+import { listSuppliersFresh } from "../erp/suppliersData";
 import { createUser, deleteUser, listUsersFresh, updateUser } from "../erp/usersData";
 
 const { Title, Text } = Typography;
@@ -24,20 +24,32 @@ const statusOptions = ["Aktif", "Pasif"].map((value) => ({ value, label: value }
 
 function UserManagementPage() {
   const [form] = Form.useForm();
-  const [users, setUsers] = React.useState(() => listUsersFresh());
+  const [users, setUsers] = React.useState([]);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editingUser, setEditingUser] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
+  const [tableLoading, setTableLoading] = React.useState(false);
+  const [supplierOptions, setSupplierOptions] = React.useState([]);
   const watchedRole = Form.useWatch("role", form);
-  const supplierOptions = React.useMemo(
-    () => listSuppliers().map((item) => ({ value: item.id, label: item.company })),
-    [],
-  );
 
-  const refreshUsers = () => setUsers(listUsersFresh());
+  const refreshUsers = async () => {
+    setTableLoading(true);
+    try {
+      const [nextUsers, suppliers] = await Promise.all([
+        listUsersFresh(),
+        listSuppliersFresh(),
+      ]);
+      setUsers(nextUsers);
+      setSupplierOptions(suppliers.map((item) => ({ value: item.id, label: item.company })));
+    } catch (error) {
+      message.error(error?.message || "Kullanici listesi alinamadi.");
+    } finally {
+      setTableLoading(false);
+    }
+  };
 
   React.useEffect(() => {
-    refreshUsers();
+    void refreshUsers();
   }, []);
 
   const openCreate = () => {
@@ -73,15 +85,19 @@ function UserManagementPage() {
       };
 
       if (editingUser) {
-        updateUser(editingUser.id, payload);
+        await updateUser(editingUser.id, payload);
         message.success("Kullanici guncellendi.");
       } else {
-        createUser(payload);
+        await createUser(payload);
         message.success("Kullanici eklendi.");
       }
 
       setDrawerOpen(false);
-      refreshUsers();
+      await refreshUsers();
+    } catch (error) {
+      if (!error?.errorFields) {
+        message.error(error?.message || "Kullanici kaydi basarisiz oldu.");
+      }
     } finally {
       setLoading(false);
     }
@@ -119,9 +135,15 @@ function UserManagementPage() {
         <Space size={8}>
           <Button type="text" className="erp-icon-btn erp-icon-btn-edit" icon={<EditOutlined />} onClick={() => openEdit(record)} />
           <Popconfirm title="Kullanici silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => {
-            deleteUser(record.id);
-            refreshUsers();
-            message.success("Kullanici silindi.");
+            void (async () => {
+              try {
+                await deleteUser(record.id);
+                await refreshUsers();
+                message.success("Kullanici silindi.");
+              } catch (error) {
+                message.error(error?.message || "Kullanici silinemedi.");
+              }
+            })();
           }}>
             <Button type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} />
           </Popconfirm>
@@ -141,7 +163,7 @@ function UserManagementPage() {
       </div>
 
       <Card>
-        <Table rowKey="id" columns={columns} dataSource={users} pagination={{ pageSize: 10 }} />
+        <Table rowKey="id" loading={tableLoading} columns={columns} dataSource={users} pagination={{ pageSize: 10 }} />
       </Card>
 
       <Drawer
