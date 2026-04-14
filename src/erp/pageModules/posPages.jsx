@@ -1,0 +1,1178 @@
+﻿import React from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Avatar, Button, Card, Col, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Select, Space, Table, Tag, Typography, message } from "antd";
+import { BarcodeOutlined, DeleteOutlined, EditOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { listMasterDataFresh } from "../masterData";
+import { buildPosProductCatalogFresh, closePosSession, createPosSale, createPosSession, findProductByBarcode, getOpenPosSessionsFresh, listPosSalesFresh, listPosSessionsFresh } from "../posData";
+
+const { Title, Text } = Typography;
+
+function openDetailFromRow(setSelected, setOpen, record) {
+  setSelected(record);
+  setOpen(true);
+}
+
+function preventRowClick(event) {
+  event.stopPropagation();
+}
+
+function formatMovementMoney(value) {
+  return new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency: "TRY",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+}
+export function PosSessionsPage() {
+  const navigate = useNavigate();
+  const [detailOpen, setDetailOpen] = React.useState(false);
+  const [selectedSession, setSelectedSession] = React.useState(null);
+  const [sessions, setSessions] = React.useState([]);
+  const [sales, setSales] = React.useState([]);
+  const [tableLoading, setTableLoading] = React.useState(false);
+  const [createModalOpen, setCreateModalOpen] = React.useState(false);
+  const [form] = Form.useForm();
+
+  const refreshSessions = React.useCallback(async () => {
+    try {
+      setTableLoading(true);
+      const [nextSessions, nextSales] = await Promise.all([
+        listPosSessionsFresh(),
+        listPosSalesFresh(),
+      ]);
+      setSessions(nextSessions);
+      setSales(nextSales);
+    } catch (error) {
+      message.error(error?.message || "POS oturumlari yuklenemedi.");
+    } finally {
+      setTableLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void refreshSessions();
+  }, [refreshSessions]);
+
+  const handleCreateSession = async () => {
+    try {
+      const values = await form.validateFields();
+      createPosSession(values);
+      form.resetFields();
+      setCreateModalOpen(false);
+      await refreshSessions();
+      message.success("POS oturumu açıldı.");
+    } catch {
+      // validation handled by form
+    }
+  };
+
+  const handleCloseSession = (sessionId) => {
+    closePosSession(sessionId);
+    void refreshSessions();
+    message.success("POS oturumu kapatıldı.");
+  };
+
+  const columns = [
+    {
+      title: "Oturum No",
+      dataIndex: "sessionNo",
+      key: "sessionNo",
+      sorter: (a, b) => a.sessionNo.localeCompare(b.sessionNo, "tr"),
+      render: (value, record) => (
+        <button
+          type="button"
+          className="erp-link-button"
+          onClick={(event) => {
+            event.stopPropagation();
+            navigate(`/pos/store?session=${record.id}`);
+          }}
+        >
+          {value}
+        </button>
+      ),
+    },
+    { title: "Kasa", dataIndex: "registerName", key: "registerName", sorter: (a, b) => a.registerName.localeCompare(b.registerName, "tr") },
+    { title: "Kasiyer", dataIndex: "cashierName", key: "cashierName", sorter: (a, b) => a.cashierName.localeCompare(b.cashierName, "tr") },
+    { title: "Açılış", dataIndex: "openedAt", key: "openedAt", sorter: (a, b) => a.openedAt.localeCompare(b.openedAt, "tr"), render: (value) => new Date(value).toLocaleString("tr-TR") },
+    { title: "Açılış Bakiye", dataIndex: "openingBalanceDisplay", key: "openingBalanceDisplay", sorter: (a, b) => a.openingBalance - b.openingBalance },
+    { title: "Satış", dataIndex: "totalSalesDisplay", key: "totalSalesDisplay", sorter: (a, b) => a.totalSales - b.totalSales },
+    { title: "Fiş", dataIndex: "salesCount", key: "salesCount", sorter: (a, b) => a.salesCount - b.salesCount },
+    { title: "Durum", dataIndex: "status", key: "status", sorter: (a, b) => a.status.localeCompare(b.status, "tr"), render: (value) => <Tag color={value === "Açık" ? "green" : "default"}>{value}</Tag> },
+    {
+      title: "İşlemler",
+      key: "actions",
+      render: (_, record) => (
+        <Space size={8}>
+          <Button
+            type="text"
+            className="erp-icon-btn erp-icon-btn-edit"
+            icon={<EditOutlined />}
+            onClick={(event) => {
+              event.stopPropagation();
+              navigate(`/pos/store?session=${record.id}`);
+            }}
+          />
+          {record.status === "Açık" ? (
+            <Popconfirm title="Oturum kapatılsın mı?" okText="Kapat" cancelText="Vazgeç" onConfirm={() => handleCloseSession(record.id)}>
+              <span onClick={preventRowClick}>
+                <Button type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} />
+              </span>
+            </Popconfirm>
+          ) : null}
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+        <div>
+          <Title level={3} style={{ marginBottom: 6 }}>POS Oturumları</Title>
+          <Text type="secondary">Açılan kasa oturumları, satış toplamları ve açık/kapalı durumları burada tutulur.</Text>
+        </div>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={() => { void refreshSessions(); message.success("Oturumlar yenilendi."); }}>Yenile</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>Oturum Aç</Button>
+        </Space>
+      </div>
+
+      <Card title="POS Oturum Listesi" className="erp-list-table-card">
+        <Table
+          loading={tableLoading}
+          columns={columns}
+          dataSource={sessions.map((item) => ({ key: item.id, ...item }))}
+          pagination={false}
+          onRow={(record) => ({
+            onClick: () => openDetailFromRow(setSelectedSession, setDetailOpen, record),
+          })}
+          rowClassName={() => "erp-clickable-row"}
+        />
+        <div className="erp-table-footer">
+          <Space>
+            <span>Sayfa Boyutu:</span>
+            <Select defaultValue="100" size="small" style={{ width: 84 }} options={["25", "50", "100"].map((value) => ({ value, label: value }))} />
+          </Space>
+          <Space size={18}>
+            <span>1 - {sessions.length} / {sessions.length}</span>
+            <span>Sayfa 1 / 1</span>
+          </Space>
+        </div>
+      </Card>
+
+      <Drawer title="Oturum Detayı" placement="right" width={520} open={detailOpen} onClose={() => setDetailOpen(false)}>
+        {selectedSession ? (
+          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="Oturum No">{selectedSession.sessionNo}</Descriptions.Item>
+              <Descriptions.Item label="Kasa">{selectedSession.registerName}</Descriptions.Item>
+              <Descriptions.Item label="Kasiyer">{selectedSession.cashierName}</Descriptions.Item>
+              <Descriptions.Item label="Açılış">{new Date(selectedSession.openedAt).toLocaleString("tr-TR")}</Descriptions.Item>
+              <Descriptions.Item label="Kapanış">{selectedSession.closedAt ? new Date(selectedSession.closedAt).toLocaleString("tr-TR") : "-"}</Descriptions.Item>
+              <Descriptions.Item label="Açılış Bakiye">{selectedSession.openingBalanceDisplay}</Descriptions.Item>
+              <Descriptions.Item label="Satış">{selectedSession.totalSalesDisplay}</Descriptions.Item>
+              <Descriptions.Item label="Sipariş Adedi">{selectedSession.salesCount}</Descriptions.Item>
+              <Descriptions.Item label="Durum">{selectedSession.status}</Descriptions.Item>
+              <Descriptions.Item label="Not">{selectedSession.note || "-"}</Descriptions.Item>
+            </Descriptions>
+
+            <Card size="small" title="Bu Oturuma Ait Siparişler">
+              <Table
+                rowKey="id"
+                pagination={false}
+                size="small"
+                dataSource={sales.filter((sale) => sale.sessionId === selectedSession.id)}
+                columns={[
+                  { title: "Fiş", dataIndex: "receiptNo", key: "receiptNo" },
+                  { title: "Müşteri", dataIndex: "customerName", key: "customerName" },
+                  { title: "Tarih", dataIndex: "soldAt", key: "soldAt", render: (value) => new Date(value).toLocaleString("tr-TR") },
+                  { title: "Toplam", dataIndex: "grandTotalDisplay", key: "grandTotalDisplay" },
+                ]}
+              />
+            </Card>
+          </Space>
+        ) : null}
+      </Drawer>
+
+      <Modal title="Yeni POS Oturumu" open={createModalOpen} onCancel={() => setCreateModalOpen(false)} onOk={handleCreateSession} okText="Aç" cancelText="Vazgeç">
+        <Form form={form} layout="vertical" initialValues={{ registerName: "Magaza Ana Kasa", cashierName: "Sibel Ersoy Arslan", openingBalance: 0 }}>
+          <Row gutter={[12, 12]}>
+            <Col span={24}>
+              <Form.Item name="registerName" label="Kasa" rules={[{ required: true, message: "Kasa adı zorunludur." }]}>
+                <Input placeholder="Magaza Ana Kasa" />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item name="cashierName" label="Kasiyer" rules={[{ required: true, message: "Kasiyer adı zorunludur." }]}>
+                <Input placeholder="Kasiyer adı" />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item name="openingBalance" label="Açılış Bakiyesi">
+                <InputNumber min={0} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item name="note" label="Not">
+                <Input.TextArea rows={3} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+    </Space>
+  );
+}
+
+export function PosScreenPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const DRAFT_STORAGE_KEY = "sibella.erp.posDraftOrders.v1";
+  const [catalog, setCatalog] = React.useState([]);
+  const [sessions, setSessions] = React.useState([]);
+  const [posSales, setPosSales] = React.useState([]);
+  const [posCategoryStateOptions, setPosCategoryStateOptions] = React.useState([{ id: "all", name: "Tumu", color: "#fee89a" }]);
+  const [pageLoading, setPageLoading] = React.useState(false);
+  const [activeSessionId, setActiveSessionId] = React.useState();
+  const [orderDraftsBySession, setOrderDraftsBySession] = React.useState(() => {
+    if (typeof window === "undefined") {
+      return {};
+    }
+
+    try {
+      return JSON.parse(window.localStorage.getItem(DRAFT_STORAGE_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  });
+  const [activeOrderIdBySession, setActiveOrderIdBySession] = React.useState({});
+  const [search, setSearch] = React.useState("");
+  const [activeCategory, setActiveCategory] = React.useState("all");
+  const [paymentModalOpen, setPaymentModalOpen] = React.useState(false);
+  const [openSessionModalOpen, setOpenSessionModalOpen] = React.useState(false);
+  const [ordersDrawerOpen, setOrdersDrawerOpen] = React.useState(false);
+  const [customerModalOpen, setCustomerModalOpen] = React.useState(false);
+  const [noteModalOpen, setNoteModalOpen] = React.useState(false);
+  const [discountModalOpen, setDiscountModalOpen] = React.useState(false);
+  const [selectedCartLineId, setSelectedCartLineId] = React.useState(null);
+  const [keypadMode, setKeypadMode] = React.useState("quantity");
+  const [keypadInput, setKeypadInput] = React.useState("");
+  const [sessionForm] = Form.useForm();
+  const [paymentForm] = Form.useForm();
+  const [customerForm] = Form.useForm();
+  const [noteForm] = Form.useForm();
+  const [discountForm] = Form.useForm();
+  const [barcodeValue, setBarcodeValue] = React.useState("");
+
+  const persistDraftOrders = React.useCallback((nextValue) => {
+    setOrderDraftsBySession(nextValue);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(nextValue));
+    }
+  }, []);
+
+  const buildEmptyOrder = React.useCallback((sessionId, index = 1) => ({
+    id: `draft-${sessionId}-${Date.now()}-${index}`,
+    title: `${1000 + index}`,
+    customerName: "",
+    note: "",
+    discountType: "amount",
+    discountValue: 0,
+    lines: [],
+    status: "open",
+    closedAt: null,
+  }), []);
+
+  React.useEffect(() => {
+    if (!activeSessionId && sessions.length) {
+      setActiveSessionId(sessions[0].id);
+    }
+  }, [activeSessionId, sessions]);
+
+  React.useEffect(() => {
+    const sessionIdFromQuery = new URLSearchParams(location.search).get("session");
+    if (sessionIdFromQuery) {
+      setActiveSessionId(sessionIdFromQuery);
+    }
+  }, [location.search]);
+
+  React.useEffect(() => {
+    if (!activeSessionId) {
+      return;
+    }
+
+    const existingOrders = orderDraftsBySession[activeSessionId];
+    if (!existingOrders || existingOrders.length === 0) {
+      const firstOrder = buildEmptyOrder(activeSessionId);
+      persistDraftOrders({
+        ...orderDraftsBySession,
+        [activeSessionId]: [firstOrder],
+      });
+      setActiveOrderIdBySession((prev) => ({
+        ...prev,
+        [activeSessionId]: prev[activeSessionId] || firstOrder.id,
+      }));
+      return;
+    }
+
+    setActiveOrderIdBySession((prev) => {
+      const currentActiveId = prev[activeSessionId];
+      const currentStillOpen = existingOrders.some((item) => item.id === currentActiveId && item.status === "open");
+      const firstOpenOrder = existingOrders.find((item) => item.status === "open");
+
+      return {
+        ...prev,
+        [activeSessionId]: currentStillOpen ? currentActiveId : firstOpenOrder?.id,
+      };
+    });
+  }, [activeSessionId, buildEmptyOrder, orderDraftsBySession, persistDraftOrders]);
+
+  const refreshPosContext = React.useCallback(async () => {
+    try {
+      setPageLoading(true);
+      const [nextCatalog, nextSessions, nextSales, posCategories] = await Promise.all([
+        buildPosProductCatalogFresh(),
+        getOpenPosSessionsFresh(),
+        listPosSalesFresh(),
+        listMasterDataFresh("pos-categories"),
+      ]);
+      setCatalog(nextCatalog);
+      setSessions(nextSessions);
+      setPosSales(nextSales);
+      setPosCategoryStateOptions([
+        { id: "all", name: "Tumu", color: "#fee89a" },
+        ...posCategories
+          .filter((item) => item.status === "Aktif")
+          .map((item, index) => ({
+            id: item.id,
+            name: item.name,
+            color: ["#fac898", "#f99aa0", "#ffd59e", "#b9edbe", "#ffe68f", "#b9ddff"][index % 6],
+          })),
+      ]);
+      setActiveSessionId((prev) => prev || nextSessions[0]?.id);
+    } catch (error) {
+      message.error(error?.message || "POS verileri yuklenemedi.");
+    } finally {
+      setPageLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void refreshPosContext();
+  }, [refreshPosContext]);
+
+  const activeSession = sessions.find((item) => item.id === activeSessionId);
+  const draftOrders = orderDraftsBySession[activeSessionId] || [];
+  const openDraftOrders = draftOrders.filter((item) => item.status === "open");
+  const closedDraftOrders = draftOrders.filter((item) => item.status === "closed");
+  const activeOrderId = activeOrderIdBySession[activeSessionId];
+  const activeOrder = openDraftOrders.find((item) => item.id === activeOrderId) || openDraftOrders[0];
+  const activeOrderLines = activeOrder?.lines;
+  const cart = activeOrderLines || [];
+  const sessionOrders = posSales.filter((sale) => sale.sessionId === activeSessionId);
+  const posCategoryOptions = posCategoryStateOptions;
+  /*
+    { id: "all", name: "Tümü", color: "#fee89a" },
+    ...listMasterData("pos-categories")
+      .filter((item) => item.status === "Aktif")
+      .map((item, index) => ({
+        id: item.id,
+        name: item.name,
+        color: ["#fac898", "#f99aa0", "#ffd59e", "#b9edbe", "#ffe68f", "#b9ddff"][index % 6],
+      })),
+  ];
+
+  */
+  const filteredCatalog = catalog.filter((product) => {
+    const matchesSearch =
+      !search.trim() ||
+      [product.name, product.code, product.barcode]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(search.trim().toLowerCase()));
+    const matchesCategory = activeCategory === "all" || product.posCategoryId === activeCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const calculateOrderTotals = React.useCallback((order) => {
+    const grossTotal = (order?.lines || []).reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
+    const discountType = order?.discountType || "amount";
+    const discountValue = Number(order?.discountValue || 0);
+    const discountAmount = discountType === "percent" ? (grossTotal * discountValue) / 100 : discountValue;
+    const normalizedDiscountAmount = Math.min(Math.max(discountAmount, 0), grossTotal);
+    const grandTotal = Math.max(grossTotal - normalizedDiscountAmount, 0);
+    const subtotal = grandTotal / 1.2;
+    const tax = grandTotal - subtotal;
+
+    return {
+      grossTotal,
+      discountAmount: normalizedDiscountAmount,
+      subtotal,
+      tax,
+      grandTotal,
+    };
+  }, []);
+
+  const orderTotals = calculateOrderTotals(activeOrder);
+  const cartTax = orderTotals.tax;
+  const cartGrandTotal = orderTotals.grandTotal;
+
+  React.useEffect(() => {
+    const currentCart = activeOrderLines || [];
+
+    if (!currentCart.length) {
+      setSelectedCartLineId(null);
+      setKeypadInput("");
+      return;
+    }
+
+    if (!selectedCartLineId || !currentCart.some((item) => item.productId === selectedCartLineId)) {
+      setSelectedCartLineId(currentCart[0].productId);
+      setKeypadInput("");
+    }
+  }, [activeOrderLines, selectedCartLineId]);
+
+  const updateActiveOrder = (updater) => {
+    if (!activeSessionId || !activeOrder) {
+      return;
+    }
+
+    const nextOrders = draftOrders.map((order) => (
+      order.id === activeOrder.id ? updater(order) : order
+    ));
+    persistDraftOrders({
+      ...orderDraftsBySession,
+      [activeSessionId]: nextOrders,
+    });
+  };
+
+  const createDraftOrder = (sessionIdOverride) => {
+    const normalizedSessionId =
+      typeof sessionIdOverride === "string"
+        ? sessionIdOverride
+        : activeSessionId;
+    const targetSessionId = normalizedSessionId || activeSessionId;
+    const targetOrders = orderDraftsBySession[targetSessionId] || [];
+
+    if (!targetSessionId) {
+      message.warning("Önce bir oturum açın.");
+      return;
+    }
+
+    const nextOrder = buildEmptyOrder(targetSessionId, targetOrders.length + 1);
+    const nextOrders = [...targetOrders, nextOrder];
+    persistDraftOrders({
+      ...orderDraftsBySession,
+      [targetSessionId]: nextOrders,
+    });
+    setActiveOrderIdBySession((prev) => ({
+      ...prev,
+      [targetSessionId]: nextOrder.id,
+    }));
+    setOrdersDrawerOpen(false);
+    message.success(`Yeni siparis acildi: ${nextOrder.title}`);
+  };
+
+  const removeOrderDraft = (orderId) => {
+    if (!activeSessionId) {
+      return;
+    }
+
+    const remainingOrders = draftOrders.filter((item) => item.id !== orderId);
+    const nextOrders = remainingOrders.length > 0 ? remainingOrders : [buildEmptyOrder(activeSessionId)];
+    persistDraftOrders({
+      ...orderDraftsBySession,
+      [activeSessionId]: nextOrders,
+    });
+    setActiveOrderIdBySession((prev) => ({
+      ...prev,
+      [activeSessionId]: nextOrders[0].id,
+    }));
+  };
+
+  const closeActiveOrder = () => {
+    if (!activeOrder) {
+      message.warning("Kapatilacak siparis bulunmuyor.");
+      return;
+    }
+
+    const nextOpenOrder = draftOrders.find((item) => item.id !== activeOrder.id && item.status === "open");
+
+    updateActiveOrder((order) => ({
+      ...order,
+      status: "closed",
+      closedAt: new Date().toISOString(),
+    }));
+
+    setActiveOrderIdBySession((prev) => ({
+      ...prev,
+      [activeSessionId]: nextOpenOrder?.id,
+    }));
+    message.success("Siparis kapatildi.");
+  };
+
+  const reopenDraftOrder = (orderId) => {
+    if (!activeSessionId) {
+      return;
+    }
+
+    const nextOrders = draftOrders.map((order) =>
+      order.id === orderId
+        ? {
+            ...order,
+            status: "open",
+            closedAt: null,
+          }
+        : order,
+    );
+
+    persistDraftOrders({
+      ...orderDraftsBySession,
+      [activeSessionId]: nextOrders,
+    });
+    setActiveOrderIdBySession((prev) => ({
+      ...prev,
+      [activeSessionId]: orderId,
+    }));
+    setOrdersDrawerOpen(false);
+  };
+
+  const getOrderDisplayTitle = (order) => {
+    if (!order) {
+      return "Yeni Siparis";
+    }
+
+    return order.customerName?.trim()
+      ? `${order.title} - ${order.customerName}`
+      : `${order.title} Yeni Siparis`;
+  };
+
+  const addProductToCart = (product) => {
+    if (!product || product.quantityAvailable <= 0) {
+      message.warning("Seçilen ürün için stok bulunmuyor.");
+      return;
+    }
+
+    updateActiveOrder((order) => {
+      const existing = order.lines.find((item) => item.productId === product.id);
+      if (existing) {
+        return {
+          ...order,
+          lines: order.lines.map((item) =>
+          item.productId === product.id
+            ? {
+                ...item,
+                quantity: item.quantity + 1,
+                lineTotal: (item.quantity + 1) * item.unitPrice,
+              }
+            : item,
+          ),
+        };
+      }
+
+      return {
+        ...order,
+        lines: [
+          ...order.lines,
+          {
+          productId: product.id,
+          code: product.code,
+          name: product.name,
+          quantity: 1,
+          unitPrice: Number(product.salePrice || 0),
+          lineTotal: Number(product.salePrice || 0),
+          },
+        ],
+      };
+    });
+  };
+
+  const handleBarcodeSubmit = () => {
+    const product = findProductByBarcode(barcodeValue);
+    if (!product) {
+      message.warning("Barkoda ait ürün bulunamadı.");
+      return;
+    }
+
+    addProductToCart(product);
+    setBarcodeValue("");
+  };
+
+  const updateCartQuantity = (productId, delta) => {
+    updateActiveOrder((order) => ({
+      ...order,
+      lines: order.lines
+        .map((item) => {
+          if (item.productId !== productId) {
+            return item;
+          }
+
+          const nextQuantity = item.quantity + delta;
+          if (nextQuantity <= 0) {
+            return null;
+          }
+
+          return {
+            ...item,
+            quantity: nextQuantity,
+            lineTotal: nextQuantity * item.unitPrice,
+          };
+        })
+        .filter(Boolean),
+    }));
+  };
+
+  const updateCartLineValue = (productId, nextValue, mode = "quantity") => {
+    updateActiveOrder((order) => ({
+      ...order,
+      lines: order.lines
+        .map((item) => {
+          if (item.productId !== productId) {
+            return item;
+          }
+
+          if (mode === "price") {
+            const unitPrice = Number(nextValue || 0);
+            return {
+              ...item,
+              unitPrice,
+              lineTotal: unitPrice * item.quantity,
+            };
+          }
+
+          const quantity = Number(nextValue || 0);
+          if (quantity <= 0) {
+            return null;
+          }
+
+          return {
+            ...item,
+            quantity,
+            lineTotal: quantity * item.unitPrice,
+          };
+        })
+        .filter(Boolean),
+    }));
+  };
+
+  const handleKeypadPress = (label) => {
+    if (!selectedCartLineId && !["Miktar", "Fiyat", "%"].includes(label)) {
+      message.warning("Once bir urun satiri secin.");
+      return;
+    }
+
+    if (label === "Miktar") {
+      setKeypadMode("quantity");
+      setKeypadInput("");
+      return;
+    }
+
+    if (label === "Fiyat") {
+      setKeypadMode("price");
+      setKeypadInput("");
+      return;
+    }
+
+    if (label === "%") {
+      if (activeOrder) {
+        discountForm.setFieldsValue({
+          discountType: activeOrder.discountType || "percent",
+          discountValue: activeOrder.discountValue || 0,
+        });
+        setDiscountModalOpen(true);
+      }
+      return;
+    }
+
+    if (label === "⌫") {
+      const nextInput = keypadInput.slice(0, -1);
+      setKeypadInput(nextInput);
+      if (!nextInput) {
+        return;
+      }
+      updateCartLineValue(selectedCartLineId, nextInput.replace(",", "."), keypadMode);
+      return;
+    }
+
+    if (label === "+/-") {
+      const selectedLine = cart.find((item) => item.productId === selectedCartLineId);
+      if (!selectedLine) {
+        return;
+      }
+      if (keypadMode === "price") {
+        const nextValue = selectedLine.unitPrice > 0 ? 0 : Number(selectedLine.unitPrice || 0);
+        updateCartLineValue(selectedCartLineId, nextValue, "price");
+        setKeypadInput(String(nextValue || ""));
+      } else {
+        updateCartQuantity(selectedCartLineId, selectedLine.quantity > 1 ? -1 : 1);
+      }
+      return;
+    }
+
+    const nextInput = `${keypadInput}${label === "," ? "." : label}`;
+    setKeypadInput(nextInput);
+    updateCartLineValue(selectedCartLineId, nextInput, keypadMode);
+  };
+
+  const handleCreateSession = async () => {
+    try {
+      const values = await sessionForm.validateFields();
+      const created = createPosSession(values);
+      setOpenSessionModalOpen(false);
+      sessionForm.resetFields();
+      void refreshPosContext();
+      setActiveSessionId(created.id);
+      createDraftOrder(created.id);
+      message.success("Yeni POS oturumu açıldı.");
+    } catch {
+      // validation handled by form
+    }
+  };
+
+  const handlePayment = async () => {
+    if (!activeSessionId) {
+      message.warning("Önce açık bir POS oturumu seçin.");
+      return;
+    }
+
+    if (!activeOrder || cart.length === 0) {
+      message.warning("Sepette ürün bulunmuyor.");
+      return;
+    }
+
+    try {
+      const values = await paymentForm.validateFields();
+      createPosSale({
+        sessionId: activeSessionId,
+        customerName: values.customerName || activeOrder.customerName,
+        paymentMethod: values.paymentMethod,
+        note: values.note || activeOrder.note,
+        discountType: activeOrder.discountType,
+        discountValue: activeOrder.discountValue,
+        lines: cart.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
+      });
+      setPaymentModalOpen(false);
+      paymentForm.resetFields();
+      const remainingOrders = draftOrders.filter((item) => item.id !== activeOrder.id);
+      const fallbackOrder = buildEmptyOrder(activeSessionId, remainingOrders.length + 1);
+      const nextOrders = remainingOrders.length > 0 ? remainingOrders : [fallbackOrder];
+      persistDraftOrders({
+        ...orderDraftsBySession,
+        [activeSessionId]: nextOrders,
+      });
+      setActiveOrderIdBySession((prev) => ({
+        ...prev,
+        [activeSessionId]: nextOrders[0].id,
+      }));
+      void refreshPosContext();
+      message.success("Satış tamamlandı.");
+    } catch (error) {
+      if (error?.message) {
+        message.error(error.message);
+      }
+    }
+  };
+
+  const openPaymentModal = () => {
+    if (!activeOrder) {
+      message.warning("Aktif sipariş bulunmuyor.");
+      return;
+    }
+
+    paymentForm.setFieldsValue({
+      customerName: activeOrder.customerName || "Magaza Musterisi",
+      paymentMethod: "Nakit",
+      note: activeOrder.note || "",
+    });
+    setPaymentModalOpen(true);
+  };
+
+  const actionMenu = {
+    items: [
+      { key: "sessions", label: "Oturumlara Git" },
+      { key: "reload", label: "Verileri Yeniden Yükle" },
+      { key: "open", label: "Yeni Oturum Aç" },
+      { key: "products", label: "Ürün Oluştur" },
+    ],
+    onClick: ({ key }) => {
+      if (key === "sessions") {
+        navigate("/pos/sessions");
+      }
+      if (key === "reload") {
+        void refreshPosContext();
+        message.success("POS verileri yenilendi.");
+      }
+      if (key === "open") {
+        setOpenSessionModalOpen(true);
+      }
+      if (key === "products") {
+        navigate("/products/new");
+      }
+    },
+  };
+
+  return (
+    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+      {!activeSession ? (
+        <Card className="erp-pos-opening-card" bordered={false}>
+          <Space direction="vertical" size={18} style={{ width: "100%", textAlign: "center" }}>
+            <div>
+              <Title level={2} style={{ marginBottom: 6 }}>POS Oturumu Kapali</Title>
+              <Text type="secondary">Kasa acilmadan urun satisina gecilmez. Oturum acilis ve kapanis tarihleri kayit altina alinir.</Text>
+            </div>
+            <div className="erp-pos-opening-meta">
+              <div>
+                <Text type="secondary">Bugun</Text>
+                <Title level={4} style={{ margin: 0 }}>{new Date().toLocaleDateString("tr-TR")}</Title>
+              </div>
+              <div>
+                <Text type="secondary">Saat</Text>
+                <Title level={4} style={{ margin: 0 }}>{new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</Title>
+              </div>
+            </div>
+            <Space wrap style={{ justifyContent: "center" }}>
+              <Button type="primary" size="large" className="erp-pos-open-session-btn" onClick={() => setOpenSessionModalOpen(true)}>Kasayi Acin</Button>
+              <Button size="large" onClick={() => navigate("/pos/sessions")}>Oturumlari Gor</Button>
+            </Space>
+          </Space>
+        </Card>
+      ) : null}
+
+      {activeSession ? (
+      <div className="erp-pos-shell">
+        <div className="erp-pos-left">
+          <div className="erp-pos-order-header">
+            <div className="erp-pos-order-header-main">
+              <Button type="primary" className="erp-pos-session-badge">
+                {activeSession?.sessionNo?.replace("POS-", "") || "Oturum"}
+              </Button>
+              <Button type="primary" className="erp-pos-orders-title-btn">Kaydolun</Button>
+              <Button className="erp-pos-orders-title-btn" onClick={() => setOrdersDrawerOpen(true)}>Siparisler</Button>
+              <Button icon={<PlusCircleOutlined />} onClick={() => createDraftOrder()}>Yeni</Button>
+            </div>
+            <div className="erp-pos-session-tabs">
+              {openDraftOrders.length > 0 ? openDraftOrders.map((order) => (
+                <Button
+                  key={order.id}
+                  type={activeOrder?.id === order.id ? "primary" : "default"}
+                  onClick={() => setActiveOrderIdBySession((prev) => ({ ...prev, [activeSessionId]: order.id }))}
+                >
+                  {order.title}
+                </Button>
+              )) : (
+                <Button type="primary" onClick={() => setOpenSessionModalOpen(true)}>Sipariş Aç</Button>
+              )}
+            </div>
+          </div>
+
+          <div className="erp-pos-order-list">
+            {activeOrder ? (
+              <div className="erp-pos-active-order-banner">
+                <div className="erp-pos-active-order-banner-row">
+                  <div>
+                    <Text strong>{getOrderDisplayTitle(activeOrder)}</Text>
+                    <Text type="secondary">{activeOrder.note || "Siparis acik, urun eklemeye hazir."}</Text>
+                  </div>
+                  <Space wrap>
+                    <Button onClick={() => {
+                      discountForm.setFieldsValue({
+                        discountType: activeOrder.discountType || "amount",
+                        discountValue: activeOrder.discountValue || 0,
+                      });
+                      setDiscountModalOpen(true);
+                    }}
+                    >
+                      Indirim
+                    </Button>
+                    <Button onClick={closeActiveOrder}>Siparisi Kapat</Button>
+                    <Popconfirm title="Siparis silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => removeOrderDraft(activeOrder.id)}>
+                      <Button danger>Siparisi Sil</Button>
+                    </Popconfirm>
+                  </Space>
+                </div>
+              </div>
+            ) : null}
+            {cart.length === 0 ? (
+              <Empty description="Sepette ürün bulunmuyor" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            ) : (
+              cart.map((item, index) => (
+                <div
+                  key={item.productId}
+                  className={`erp-pos-order-item ${selectedCartLineId === item.productId ? "is-selected" : ""}`}
+                  onClick={() => {
+                    setSelectedCartLineId(item.productId);
+                    setKeypadInput(String(keypadMode === "price" ? item.unitPrice : item.quantity));
+                  }}
+                >
+                  <div className="erp-pos-order-item-head">
+                    <span className="erp-pos-order-index">{index + 1}</span>
+                    <Text>{item.code}-{item.name}</Text>
+                  </div>
+                  <div className="erp-pos-order-item-actions">
+                    <Button size="small" onClick={() => updateCartQuantity(item.productId, -1)}>-</Button>
+                    <Text strong>{item.quantity}</Text>
+                    <Button size="small" onClick={() => updateCartQuantity(item.productId, 1)}>+</Button>
+                    <Text strong>{formatMovementMoney(item.lineTotal)}</Text>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="erp-pos-summary">
+            <div className="erp-pos-summary-row">
+              <Text>Ara Toplam</Text>
+              <Text strong>{formatMovementMoney(orderTotals.grossTotal)}</Text>
+            </div>
+            <div className="erp-pos-summary-row">
+              <Text>Indirim</Text>
+              <Text strong>{formatMovementMoney(orderTotals.discountAmount)}</Text>
+            </div>
+            <div className="erp-pos-summary-row">
+              <Text>Vergiler</Text>
+              <Text strong>{formatMovementMoney(cartTax)}</Text>
+            </div>
+            <div className="erp-pos-summary-row erp-pos-summary-total">
+              <Text strong>Toplam</Text>
+              <Text strong>{formatMovementMoney(cartGrandTotal)}</Text>
+            </div>
+          </div>
+
+          <div className="erp-pos-bottom-actions">
+            <Space className="erp-pos-mini-actions">
+              <Button onClick={() => {
+                customerForm.setFieldsValue({ customerName: activeOrder?.customerName || "" });
+                setCustomerModalOpen(true);
+              }}
+              >
+                Musteri
+              </Button>
+              <Button onClick={() => {
+                noteForm.setFieldsValue({ note: activeOrder?.note || "" });
+                setNoteModalOpen(true);
+              }}
+              >
+                Not
+              </Button>
+            </Space>
+
+            <div className="erp-pos-keypad-display">
+              <Text type="secondary">
+                {selectedCartLineId
+                  ? `Secili satir: ${(cart.find((item) => item.productId === selectedCartLineId)?.name) || "-"}`
+                  : "Secili satir yok"}
+              </Text>
+              <Text strong>{keypadMode === "price" ? "Fiyat" : "Miktar"}: {keypadInput || "-"}</Text>
+            </div>
+
+            <div className="erp-pos-keypad">
+              {["1", "2", "3", "Miktar", "4", "5", "6", "%", "7", "8", "9", "Fiyat", "+/-", "0", ",", "?"].map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => handleKeypadPress(label)}
+                  className={`erp-pos-key ${(label === "Miktar" && keypadMode === "quantity") || (label === "Fiyat" && keypadMode === "price") ? "is-active" : ""}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <Button type="primary" size="large" className="erp-pos-pay-btn" onClick={openPaymentModal}>
+              Odeme
+            </Button>
+          </div>
+        </div>
+
+        <div className="erp-pos-right">
+          <div className="erp-pos-toolbar">
+            <Input
+              prefix={<SearchOutlined />}
+              placeholder="Ürün ara..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="erp-pos-search"
+            />
+            <Input
+              prefix={<BarcodeOutlined />}
+              placeholder="Barkod"
+              value={barcodeValue}
+              onChange={(event) => setBarcodeValue(event.target.value)}
+              onPressEnter={handleBarcodeSubmit}
+              className="erp-pos-barcode"
+            />
+            <Avatar className="erp-pos-user-avatar" icon={<UserOutlined />} />
+            <Dropdown menu={actionMenu} trigger={["click"]} placement="bottomRight">
+              <Button icon={<MenuOutlined />} className="erp-pos-menu-btn" />
+            </Dropdown>
+          </div>
+
+          <div className="erp-pos-category-row">
+            {posCategoryStateOptions.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                className={`erp-pos-category-chip ${activeCategory === category.id ? "is-selected" : ""}`}
+                style={{ background: category.color }}
+                onClick={() => setActiveCategory(category.id)}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+
+          <div className="erp-pos-product-grid">
+            {filteredCatalog.map((product) => (
+              <button key={product.id} type="button" className="erp-pos-product-card" onClick={() => addProductToCart(product)}>
+                <div className="erp-pos-product-image-wrap">
+                  <img src={product.imageUrl} alt={product.name} className="erp-pos-product-image" />
+                </div>
+                <div className="erp-pos-product-name">{product.code}-{product.name}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      ) : null}
+      <Modal title="Satışı Tamamla" open={paymentModalOpen} onCancel={() => setPaymentModalOpen(false)} onOk={handlePayment} okText="Satışı Kaydet" cancelText="Vazgeç">
+        <Form form={paymentForm} layout="vertical" initialValues={{ customerName: activeOrder?.customerName || "Magaza Musterisi", paymentMethod: "Nakit", note: activeOrder?.note || "" }}>
+          <Form.Item name="customerName" label="Müşteri">
+            <Input />
+          </Form.Item>
+          <Form.Item name="paymentMethod" label="Ödeme Tipi" rules={[{ required: true, message: "Ödeme tipi seçin." }]}>
+            <Select options={["Nakit", "Kart", "Havale"].map((item) => ({ value: item, label: item }))} />
+          </Form.Item>
+          <Form.Item name="note" label="Not">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+          <Descriptions column={1} size="small" bordered>
+            <Descriptions.Item label="Oturum">{activeSession?.sessionNo || "-"}</Descriptions.Item>
+            <Descriptions.Item label="Ara Toplam">{formatMovementMoney(orderTotals.grossTotal)}</Descriptions.Item>
+            <Descriptions.Item label="Indirim">{formatMovementMoney(orderTotals.discountAmount)}</Descriptions.Item>
+            <Descriptions.Item label="Vergi">{formatMovementMoney(cartTax)}</Descriptions.Item>
+            <Descriptions.Item label="Genel Toplam">{formatMovementMoney(cartGrandTotal)}</Descriptions.Item>
+          </Descriptions>
+        </Form>
+      </Modal>
+
+      <Modal title="Musteri Bilgisi" open={customerModalOpen} onCancel={() => setCustomerModalOpen(false)} onOk={async () => {
+        const values = await customerForm.validateFields();
+        updateActiveOrder((order) => ({ ...order, customerName: values.customerName || "" }));
+        setCustomerModalOpen(false);
+      }} okText="Kaydet" cancelText="Vazgeç">
+        <Form form={customerForm} layout="vertical">
+          <Form.Item name="customerName" label="Müşteri">
+            <Input placeholder="Musteri adi" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal title="Siparis Notu" open={noteModalOpen} onCancel={() => setNoteModalOpen(false)} onOk={async () => {
+        const values = await noteForm.validateFields();
+        updateActiveOrder((order) => ({ ...order, note: values.note || "" }));
+        setNoteModalOpen(false);
+      }} okText="Kaydet" cancelText="Vazgeç">
+        <Form form={noteForm} layout="vertical">
+          <Form.Item name="note" label="Not">
+            <Input.TextArea rows={4} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal title="Siparise Ozel Indirim" open={discountModalOpen} onCancel={() => setDiscountModalOpen(false)} onOk={async () => {
+        const values = await discountForm.validateFields();
+        updateActiveOrder((order) => ({
+          ...order,
+          discountType: values.discountType,
+          discountValue: Number(values.discountValue || 0),
+        }));
+        setDiscountModalOpen(false);
+      }} okText="Uygula" cancelText="Vazgeç">
+        <Form form={discountForm} layout="vertical" initialValues={{ discountType: "amount", discountValue: 0 }}>
+          <Form.Item name="discountType" label="Indirim Tipi" rules={[{ required: true, message: "Indirim tipi secin." }]}>
+            <Radio.Group
+              options={[
+                { label: "Tutar", value: "amount" },
+                { label: "Yuzde", value: "percent" },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item name="discountValue" label="Indirim Degeri">
+            <InputNumber min={0} style={{ width: "100%" }} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal title="Yeni POS Oturumu" open={openSessionModalOpen} onCancel={() => setOpenSessionModalOpen(false)} onOk={handleCreateSession} okText="Aç" cancelText="Vazgeç">
+        <Form form={sessionForm} layout="vertical" initialValues={{ registerName: "Magaza Ana Kasa", cashierName: "Sibel Ersoy Arslan", openingBalance: 0 }}>
+          <Form.Item name="registerName" label="Kasa" rules={[{ required: true, message: "Kasa adı zorunludur." }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="cashierName" label="Kasiyer" rules={[{ required: true, message: "Kasiyer adı zorunludur." }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="openingBalance" label="Açılış Bakiyesi">
+            <InputNumber min={0} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item name="note" label="Not">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Drawer title="Siparisler" placement="right" width={620} open={ordersDrawerOpen} onClose={() => setOrdersDrawerOpen(false)}>
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Card size="small" title="Acik ve Kapali Siparisler">
+            <Table
+              rowKey="id"
+              pagination={false}
+              size="small"
+              dataSource={[...openDraftOrders, ...closedDraftOrders]}
+              locale={{ emptyText: "Oturuma ait siparis bulunmuyor." }}
+              columns={[
+                { title: "Siparis", dataIndex: "title", key: "title" },
+                { title: "Durum", key: "status", render: (_, record) => record.status === "open" ? "Devam Ediyor" : "Kapali" },
+                { title: "Musteri", dataIndex: "customerName", key: "customerName", render: (value) => value || "-" },
+                { title: "Indirim", key: "discount", render: (_, record) => formatMovementMoney(calculateOrderTotals(record).discountAmount) },
+                {
+                  title: "Islemler",
+                  key: "actions",
+                  render: (_, record) => (
+                    <Space size={8}>
+                      <Button size="small" onClick={() => record.status === "open" ? setActiveOrderIdBySession((prev) => ({ ...prev, [activeSessionId]: record.id })) : reopenDraftOrder(record.id)}>{record.status === "open" ? "Yukle" : "Ac"}</Button>
+                      <Popconfirm title="Siparis silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => removeOrderDraft(record.id)}>
+                        <Button size="small" danger>Sil</Button>
+                      </Popconfirm>
+                    </Space>
+                  ),
+                },
+              ]}
+            />
+          </Card>
+
+          <Card size="small" title="Tamamlanan Siparisler">
+            <Table
+              rowKey="id"
+              pagination={false}
+              size="small"
+              dataSource={sessionOrders}
+              columns={[
+                { title: "Fis", dataIndex: "receiptNo", key: "receiptNo" },
+                { title: "Musteri", dataIndex: "customerName", key: "customerName" },
+                { title: "Tarih", dataIndex: "soldAt", key: "soldAt", render: (value) => new Date(value).toLocaleString("tr-TR") },
+                { title: "Indirim", dataIndex: "discountAmountDisplay", key: "discountAmountDisplay" },
+                { title: "Toplam", dataIndex: "grandTotalDisplay", key: "grandTotalDisplay" },
+              ]}
+            />
+          </Card>
+        </Space>
+      </Drawer>
+    </Space>
+  );
+}
+
+
