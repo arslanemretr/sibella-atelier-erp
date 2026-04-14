@@ -1,7 +1,5 @@
 import nodemailer from "nodemailer";
-import { getStoreValue } from "./db.js";
-
-const SMTP_STORE_KEY = "sibella.erp.smtpSettings.v1";
+import { sqlOne } from "./db.js";
 
 function envBool(value, fallback = false) {
   if (value === undefined || value === null || value === "") {
@@ -10,28 +8,27 @@ function envBool(value, fallback = false) {
   return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
 }
 
-async function getSmtpSettingsFromStore() {
-  const record = await getStoreValue(SMTP_STORE_KEY);
-  const settings = record?.value;
-  if (!settings || !settings.enabled) {
+async function getSmtpSettingsFromTable() {
+  const row = await sqlOne("SELECT * FROM smtp_settings WHERE id = 1");
+  if (!row || !row.enabled) {
     return null;
   }
 
   return {
-    host: String(settings.host || "").trim(),
-    port: Number(settings.port || 587),
-    secure: Boolean(settings.secure),
-    username: String(settings.username || "").trim(),
-    password: String(settings.password || ""),
-    fromName: String(settings.fromName || "").trim(),
-    fromEmail: String(settings.fromEmail || "").trim(),
+    host: String(row.host || "").trim(),
+    port: Number(row.port || 587),
+    secure: Boolean(row.secure),
+    username: String(row.username || "").trim(),
+    password: String(row.password || ""),
+    fromName: String(row.from_name || "").trim(),
+    fromEmail: String(row.from_email || "").trim(),
   };
 }
 
 async function getSmtpSettings() {
-  const storeSettings = await getSmtpSettingsFromStore();
-  if (storeSettings) {
-    return storeSettings;
+  const dbSettings = await getSmtpSettingsFromTable();
+  if (dbSettings) {
+    return dbSettings;
   }
 
   if (!process.env.SMTP_HOST) {
