@@ -359,6 +359,21 @@ html, body {
   min-width: 760px;
 }
 
+.erp-delivery-list-table-card .ant-table {
+  min-width: 1240px;
+}
+
+.erp-delivery-list-table-card .ant-table-wrapper {
+  overflow: visible;
+}
+
+.erp-delivery-list-table-card .ant-table-wrapper,
+.erp-delivery-list-table-card .ant-table-content,
+.erp-delivery-list-table-card .ant-table-body {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
 .erp-list-table-card .ant-table-thead > tr > th {
   background: #fff;
   border-bottom: 1px solid #edf1f5;
@@ -767,6 +782,186 @@ html, body {
   color: #0f172a;
 }
 
+.erp-topbar-mobile-brand {
+  display: none;
+}
+
+.erp-topbar-mobile-logo {
+  display: block;
+  height: 34px;
+  max-width: 220px;
+  width: auto;
+  object-fit: contain;
+}
+
+.erp-page-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.erp-page-intro-actions {
+  justify-content: flex-end;
+}
+
+.erp-page-intro-desktop-only {
+  display: flex;
+}
+
+.erp-page-intro-product-mobile-only {
+  display: none;
+}
+
+.erp-mobile-hide {
+  display: block;
+}
+
+.erp-metric-card.ant-card {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.erp-metric-card.ant-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.erp-metric-card.ant-card::before {
+  content: "";
+  position: absolute;
+  inset: 14px auto 14px 0;
+  width: 5px;
+  border-radius: 0 999px 999px 0;
+  background: #f38b7a;
+}
+
+.erp-metric-accent-coral.ant-card::before {
+  background: #f38b7a;
+}
+
+.erp-metric-accent-amber.ant-card::before {
+  background: #f4b400;
+}
+
+.erp-metric-accent-green.ant-card::before {
+  background: #34a853;
+}
+
+.erp-metric-accent-red.ant-card::before {
+  background: #ea4335;
+}
+
+.erp-metric-accent-gold.ant-card::before {
+  background: #d4a017;
+}
+
+.erp-metric-accent-blue.ant-card::before {
+  background: #4285f4;
+}
+
+.erp-metric-title {
+  font-weight: 700;
+}
+
+.erp-metric-card .ant-statistic {
+  padding-left: 10px;
+}
+
+.erp-metric-card .ant-statistic-content {
+  font-weight: 700;
+}
+
+.erp-metric-description {
+  display: block;
+  margin-top: 10px;
+  padding-left: 10px;
+  min-height: 36px;
+}
+
+.erp-card-logo-divider.ant-card .ant-card-head {
+  border-bottom-color: #f38b7a;
+}
+
+.erp-card-logo-divider.ant-card .ant-card-head-title {
+  font-weight: 700;
+}
+
+.erp-card-logo-divider.ant-card .ant-card-head {
+  border-bottom-width: 2px;
+}
+
+.erp-supplier-info-card {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.erp-supplier-info-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.erp-supplier-info-visual {
+  flex: 0 0 148px;
+  min-width: 148px;
+  min-height: 148px;
+  border: 1px solid #edf1f5;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fff8f5 0%, #ffffff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.erp-supplier-info-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.erp-supplier-info-avatar {
+  background: #ff6f61;
+  color: #fff;
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .erp-supplier-info-card {
+    flex-direction: column-reverse;
+  }
+
+  .erp-supplier-info-visual {
+    width: 100%;
+    min-width: 100%;
+    min-height: 132px;
+  }
+}
+
+.erp-sidebar-brand-multiline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.erp-sidebar-brand-multiline span:first-child {
+  font-size: 16px;
+}
+
+.erp-sidebar-brand-multiline span:last-child {
+  font-size: 16px;
+  font-weight: 700;
+}
+
 .erp-product-kanban-card {
   height: 100%;
 }
@@ -797,12 +992,15 @@ html, body {
 
 @media (max-width: 768px) {
   .erp-topbar {
-    padding-left: 0 !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
     height: auto !important;
-    min-height: 64px;
-    align-items: flex-start !important;
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
+    min-height: 68px;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    gap: 8px !important;
   }
 
   .erp-topbar .ant-space-item {
@@ -810,12 +1008,75 @@ html, body {
   }
 
   .erp-topbar-left {
-    flex: 1 1 auto;
-    align-items: flex-start !important;
+    flex: 0 0 auto;
+    align-items: center !important;
+    padding-left: 0 !important;
   }
 
   .erp-topbar-right {
-    align-self: flex-start;
+    flex: 0 0 auto;
+    align-self: center;
+    gap: 10px !important;
+  }
+
+  .erp-topbar-mobile-brand {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+  }
+
+  .erp-topbar-mobile-title {
+    display: none;
+  }
+
+  .erp-topbar-left .ant-btn {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .erp-topbar-right .ant-space-item {
+    display: flex;
+    align-items: center;
+  }
+
+  .erp-topbar-user .ant-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .erp-page-intro-mobile-products {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .erp-page-intro-mobile-products .ant-typography {
+    margin-bottom: 0;
+  }
+
+  .erp-page-intro-actions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px !important;
+  }
+
+  .erp-page-intro-actions .ant-btn {
+    flex: 0 0 auto;
+  }
+
+  .erp-page-intro-desktop-only {
+    display: none;
+  }
+
+  .erp-page-intro-product-mobile-only {
+    display: flex;
+  }
+
+  .erp-mobile-hide {
+    display: none !important;
   }
 
   .erp-sidebar.ant-layout-sider {
@@ -981,7 +1242,7 @@ html, body {
   }
 }
 
-@media (max-width: 1200px) {
+@media (min-width: 769px) and (max-width: 1200px) {
   .erp-topbar {
     height: auto !important;
     min-height: 64px;
@@ -1124,7 +1385,58 @@ html, body {
 }
 
 .erp-delivery-lines-table-wrap {
-  overflow-x: auto;
+  overflow-x: scroll;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.erp-delivery-lines-table-wrap::-webkit-scrollbar {
+  height: 8px;
+}
+
+.erp-delivery-lines-table-wrap::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 999px;
+}
+
+.erp-delivery-lines-table-wrap::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.erp-delivery-lines-table-wrap > .ant-table-wrapper {
+  min-width: 1180px;
+}
+
+.erp-delivery-lines-table .ant-table {
+  min-width: 1180px;
+}
+
+.erp-delivery-lines-table .ant-table-content,
+.erp-delivery-lines-table .ant-table-body {
+  overflow-x: scroll !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.erp-delivery-lines-table .ant-table-content::-webkit-scrollbar,
+.erp-delivery-lines-table .ant-table-body::-webkit-scrollbar {
+  height: 8px;
+}
+
+.erp-delivery-lines-table .ant-table-content::-webkit-scrollbar-track,
+.erp-delivery-lines-table .ant-table-body::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 999px;
+}
+
+.erp-delivery-lines-table .ant-table-content::-webkit-scrollbar-thumb,
+.erp-delivery-lines-table .ant-table-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
 }
 
 .erp-delivery-lines-table .ant-table-tbody > tr.erp-delivery-line-row {
@@ -1156,4 +1468,29 @@ html, body {
   object-fit: cover;
   border-radius: 10px;
   display: block;
+}
+
+.erp-delivery-draft-grid .ant-space-compact {
+  width: 100%;
+}
+
+.erp-warning-modal .ant-btn-primary {
+  background: #ff6f61;
+  border-color: #ff6f61;
+}
+
+.erp-warning-modal .ant-btn-primary:hover,
+.erp-warning-modal .ant-btn-primary:focus {
+  background: #e76457;
+  border-color: #e76457;
+}
+
+@media (max-width: 768px) {
+  .erp-delivery-draft-grid .ant-space-compact {
+    display: flex;
+  }
+
+  .erp-delivery-draft-grid .ant-space-compact > * {
+    flex: 1 1 auto;
+  }
 }

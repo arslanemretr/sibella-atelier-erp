@@ -1,10 +1,7 @@
 import { jsPDF } from "jspdf";
-import { createStockEntry } from "./stockEntriesData";
-import { getProductById } from "./productsData";
-import { readPersistentStore, writePersistentStore } from "./serverStore";
-import { getSupplierById, listSuppliers } from "./suppliersData";
-
-const STORAGE_KEY = "sibella.erp.deliveryLists.v1";
+import { getProductById, listProductsFresh } from "./productsData";
+import { mutateResourceSync, requestCollection, requestCollectionSync } from "./apiClient";
+import { getSupplierById, listSuppliers, listSuppliersFresh } from "./suppliersData";
 
 function createId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -44,6 +41,21 @@ function formatPdfNumber(value) {
 function formatPdfMoney(value, currency = "TRY") {
   const currencyLabel = currency === "TRY" ? "TL" : currency;
   return `${formatPdfNumber(value)} ${currencyLabel}`;
+}
+
+function formatPdfDate(value) {
+  if (!value) {
+    return "-";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+  return new Intl.DateTimeFormat("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(parsed);
 }
 
 function arrayBufferToBase64(buffer) {
@@ -123,11 +135,7 @@ function seedDeliveryLists() {
 }
 
 function loadStore() {
-  return readPersistentStore(STORAGE_KEY, seedDeliveryLists());
-}
-
-function saveStore(records) {
-  writePersistentStore(STORAGE_KEY, records);
+  return requestCollectionSync("/api/delivery-lists", seedDeliveryLists());
 }
 
 function normalizeLine(line, index) {
@@ -199,10 +207,40 @@ export function listDeliveryLists() {
   return loadStore().map(enrichRecord);
 }
 
+export async function listDeliveryListsFresh() {
+  const [records, suppliers] = await Promise.all([
+    requestCollection("/api/delivery-lists", seedDeliveryLists()),
+    listSuppliersFresh(),
+  ]);
+  const supplierMap = Object.fromEntries(suppliers.map((supplier) => [supplier.id, supplier]));
+
+  return records.map((record) => {
+    const supplier = supplierMap[record.supplierId];
+    const totalQuantity = (record.lines || []).reduce((sum, line) => sum + Number(line.quantity || 0), 0);
+    const totalAmount = (record.lines || []).reduce((sum, line) => sum + Number(line.quantity || 0) * Number(line.salePrice || 0), 0);
+
+    return {
+      ...record,
+      supplierName: record.supplierName || supplier?.company || "-",
+      contactName: record.contactName || supplier?.contact || "-",
+      totalQuantity,
+      totalAmount,
+      totalAmountDisplay: formatMoney(totalAmount, "TRY"),
+      statusLabel: record.status || "Taslak",
+      lineCount: record.lines?.length || 0,
+    };
+  });
+}
+
 export function listDeliveryListsBySupplier(supplierId) {
   return loadStore()
     .filter((item) => item.supplierId === supplierId)
     .map(enrichRecord);
+}
+
+export async function listDeliveryListsBySupplierFresh(supplierId) {
+  const records = await listDeliveryListsFresh();
+  return records.filter((item) => item.supplierId === supplierId);
 }
 
 export function getDeliveryListById(deliveryListId) {
@@ -210,70 +248,28 @@ export function getDeliveryListById(deliveryListId) {
 }
 
 export function createDeliveryList(values) {
-  const store = loadStore();
-  const record = normalizeDeliveryRecord(values);
-  const nextStore = [record, ...store];
-  saveStore(nextStore);
-  return enrichRecord(record);
+  return enrichRecord(mutateResourceSync("POST", "/api/delivery-lists", values));
 }
 
 export function getNextDeliveryNoPreview(supplierId) {
   return getNextDeliveryNo(loadStore(), supplierId);
 }
 
-export function updateDeliveryList(deliveryListId, values) {
-  const store = loadStore();
-  const existingRecord = store.find((item) => item.id === deliveryListId);
-  if (!existingRecord) {
-    return null;
-  }
+export async function getNextDeliveryNoPreviewFresh(supplierId) {
+  const records = await requestCollection("/api/delivery-lists", seedDeliveryLists());
+  const suppliers = await listSuppliersFresh();
+  const supplier = suppliers.find((item) => item.id === supplierId);
+  const supplierCode = (supplier?.shortCode || "GENL").toUpperCase();
+  const nextNumber = records.filter((item) => item.supplierId === supplierId).length + 1;
+  return `TES-${supplierCode}-${String(nextNumber).padStart(4, "0")}`;
+}
 
-  const updatedRecord = normalizeDeliveryRecord(values, existingRecord);
-  saveStore(store.map((item) => (item.id === deliveryListId ? updatedRecord : item)));
-  return enrichRecord(updatedRecord);
+export function updateDeliveryList(deliveryListId, values) {
+  return enrichRecord(mutateResourceSync("PUT", `/api/delivery-lists/${encodeURIComponent(deliveryListId)}`, values));
 }
 
 export function completeDeliveryReceipt(deliveryListId) {
-  const store = loadStore();
-  const existingRecord = store.find((item) => item.id === deliveryListId);
-  if (!existingRecord) {
-    throw new Error("Teslimat kaydi bulunamadi.");
-  }
-
-  if (existingRecord.stockEntryId || existingRecord.inventoryPostedAt) {
-    return enrichRecord(existingRecord);
-  }
-
-  const invalidLines = (existingRecord.lines || []).filter((line) => !line?.productId);
-  if (invalidLines.length > 0) {
-    throw new Error("Bazi satirlar urun kartina bagli degil. Teslim almadan once urunleri eslestirin.");
-  }
-
-  const stockEntry = createStockEntry({
-    documentNo: `STK-${existingRecord.deliveryNo || existingRecord.id}`,
-    sourcePartyId: existingRecord.supplierId || null,
-    date: existingRecord.date || new Date().toISOString().slice(0, 10),
-    stockType: "Urun",
-    sourceType: "Tedarikci Teslimati",
-    status: "Tamamlandi",
-    note: existingRecord.note || `Teslimat formundan olusturuldu: ${existingRecord.deliveryNo || existingRecord.id}`,
-    lines: (existingRecord.lines || []).map((line) => ({
-      productId: line.productId,
-      quantity: Number(line.quantity || 0),
-      unitCost: 0,
-      note: line.description || "",
-    })),
-  });
-
-  const updatedRecord = normalizeDeliveryRecord({
-    ...existingRecord,
-    status: "Tamamlandi",
-    stockEntryId: stockEntry.id,
-    inventoryPostedAt: nowIso(),
-  }, existingRecord);
-
-  saveStore(store.map((item) => (item.id === deliveryListId ? updatedRecord : item)));
-  return enrichRecord(updatedRecord);
+  return enrichRecord(mutateResourceSync("POST", `/api/delivery-lists/${encodeURIComponent(deliveryListId)}/complete`, {}));
 }
 
 export async function createDeliveryPdf(recordOrId) {
@@ -311,7 +307,7 @@ export async function createDeliveryPdf(recordOrId) {
     `Tedarikci Firma: ${deliveryRecord.supplierName}`,
     `Yetkili Kisi: ${deliveryRecord.contactName || supplier?.contact || "-"}`,
     `E-posta: ${deliveryRecord.supplierEmail || supplier?.email || "-"}`,
-    `Tarih: ${deliveryRecord.date}`,
+    `Tarih: ${formatPdfDate(deliveryRecord.date)}`,
     `Durum: ${deliveryRecord.status || "Taslak"}`,
     `Gonderim Sekli: ${deliveryRecord.shippingMethod || "-"}`,
     `Kargo Takip No: ${deliveryRecord.trackingNo || "-"}`,

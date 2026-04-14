@@ -107,7 +107,7 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
     <>
       <div
         style={{
-          height: 64,
+          height: 72,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -121,7 +121,12 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
           zIndex: 11,
         }}
       >
-        {collapsed ? "S" : authUser?.role === "Tedarikci" ? "Sibella Atelier Portal" : "Sibella Atelier"}
+        {collapsed ? "S" : authUser?.role === "Tedarikci" ? (
+          <div className="erp-sidebar-brand-multiline">
+            <span>Sibella Atelier Design Store</span>
+            <span>Tedarikçi Portalı</span>
+          </div>
+        ) : "Sibella Atelier"}
       </div>
       <Menu
         mode="inline"

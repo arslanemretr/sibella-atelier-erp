@@ -1,10 +1,9 @@
 import { listMasterData } from "./masterData";
 import { listSuppliers } from "./suppliersData";
-import { readPersistentStore, writePersistentStore } from "./serverStore";
+import { mutateResourceSync, requestCollection, requestCollectionSync, requestJsonSync } from "./apiClient";
 
-const STORAGE_KEY = "sibella.erp.products.v1";
-const STOCK_ENTRIES_STORAGE_KEY = "sibella.erp.stockEntries.v2";
-const POS_SALES_STORAGE_KEY = "sibella.erp.posSales.v2";
+const STOCK_ENTRY_SEED = [];
+const POS_SALES_SEED = [];
 
 function createId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -229,8 +228,8 @@ function addMovementDelta(map, productId, delta) {
 }
 
 function buildProductMovementDeltaMap() {
-  const stockEntries = readPersistentStore(STOCK_ENTRIES_STORAGE_KEY, [], { forceRefresh: true });
-  const posSales = readPersistentStore(POS_SALES_STORAGE_KEY, [], { forceRefresh: true });
+  const stockEntries = requestCollectionSync("/api/stock-entries", STOCK_ENTRY_SEED, { suppressStatuses: [403] });
+  const posSales = requestCollectionSync("/api/pos-sales", POS_SALES_SEED, { suppressStatuses: [403] });
   const movementByProductId = new Map();
 
   stockEntries.forEach((entry) => {
@@ -258,11 +257,7 @@ function calculateProductStock(product, movementByProductId) {
 }
 
 function loadStore() {
-  return readPersistentStore(STORAGE_KEY, seedProducts());
-}
-
-function saveStore(records) {
-  writePersistentStore(STORAGE_KEY, records);
+  return requestCollectionSync("/api/products", seedProducts());
 }
 
 function mapLookup(entityKey, idKey, labelKey) {
@@ -286,7 +281,39 @@ function enrichProduct(product, movementByProductId = buildProductMovementDeltaM
     priceDisplay: formatMoney(product.salePrice, product.saleCurrency),
     costDisplay: formatMoney(product.cost, product.costCurrency),
     stockDisplay: String(liveStock),
+    soldQuantity: 0,
   };
+}
+
+function enrichProductsWithLookups(products, lookups, movementByProductId) {
+  const {
+    categories = [],
+    collections = [],
+    posCategories = [],
+    suppliers = [],
+  } = lookups || {};
+  const salesByProductId = lookups?.salesByProductId || new Map();
+
+  const categoryMap = Object.fromEntries(categories.map((item) => [item.id, item.fullPath]));
+  const collectionMap = Object.fromEntries(collections.map((item) => [item.id, item.name]));
+  const posCategoryMap = Object.fromEntries(posCategories.map((item) => [item.id, item.name]));
+  const supplierMap = Object.fromEntries(suppliers.map((item) => [item.id, item.company]));
+
+  return products.map((product) => {
+    const liveStock = calculateProductStock(product, movementByProductId);
+    return {
+      ...product,
+      stock: liveStock,
+      categoryLabel: categoryMap[product.categoryId] || "-",
+      collectionLabel: collectionMap[product.collectionId] || "-",
+      posCategoryLabel: posCategoryMap[product.posCategoryId] || "-",
+      supplierLabel: supplierMap[product.supplierId] || "-",
+      priceDisplay: formatMoney(product.salePrice, product.saleCurrency),
+      costDisplay: formatMoney(product.cost, product.costCurrency),
+      stockDisplay: String(liveStock),
+      soldQuantity: Number(salesByProductId.get(product.id) || 0),
+    };
+  });
 }
 
 function normalizeProduct(values, existingProduct) {
@@ -335,6 +362,40 @@ export function listProducts() {
   return loadStore().map((product) => enrichProduct(product, movementByProductId));
 }
 
+export async function listProductsFresh() {
+  const [products, stockEntries, posSales, categories, collections, posCategories, suppliers] = await Promise.all([
+    requestCollection("/api/products", seedProducts()),
+    requestCollection("/api/stock-entries", STOCK_ENTRY_SEED, { suppressStatuses: [403] }),
+    requestCollection("/api/pos-sales", POS_SALES_SEED, { suppressStatuses: [403] }),
+    requestCollection("/api/master-data/categories", []),
+    requestCollection("/api/master-data/collections", []),
+    requestCollection("/api/master-data/pos-categories", []),
+    requestCollection("/api/suppliers", []),
+  ]);
+
+  const movementByProductId = new Map();
+  const salesByProductId = new Map();
+  stockEntries.forEach((entry) => {
+    (entry?.lines || []).forEach((line) => {
+      addMovementDelta(movementByProductId, line?.productId, toNumber(line?.quantity));
+    });
+  });
+  posSales.forEach((sale) => {
+    (sale?.lines || []).forEach((line) => {
+      addMovementDelta(movementByProductId, line?.productId, -toNumber(line?.quantity));
+      addMovementDelta(salesByProductId, line?.productId, toNumber(line?.quantity));
+    });
+  });
+
+  return enrichProductsWithLookups(products, {
+    categories,
+    collections,
+    posCategories,
+    suppliers,
+    salesByProductId,
+  }, movementByProductId);
+}
+
 export function listProductsBySupplier(supplierId) {
   const movementByProductId = buildProductMovementDeltaMap();
   return loadStore()
@@ -343,7 +404,9 @@ export function listProductsBySupplier(supplierId) {
 }
 
 export function getProductById(productId) {
-  return loadStore().find((item) => item.id === productId) || null;
+  const movementByProductId = buildProductMovementDeltaMap();
+  const product = loadStore().find((item) => item.id === productId);
+  return product ? enrichProduct(product, movementByProductId) : null;
 }
 
 export function generateProductCodeForSupplier(supplierId, currentProductId) {
@@ -358,28 +421,18 @@ export function generateProductCodeForSupplier(supplierId, currentProductId) {
 }
 
 export function createProduct(values) {
-  const store = loadStore();
-  const record = normalizeProduct(values);
-  const nextStore = [record, ...store];
-  saveStore(nextStore);
-  return enrichProduct(record);
+  return enrichProduct(mutateResourceSync("POST", "/api/products", values));
 }
 
 export function updateProduct(productId, values) {
-  const store = loadStore();
-  const existingProduct = store.find((item) => item.id === productId);
-  if (!existingProduct) {
-    return null;
-  }
-
-  const updatedRecord = normalizeProduct(values, existingProduct);
-  saveStore(store.map((item) => (item.id === productId ? updatedRecord : item)));
-  return enrichProduct(updatedRecord);
+  return enrichProduct(mutateResourceSync("PUT", `/api/products/${encodeURIComponent(productId)}`, values));
 }
 
 export function deleteProduct(productId) {
-  const store = loadStore();
-  saveStore(store.filter((item) => item.id !== productId));
+  const response = requestJsonSync("DELETE", `/api/products/${encodeURIComponent(productId)}`);
+  if (!response.ok) {
+    throw new Error(response.message || "Urun silinemedi.");
+  }
 }
 
 export function importProducts(rows) {
@@ -397,16 +450,14 @@ export function importProducts(rows) {
   });
 
   const nextStore = Array.from(storeByCode.values());
-  saveStore(nextStore);
+  nextStore.forEach((record) => {
+    const existing = currentStore.find((item) => item.id === record.id);
+    if (existing) {
+      mutateResourceSync("PUT", `/api/products/${encodeURIComponent(record.id)}`, record);
+    } else {
+      mutateResourceSync("POST", "/api/products", record);
+    }
+  });
   const movementByProductId = buildProductMovementDeltaMap();
-  return nextStore.map((product) => enrichProduct(product, movementByProductId));
-}
-
-export function applyProductStockAdjustments(adjustments) {
-  // Stok artik hareketlerden hesaplanir; geriye donuk API uyumu icin no-op.
-  const movementByProductId = buildProductMovementDeltaMap();
-  if (!Array.isArray(adjustments) || !adjustments.length) {
-    return loadStore().map((product) => enrichProduct(product, movementByProductId));
-  }
   return loadStore().map((product) => enrichProduct(product, movementByProductId));
 }

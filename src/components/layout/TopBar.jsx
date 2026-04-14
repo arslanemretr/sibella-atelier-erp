@@ -1,9 +1,11 @@
 import React, { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Layout, Button, Avatar, Dropdown, Space } from "antd";
-import { MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined, UserOutlined, FullscreenOutlined, FullscreenExitOutlined } from "@ant-design/icons";
+import { MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined, UserOutlined } from "@ant-design/icons";
 import { mainMenuItems, supplierMainMenuItems } from "../../erp/navigation";
 import { getAuthUser, logoutUser, onAuthChange } from "../../auth";
+import logo from "../../assets/logo.png";
+import mobileLogo from "../../assets/logo-mobile.png";
 
 const { Header } = Layout;
 
@@ -11,18 +13,8 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [authUser, setAuthUser] = React.useState(() => getAuthUser());
-  const [isFullscreen, setIsFullscreen] = React.useState(() => Boolean(document.fullscreenElement));
 
   React.useEffect(() => onAuthChange(() => setAuthUser(getAuthUser())), []);
-
-  React.useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
-    };
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
 
   const visibleMenuItems = authUser?.role === "Tedarikci" ? supplierMainMenuItems : mainMenuItems;
 
@@ -65,18 +57,6 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
         navigate("/login", { replace: true });
       }
     },
-  };
-
-  const toggleFullscreen = async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
-      }
-    } catch {
-      // browser handles permission / unsupported cases
-    }
   };
 
   return (
@@ -136,13 +116,13 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
         )}
       </Space>
 
+      {isTabletOrMobile ? (
+        <div className="erp-topbar-mobile-brand" aria-label="Sibella Atelier">
+          <img src={mobileLogo || logo} alt="Sibella Atelier" className="erp-topbar-mobile-logo" />
+        </div>
+      ) : null}
+
       <Space size={isTabletOrMobile ? "middle" : "large"} className="erp-topbar-right">
-        <Button
-          type="text"
-          icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-          onClick={toggleFullscreen}
-          title={isFullscreen ? "Tam Ekrandan Cik" : "Tam Ekran"}
-        />
         <BellOutlined style={{ fontSize: 18, color: "#595959" }} />
         <Dropdown menu={userMenu} placement="bottomRight">
           <Space style={{ cursor: "pointer" }} className="erp-topbar-user">
