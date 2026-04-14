@@ -1,6 +1,4 @@
-import { readPersistentStore, writePersistentStore } from "./serverStore";
-
-const STORAGE_KEY = "sibella.erp.smtpSettings.v1";
+import { mutateResourceSync, requestJson, requestJsonSync } from "./apiClient";
 
 const defaultSmtpSettings = {
   enabled: false,
@@ -14,10 +12,23 @@ const defaultSmtpSettings = {
 };
 
 export function getSmtpSettings() {
+  const response = requestJsonSync("GET", "/api/settings/smtp");
   return {
     ...defaultSmtpSettings,
-    ...readPersistentStore(STORAGE_KEY, defaultSmtpSettings),
+    ...(response.ok ? response.data?.item : null),
   };
+}
+
+export async function getSmtpSettingsFresh() {
+  try {
+    const payload = await requestJson("GET", "/api/settings/smtp");
+    return {
+      ...defaultSmtpSettings,
+      ...(payload?.item || null),
+    };
+  } catch {
+    return { ...defaultSmtpSettings };
+  }
 }
 
 export function updateSmtpSettings(values) {
@@ -26,6 +37,5 @@ export function updateSmtpSettings(values) {
     ...values,
     port: Number(values?.port ?? 587),
   };
-  writePersistentStore(STORAGE_KEY, nextValues);
-  return nextValues;
+  return mutateResourceSync("PUT", "/api/settings/smtp", nextValues);
 }

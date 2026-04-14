@@ -1,16 +1,30 @@
-import { readPersistentStore, writePersistentStore } from "./serverStore";
-
-const STORAGE_KEY = "sibella.erp.systemParameters.v1";
+import { mutateResourceSync, requestJson, requestJsonSync } from "./apiClient";
 
 const defaultParameters = {
   productCodeControlEnabled: true,
 };
 
 export function getSystemParameters() {
+  const response = requestJsonSync("GET", "/api/settings/system-parameters");
+  if (!response.ok) {
+    return { ...defaultParameters };
+  }
   return {
     ...defaultParameters,
-    ...readPersistentStore(STORAGE_KEY, defaultParameters),
+    ...(response.data?.item || {}),
   };
+}
+
+export async function getSystemParametersFresh() {
+  try {
+    const payload = await requestJson("GET", "/api/settings/system-parameters");
+    return {
+      ...defaultParameters,
+      ...(payload?.item || {}),
+    };
+  } catch {
+    return { ...defaultParameters };
+  }
 }
 
 export function updateSystemParameters(values) {
@@ -19,7 +33,5 @@ export function updateSystemParameters(values) {
     ...values,
   };
 
-  writePersistentStore(STORAGE_KEY, nextValues);
-
-  return nextValues;
+  return mutateResourceSync("PUT", "/api/settings/system-parameters", nextValues);
 }

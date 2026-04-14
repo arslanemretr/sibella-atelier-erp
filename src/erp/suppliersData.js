@@ -1,7 +1,5 @@
 import { listMasterData } from "./masterData";
-import { readPersistentStore, writePersistentStore } from "./serverStore";
-
-const STORAGE_KEY = "sibella.erp.suppliers.v1";
+import { mutateResourceSync, requestCollection, requestCollectionSync, requestJsonSync } from "./apiClient";
 
 function createId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -78,11 +76,7 @@ function seedSuppliers() {
 }
 
 function loadStore() {
-  return readPersistentStore(STORAGE_KEY, seedSuppliers());
-}
-
-function saveStore(records) {
-  writePersistentStore(STORAGE_KEY, records);
+  return requestCollectionSync("/api/suppliers", seedSuppliers());
 }
 
 function normalizeSupplier(values, existingSupplier) {
@@ -128,28 +122,38 @@ export function listSuppliers() {
   return loadStore().map(enrichSupplier);
 }
 
+export async function listSuppliersFresh() {
+  const [suppliers, procurementTypes, paymentTerms] = await Promise.all([
+    requestCollection("/api/suppliers", seedSuppliers()),
+    requestCollection("/api/master-data/procurement-types", []),
+    requestCollection("/api/master-data/payment-terms", []),
+  ]);
+  const procurementMap = Object.fromEntries(procurementTypes.map((item) => [item.id, item.name]));
+  const paymentMap = Object.fromEntries(paymentTerms.map((item) => [item.id, item.name]));
+
+  return suppliers.map((supplier) => ({
+    ...supplier,
+    procurementTypeLabel: procurementMap[supplier.procurementTypeId] || "-",
+    paymentTermLabel: paymentMap[supplier.paymentTermId] || "-",
+    initials: supplier.company
+      .split(" ")
+      .slice(0, 2)
+      .map((part) => part[0] || "")
+      .join("")
+      .toUpperCase(),
+  }));
+}
+
 export function getSupplierById(supplierId) {
   return loadStore().find((item) => item.id === supplierId) || null;
 }
 
 export function createSupplier(values) {
-  const store = loadStore();
-  const record = normalizeSupplier(values);
-  const nextStore = [record, ...store];
-  saveStore(nextStore);
-  return enrichSupplier(record);
+  return enrichSupplier(mutateResourceSync("POST", "/api/suppliers", values));
 }
 
 export function updateSupplier(supplierId, values) {
-  const store = loadStore();
-  const existingSupplier = store.find((item) => item.id === supplierId);
-  if (!existingSupplier) {
-    return null;
-  }
-
-  const updatedRecord = normalizeSupplier(values, existingSupplier);
-  saveStore(store.map((item) => (item.id === supplierId ? updatedRecord : item)));
-  return enrichSupplier(updatedRecord);
+  return enrichSupplier(mutateResourceSync("PUT", `/api/suppliers/${encodeURIComponent(supplierId)}`, values));
 }
 
 export function importSuppliers(rows) {
@@ -168,11 +172,21 @@ export function importSuppliers(rows) {
   });
 
   const nextStore = Array.from(storeByEmail.values());
-  saveStore(nextStore);
-  return nextStore.map(enrichSupplier);
+  nextStore.forEach((record) => {
+    const existing = currentStore.find((item) => item.id === record.id);
+    if (existing) {
+      mutateResourceSync("PUT", `/api/suppliers/${encodeURIComponent(record.id)}`, record);
+    } else {
+      mutateResourceSync("POST", "/api/suppliers", record);
+    }
+  });
+
+  return loadStore().map(enrichSupplier);
 }
 
 export function deleteSupplier(supplierId) {
-  const store = loadStore();
-  saveStore(store.filter((item) => item.id !== supplierId));
+  const response = requestJsonSync("DELETE", `/api/suppliers/${encodeURIComponent(supplierId)}`);
+  if (!response.ok) {
+    throw new Error(response.message || "Tedarikci silinemedi.");
+  }
 }

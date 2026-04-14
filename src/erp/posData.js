@@ -1,14 +1,10 @@
-import { applyProductStockAdjustments, getProductById, listProducts } from "./productsData";
-import { readPersistentStore, writePersistentStore } from "./serverStore";
-
-const SESSION_STORAGE_KEY = "sibella.erp.posSessions.v2";
-const SALES_STORAGE_KEY = "sibella.erp.posSales.v2";
+import { getProductById, listProducts, listProductsFresh } from "./productsData";
+import { mutateResourceSync, requestCollection, requestCollectionSync } from "./apiClient";
 
 function createId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return `${prefix}-${crypto.randomUUID()}`;
   }
-
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
@@ -33,12 +29,12 @@ function seedSales() {
   return [];
 }
 
-function loadRecords(storageKey, seedFactory) {
-  return readPersistentStore(storageKey, seedFactory());
+function loadSessions() {
+  return requestCollectionSync("/api/pos-sessions", seedSessions());
 }
 
-function saveRecords(storageKey, records) {
-  writePersistentStore(storageKey, records);
+function loadSales() {
+  return requestCollectionSync("/api/pos-sales", seedSales());
 }
 
 function normalizeSession(values, existingSession) {
@@ -46,11 +42,11 @@ function normalizeSession(values, existingSession) {
     id: existingSession?.id || createId("possess"),
     sessionNo: values.sessionNo || `POS-${String(Date.now()).slice(-4)}`,
     registerName: values.registerName || "Magaza Ana Kasa",
-    cashierName: values.cashierName || "Kasa Kullanıcısı",
+    cashierName: values.cashierName || "Kasa Kullanici",
     openingBalance: Number(values.openingBalance || 0),
     openedAt: existingSession?.openedAt || values.openedAt || nowIso(),
     closedAt: values.closedAt || existingSession?.closedAt || null,
-    status: values.status || existingSession?.status || "Açık",
+    status: values.status || existingSession?.status || "Acik",
     note: values.note || "",
     createdAt: existingSession?.createdAt || nowIso(),
     updatedAt: nowIso(),
@@ -71,29 +67,26 @@ function normalizeSale(values) {
   const grossTotal = lines.reduce((sum, line) => sum + line.lineTotal, 0);
   const discountType = values.discountType || "amount";
   const discountValue = Number(values.discountValue || 0);
-  const discountAmount = discountType === "percent" ? (grossTotal * discountValue) / 100 : discountValue;
-  const normalizedDiscountAmount = Math.min(Math.max(discountAmount, 0), grossTotal);
-  const grandTotal = Math.max(grossTotal - normalizedDiscountAmount, 0);
+  const rawDiscount = discountType === "percent" ? (grossTotal * discountValue) / 100 : discountValue;
+  const discountAmount = Math.min(Math.max(rawDiscount, 0), grossTotal);
+  const grandTotal = Math.max(grossTotal - discountAmount, 0);
   const subtotal = grandTotal / 1.2;
   const taxTotal = grandTotal - subtotal;
 
   return {
-    id: createId("possale"),
     sessionId: values.sessionId,
     receiptNo: values.receiptNo || `FIS-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
     soldAt: values.soldAt || nowIso(),
-    customerName: values.customerName || "Mağaza Müşterisi",
+    customerName: values.customerName || "Magaza Musterisi",
     paymentMethod: values.paymentMethod || "Nakit",
     note: values.note || "",
     lines,
     discountType,
     discountValue,
-    discountAmount: normalizedDiscountAmount,
+    discountAmount,
     subtotal,
     taxTotal,
     grandTotal,
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
   };
 }
 
@@ -122,12 +115,10 @@ function enrichSale(sale) {
 
 function enrichSession(session) {
   const sales = listPosSales().filter((sale) => sale.sessionId === session.id);
-  const salesCount = sales.length;
   const totalSales = sales.reduce((sum, item) => sum + Number(item.grandTotal || 0), 0);
-
   return {
     ...session,
-    salesCount,
+    salesCount: sales.length,
     totalSales,
     totalSalesDisplay: formatMoney(totalSales),
     openingBalanceDisplay: formatMoney(session.openingBalance),
@@ -135,72 +126,84 @@ function enrichSession(session) {
 }
 
 export function listPosSessions() {
-  return loadRecords(SESSION_STORAGE_KEY, seedSessions).map(enrichSession);
+  return loadSessions().map(enrichSession);
+}
+
+export async function listPosSessionsFresh() {
+  const [sessions, sales] = await Promise.all([
+    requestCollection("/api/pos-sessions", seedSessions()),
+    requestCollection("/api/pos-sales", seedSales()),
+  ]);
+
+  return sessions.map((session) => {
+    const sessionSales = sales.filter((sale) => sale.sessionId === session.id);
+    const totalSales = sessionSales.reduce((sum, item) => sum + Number(item.grandTotal || 0), 0);
+    return {
+      ...session,
+      salesCount: sessionSales.length,
+      totalSales,
+      totalSalesDisplay: formatMoney(totalSales),
+      openingBalanceDisplay: formatMoney(session.openingBalance),
+    };
+  });
 }
 
 export function getPosSessionById(sessionId) {
-  return loadRecords(SESSION_STORAGE_KEY, seedSessions).find((item) => item.id === sessionId) || null;
+  return loadSessions().find((item) => item.id === sessionId) || null;
 }
 
 export function getOpenPosSessions() {
-  return listPosSessions().filter((item) => item.status === "Açık");
+  return listPosSessions().filter((item) => ["Acik", "Açık"].includes(item.status));
 }
 
 export function createPosSession(values) {
-  const store = loadRecords(SESSION_STORAGE_KEY, seedSessions);
-  const record = normalizeSession(values);
-  const nextStore = [record, ...store];
-  saveRecords(SESSION_STORAGE_KEY, nextStore);
-  return enrichSession(record);
+  return enrichSession(mutateResourceSync("POST", "/api/pos-sessions", normalizeSession(values)));
 }
 
 export function closePosSession(sessionId) {
-  const store = loadRecords(SESSION_STORAGE_KEY, seedSessions);
-  const existing = store.find((item) => item.id === sessionId);
-  if (!existing) {
-    return null;
-  }
-
-  const updated = normalizeSession(
-    {
-      ...existing,
-      status: "Kapalı",
-      closedAt: nowIso(),
-    },
-    existing,
-  );
-
-  saveRecords(
-    SESSION_STORAGE_KEY,
-    store.map((item) => (item.id === sessionId ? updated : item)),
-  );
-
-  return enrichSession(updated);
+  return enrichSession(mutateResourceSync("POST", `/api/pos-sessions/${encodeURIComponent(sessionId)}/close`, {}));
 }
 
 export function listPosSales() {
-  return loadRecords(SALES_STORAGE_KEY, seedSales).map(enrichSale);
+  return loadSales().map(enrichSale);
+}
+
+export async function listPosSalesFresh(productsOverride = null) {
+  const [sales, products] = await Promise.all([
+    requestCollection("/api/pos-sales", seedSales()),
+    productsOverride ? Promise.resolve(productsOverride) : listProductsFresh(),
+  ]);
+  const productMap = Object.fromEntries(products.map((item) => [item.id, item]));
+
+  return sales.map((sale) => {
+    const lines = (sale.lines || []).map((line) => {
+      const product = productMap[line.productId];
+      return {
+        ...line,
+        productCode: product?.code || "-",
+        productName: product?.name || "-",
+        lineTotalDisplay: formatMoney(line.lineTotal),
+        unitPriceDisplay: formatMoney(line.unitPrice),
+      };
+    });
+
+    return {
+      ...sale,
+      lines,
+      discountAmountDisplay: formatMoney(sale.discountAmount),
+      subtotalDisplay: formatMoney(sale.subtotal),
+      taxTotalDisplay: formatMoney(sale.taxTotal),
+      grandTotalDisplay: formatMoney(sale.grandTotal),
+    };
+  });
 }
 
 export function createPosSale(values) {
   const openSession = getPosSessionById(values.sessionId);
-  if (!openSession || openSession.status !== "Açık") {
-    throw new Error("Açık POS oturumu bulunamadı.");
+  if (!openSession || !["Acik", "Açık"].includes(openSession.status)) {
+    throw new Error("Acik POS oturumu bulunamadi.");
   }
-
-  const record = normalizeSale(values);
-  const store = loadRecords(SALES_STORAGE_KEY, seedSales);
-  const nextStore = [record, ...store];
-  saveRecords(SALES_STORAGE_KEY, nextStore);
-
-  applyProductStockAdjustments(
-    record.lines.map((line) => ({
-      productId: line.productId,
-      delta: -Number(line.quantity || 0),
-    })),
-  );
-
-  return enrichSale(record);
+  return enrichSale(mutateResourceSync("POST", "/api/pos-sales", normalizeSale(values)));
 }
 
 export function buildPosProductCatalog() {
@@ -213,11 +216,26 @@ export function buildPosProductCatalog() {
     }));
 }
 
+export async function buildPosProductCatalogFresh() {
+  const products = await listProductsFresh();
+  return products
+    .filter((item) => item.useInPos && item.status === "Aktif")
+    .map((item) => ({
+      ...item,
+      quantityAvailable: Number(item.stock || 0),
+      imageUrl: item.image,
+    }));
+}
+
+export async function getOpenPosSessionsFresh() {
+  const sessions = await listPosSessionsFresh();
+  return sessions.filter((item) => ["Acik", "Açık"].includes(item.status));
+}
+
 export function findProductByBarcode(barcode) {
   if (!barcode) {
     return null;
   }
-
   return listProducts().find((item) => String(item.barcode || "").trim() === String(barcode).trim()) || null;
 }
 

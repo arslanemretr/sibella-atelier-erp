@@ -1,6 +1,4 @@
-import { readPersistentStore, writePersistentStore } from "./serverStore";
-
-const STORAGE_KEY = "sibella.erp.masterData.v1";
+import { mutateResourceSync, requestCollection, requestCollectionSync } from "./apiClient";
 
 function createId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -245,14 +243,13 @@ function buildInitialStore() {
 }
 
 export function loadMasterDataStore() {
-  const parsed = readPersistentStore(STORAGE_KEY, buildInitialStore());
+  const initialStore = buildInitialStore();
   return Object.fromEntries(
-    Object.keys(masterDataDefinitions).map((key) => [key, parsed[key] || masterDataDefinitions[key].seed]),
+    Object.keys(masterDataDefinitions).map((key) => [
+      key,
+      requestCollectionSync(`/api/master-data/${encodeURIComponent(key)}`, initialStore[key]),
+    ]),
   );
-}
-
-export function saveMasterDataStore(store) {
-  writePersistentStore(STORAGE_KEY, store);
 }
 
 export function listMasterData(entityKey) {
@@ -260,34 +257,18 @@ export function listMasterData(entityKey) {
   return store[entityKey] || [];
 }
 
-export function createMasterData(entityKey, values) {
+export async function listMasterDataFresh(entityKey) {
   const definition = masterDataDefinitions[entityKey];
-  const store = loadMasterDataStore();
-  const record = definition.normalize(values);
-  const nextStore = {
-    ...store,
-    [entityKey]: [record, ...(store[entityKey] || [])],
-  };
+  if (!definition) {
+    return [];
+  }
+  return requestCollection(`/api/master-data/${encodeURIComponent(entityKey)}`, definition.seed);
+}
 
-  saveMasterDataStore(nextStore);
-  return record;
+export function createMasterData(entityKey, values) {
+  return mutateResourceSync("POST", `/api/master-data/${encodeURIComponent(entityKey)}`, values);
 }
 
 export function updateMasterData(entityKey, recordId, values) {
-  const definition = masterDataDefinitions[entityKey];
-  const store = loadMasterDataStore();
-  const currentRecords = store[entityKey] || [];
-  const existingRecord = currentRecords.find((item) => item.id === recordId);
-  if (!existingRecord) {
-    return null;
-  }
-
-  const updatedRecord = definition.normalize(values, existingRecord);
-  const nextStore = {
-    ...store,
-    [entityKey]: currentRecords.map((item) => (item.id === recordId ? updatedRecord : item)),
-  };
-
-  saveMasterDataStore(nextStore);
-  return updatedRecord;
+  return mutateResourceSync("PUT", `/api/master-data/${encodeURIComponent(entityKey)}/${encodeURIComponent(recordId)}`, values);
 }
