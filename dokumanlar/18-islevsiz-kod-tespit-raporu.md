@@ -93,31 +93,10 @@ Dosya: [App.jsx](/d:/erpsibella/src/App.jsx)
 
 Dosya: [db.js](/d:/erpsibella/server/db.js)
 
-Tespit edilen legacy alanlar:
-
-- `kv_store` tablosu
-- `store_meta` tablosu
-- `syncStoreValueToTables()`
-- `backfillBuilders`
-- `ensureKeyInitialized()`
-- `getStoreValue()`
-- `setStoreValue()`
-- `listStoreKeys()`
-
 Durum:
-- frontend runtime artik bu katmani kullanmiyor
-- `/api/store` route'lari kaldirildi
-- ancak `db.js` icinde uyumluluk kodu duruyor
-
-Risk:
-- kod karmasasi olusturuyor
-- yeni gelistirmelerde yanlislikla tekrar kullanilabilir
-- fiziksel olarak `kv_store/store_meta` tablolarini gereksiz tutuyor
-
-Oneri:
-1. `db.js` icindeki legacy sync/backfill katmanini ayri turda kaldir
-2. runtime testlerini tekrar calistir
-3. sonra `kv_store` ve `store_meta` tablolarinin fiziksel temizligini planla
+- legacy store uyumluluk katmani kaldirildi
+- veri akisi artik yalnizca PostgreSQL tablolari uzerinden calisiyor
+- bu alan artik aktif teknik borc degil
 
 ### SMTP Mailer Legacy Okuma Mantigi
 
@@ -139,7 +118,7 @@ Dosyalar:
 - [13-postgresql-gecis-rehberi.md](/d:/erpsibella/dokumanlar/13-postgresql-gecis-rehberi.md)
 
 Tespit:
-- bu dosyalarda `kv_store / store_meta` merkezli veya mirror mantigini anlatan eski kisimlar var
+- bu dosyalarda eski store/mirror mantigini anlatan kisimlar vardi
 - guncel hedef mimari ile kismen uyusmuyorlar
 
 Oneri:
@@ -155,7 +134,6 @@ Oneri:
 
 ## Bir Sonraki Temizlik Sirasi
 
-1. `db.js` legacy sync/backfill katmani
-2. `App.jsx` icindeki `resetOperationalDataIfNeeded()`
-3. `posData.js` icindeki `getProductSnapshot()`
-4. eski mimari dokumanlarinin revizyonu
+1. `App.jsx` icindeki `resetOperationalDataIfNeeded()`
+2. `posData.js` icindeki `getProductSnapshot()`
+3. eski mimari dokumanlarinin revizyonu

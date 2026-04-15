@@ -312,14 +312,3 @@ CREATE TABLE IF NOT EXISTS login_attempts (
   failure_reason TEXT,
   user_id TEXT REFERENCES users(id) ON DELETE SET NULL
 );
-
-CREATE TABLE IF NOT EXISTS kv_store (
-  key TEXT PRIMARY KEY,
-  value JSONB NOT NULL,
-  updated_at TIMESTAMPTZ NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS store_meta (
-  key TEXT PRIMARY KEY,
-  updated_at TIMESTAMPTZ NOT NULL
-);

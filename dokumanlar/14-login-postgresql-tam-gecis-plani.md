@@ -26,21 +26,12 @@ Asagidaki anahtar artik uygulama tarafinda kullanilmaz:
 
 - `sibella.erp.users.v1`
 
-## Temizlik Adimi
-
-Local ve canli veritabanlarinda asagidaki SQL calistirilmalidir:
-
-```sql
-DELETE FROM kv_store WHERE key = 'sibella.erp.users.v1';
-DELETE FROM store_meta WHERE key = 'sibella.erp.users.v1';
-```
-
 ## Dogrulama Kriterleri
 
 1. `users` tablosunda kullanicilar gorunmeli
 2. Login basarili olmali
 3. `User Management` ekraninda ekle-guncelle-sil islemleri calismali
-4. `kv_store` icinde kullanici kaydi bulunmamali
+4. Kullanici akisi yalnizca `users` tablosu uzerinden calismali
 
 ## Sonuc
 

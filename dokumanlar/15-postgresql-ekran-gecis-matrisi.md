@@ -18,8 +18,6 @@ Amac:
   - `auth_sessions`
   - `login_attempts`
   - `password_reset_tokens`
-- Kaldirilan legacy bagimliligi:
-  - `kv_store > sibella.erp.users.v1`
 - Test:
   - kullanici listesi PostgreSQL `users` tablosundan okunuyor
   - login handler testi gecti
@@ -215,25 +213,22 @@ Amac:
 - Test:
   - get/put handler testi gecti
 
-## Hibrit Kalan Parcalar
+## Kalan Teknik Isler
 
-Su an localde tamamen kaldirilmamis bagimliliklar:
+Su an ekranlarin veri kaynagi PostgreSQL tablolaridir.
 
-- `kv_store` uzerinden calisan / tam sokulmemis moduller:
-  - `server/db.js` icindeki store > table sync uyumluluk katmani
-- sayfa seviyesinde kalan son teknik isler:
-  - stok hareketleri ekranini server-side SQL raporlamaya tasimak
-  - sayfa bazli smoke testleri tarayici senaryolariyla tamamlamak
-  - legacy `kv_store` anahtarlarinin fiziksel temizligini yapmak
+Sayfa seviyesinde kalan son teknik isler:
+
+- stok hareketleri ekranini server-side SQL raporlamaya tasimak
+- sayfa bazli smoke testleri tarayici senaryolariyla tamamlamak
 
 ## Bir Sonraki Teknik Hedef
 
 Siradaki blok:
 
-1. legacy sync katmanini kapatmak
-2. fiziksel `kv_store` temizligi yapmak
-3. ekran bazli smoke test ve duzeltme turu
-4. genel dokumantasyon ve tedarikci portal kullanim kilavuzu
+1. ekran bazli smoke test ve duzeltme turu
+2. stok hareketleri raporunu server-side SQL tarafina almak
+3. genel dokumantasyon ve tedarikci portal kullanim kilavuzu
 
 ## Test Prensibi
 

@@ -1,20 +1,3 @@
-﻿import React from "react";
-import { useNavigate } from "react-router-dom";
-import { Button, Card, Col, Descriptions, Drawer, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography, message } from "antd";
-import { DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
-import { listMasterDataFresh } from "../masterData";
-import { listProductsFresh } from "../productsData";
-import { listPurchasesFresh } from "../purchasesData";
-import { listStockEntriesFresh } from "../stockEntriesData";
-import { listSuppliersFresh } from "../suppliersData";
-
-const { Title, Text } = Typography;
-
-function openDetailFromRow(setSelected, setOpen, record) {
-  setSelected(record);
-  setOpen(true);
-}
-
 function formatMovementMoney(value) {
   return new Intl.NumberFormat("tr-TR", {
     style: "currency",

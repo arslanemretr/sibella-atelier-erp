@@ -1,11 +1,10 @@
-# Guncel Veritabani Semasi (SQLite)
+# Guncel Veritabani Semasi (PostgreSQL)
 
 Bu dokuman `data/erp.sqlite` dosyasindaki tum tablo semasini ozetler.
 
-## Motor ve Dosya
+## Motor ve Erisim
 
-- Motor: SQLite
-- Dosya: `data/erp.sqlite`
+- Motor: PostgreSQL
 - Erisim katmani: `server/db.js`
 
 ## Tablolar
@@ -49,8 +48,6 @@ Bu dokuman `data/erp.sqlite` dosyasindaki tum tablo semasini ozetler.
 
 - `system_parameters`
 - `smtp_settings`
-- `kv_store`
-- `store_meta`
 
 ## Iliski Ozeti
 

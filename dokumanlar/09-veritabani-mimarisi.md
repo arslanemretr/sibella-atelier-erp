@@ -2,49 +2,24 @@
 
 ## Genel Yapi
 
-Uygulama artik sadece `localStorage` ile calismamaktadir. Ana is verileri icin yerel bir API ve `SQLite` veritabani kullanilmaktadir.
+Uygulama artik sadece `localStorage` ile calismamaktadir. Ana is verileri icin yerel API ve `PostgreSQL` veritabani kullanilmaktadir.
 
-- Veritabani motoru: `SQLite`
-- DB dosyasi: `data/erp.sqlite`
+- Veritabani motoru: `PostgreSQL`
 - API sunucusu: `server/index.js`
 - DB erisim katmani: `server/db.js`
-- Frontend store koprusu: `src/erp/serverStore.js`
+- Frontend API istemcisi: `src/erp/apiClient.js`
 
 ## Veritabani Mantigi
 
-Mevcut frontend modulleri bozulmadan korunmustur. Bunun icin her module ozel store verisi `SQLite` icinde saklanir.
-
-Kullanilan ana kayit anahtarlari:
-
-- `sibella.erp.masterData.v1`
-- Kullanici verisi artik dogrudan `users` tablosunda tutulur
-- `sibella.erp.suppliers.v1`
-- `sibella.erp.products.v1`
-- `sibella.erp.purchases.v2`
-- `sibella.erp.contracts.v1`
-- `sibella.erp.stockEntries.v2`
-- `sibella.erp.posSessions.v2`
-- `sibella.erp.posSales.v2`
-- `sibella.erp.deliveryLists.v1`
-- `sibella.erp.systemParameters.v1`
-- `sibella.erp.smtpSettings.v1`
-
-Bu veriler `kv_store` tablosunda tutulur:
-
-- `key`
-- `value`
-- `updated_at`
+Mevcut frontend modulleri tablo bazli API endpointleri uzerinden calisir. Uygulamadaki her ana modul dogrudan kendi PostgreSQL tablolarina yazilir ve oralardan okunur.
 
 ## API Uclari
 
 - `GET /api/health`
-- `GET /api/store`
-- `GET /api/store/:key`
-- `PUT /api/store/:key`
 
 ## Frontend Tarafinda DB'ye Gecen Moduller
 
-Asagidaki moduller artik SQLite destekli API uzerinden calisir:
+Asagidaki moduller artik PostgreSQL destekli API uzerinden calisir:
 
 - kullanicilar
 - tedarikciler
@@ -86,4 +61,4 @@ Vite gelistirme ortami `/api` isteklerini otomatik olarak `http://localhost:4001
 
 ## Not
 
-Bu yapi, mevcut uygulamayi hizla gercek veritabani ile calisir hale getirmek icin kurulmustur. Bir sonraki asamada bu `kv_store` yapisi istenirse daha iliskisel tablolara ayrilabilir.
+Sistemde tek kalici veri kaynagi PostgreSQL tablolaridir. Legacy store/mirror yapisi tamamen kaldirilmistir.
