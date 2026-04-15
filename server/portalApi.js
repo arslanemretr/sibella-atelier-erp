@@ -10,6 +10,7 @@ function createId(prefix) {
 }
 
 let ensureDeliveryLineSchemaPromise = null;
+let deliveryLineSchemaInfo = null;
 
 async function columnExists(tableName, columnName) {
   const rows = await sqlMany(
@@ -27,7 +28,12 @@ async function ensureDeliveryLineSchema() {
     ensureDeliveryLineSchemaPromise = (async () => {
       await sqlExec("ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS delivery_list_id TEXT");
 
-      if (await columnExists("delivery_lines", "delivery_id")) {
+      const hasDeliveryId = await columnExists("delivery_lines", "delivery_id");
+      deliveryLineSchemaInfo = {
+        hasDeliveryId,
+      };
+
+      if (hasDeliveryId) {
         await sqlExec(`
           UPDATE delivery_lines
           SET delivery_list_id = delivery_id
@@ -36,11 +42,13 @@ async function ensureDeliveryLineSchema() {
       }
     })().catch((error) => {
       ensureDeliveryLineSchemaPromise = null;
+      deliveryLineSchemaInfo = null;
       throw error;
     });
   }
 
   await ensureDeliveryLineSchemaPromise;
+  return deliveryLineSchemaInfo || { hasDeliveryId: false };
 }
 
 function httpError(res, status, message) {
@@ -203,9 +211,13 @@ function normalizePosSale(values) {
 }
 
 async function listDeliveryRows() {
-  await ensureDeliveryLineSchema();
+  const schemaInfo = await ensureDeliveryLineSchema();
   const deliveryRows = await sqlMany("SELECT * FROM delivery_lists ORDER BY created_at DESC, date DESC");
-  const lineRows = await sqlMany("SELECT * FROM delivery_lines ORDER BY delivery_list_id ASC, sort_order ASC, id ASC");
+  const lineRows = await sqlMany(
+    schemaInfo.hasDeliveryId
+      ? "SELECT * FROM delivery_lines ORDER BY COALESCE(delivery_list_id, delivery_id) ASC, sort_order ASC, id ASC"
+      : "SELECT * FROM delivery_lines ORDER BY delivery_list_id ASC, sort_order ASC, id ASC",
+  );
   const linesByDeliveryId = new Map();
 
   lineRows.forEach((row) => {
@@ -290,20 +302,54 @@ function normalizeDelivery(values, existingRecord) {
 }
 
 async function replaceDeliveryLines(record) {
-  await ensureDeliveryLineSchema();
-  await sqlExec("DELETE FROM delivery_lines WHERE delivery_list_id = $1 OR delivery_id = $1", [record.id]);
+  const schemaInfo = await ensureDeliveryLineSchema();
+  await sqlExec(
+    schemaInfo.hasDeliveryId
+      ? "DELETE FROM delivery_lines WHERE delivery_list_id = $1 OR delivery_id = $1"
+      : "DELETE FROM delivery_lines WHERE delivery_list_id = $1",
+    [record.id],
+  );
   for (let index = 0; index < record.lines.length; index += 1) {
     const line = record.lines[index];
+    if (schemaInfo.hasDeliveryId) {
+      await sqlExec(`
+        INSERT INTO delivery_lines (
+          id, delivery_id, delivery_list_id, product_id, is_new_product, image, name, code,
+          sale_price, sale_currency, quantity, description, sort_order, category_id, category_label,
+          collection_id, collection_label
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+      `, [
+        line.id,
+        record.id,
+        record.id,
+        line.productId,
+        line.isNewProduct,
+        line.image,
+        line.name,
+        line.code,
+        line.salePrice,
+        line.saleCurrency,
+        line.quantity,
+        line.description,
+        index + 1,
+        line.categoryId,
+        line.categoryLabel || "",
+        line.collectionId,
+        line.collectionLabel || "",
+      ]);
+      continue;
+    }
+
     await sqlExec(`
       INSERT INTO delivery_lines (
-        id, delivery_id, delivery_list_id, product_id, is_new_product, image, name, code,
+        id, delivery_list_id, product_id, is_new_product, image, name, code,
         sale_price, sale_currency, quantity, description, sort_order, category_id, category_label,
         collection_id, collection_label
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
     `, [
       line.id,
-      record.id,
       record.id,
       line.productId,
       line.isNewProduct,
