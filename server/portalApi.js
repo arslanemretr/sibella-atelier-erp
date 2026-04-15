@@ -9,6 +9,40 @@ function createId(prefix) {
   return `${prefix}-${crypto.randomUUID()}`;
 }
 
+let ensureDeliveryLineSchemaPromise = null;
+
+async function columnExists(tableName, columnName) {
+  const rows = await sqlMany(
+    `SELECT 1 AS found
+     FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+     LIMIT 1`,
+    [tableName, columnName],
+  );
+  return Boolean(rows[0]?.found);
+}
+
+async function ensureDeliveryLineSchema() {
+  if (!ensureDeliveryLineSchemaPromise) {
+    ensureDeliveryLineSchemaPromise = (async () => {
+      await sqlExec("ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS delivery_list_id TEXT");
+
+      if (await columnExists("delivery_lines", "delivery_id")) {
+        await sqlExec(`
+          UPDATE delivery_lines
+          SET delivery_list_id = delivery_id
+          WHERE delivery_list_id IS NULL AND delivery_id IS NOT NULL
+        `);
+      }
+    })().catch((error) => {
+      ensureDeliveryLineSchemaPromise = null;
+      throw error;
+    });
+  }
+
+  await ensureDeliveryLineSchemaPromise;
+}
+
 function httpError(res, status, message) {
   return res.status(status).json({ ok: false, message });
 }
@@ -169,12 +203,14 @@ function normalizePosSale(values) {
 }
 
 async function listDeliveryRows() {
+  await ensureDeliveryLineSchema();
   const deliveryRows = await sqlMany("SELECT * FROM delivery_lists ORDER BY created_at DESC, date DESC");
   const lineRows = await sqlMany("SELECT * FROM delivery_lines ORDER BY delivery_list_id ASC, sort_order ASC, id ASC");
   const linesByDeliveryId = new Map();
 
   lineRows.forEach((row) => {
-    const items = linesByDeliveryId.get(row.delivery_list_id) || [];
+    const relatedDeliveryId = row.delivery_list_id || row.delivery_id || null;
+    const items = linesByDeliveryId.get(relatedDeliveryId) || [];
     items.push({
       id: row.id,
       productId: row.product_id || null,
@@ -186,12 +222,12 @@ async function listDeliveryRows() {
       saleCurrency: row.sale_currency || "TRY",
       quantity: Number(row.quantity || 0),
       description: row.description || "",
-      categoryId: null,
-      categoryLabel: "",
-      collectionId: null,
-      collectionLabel: "",
+      categoryId: row.category_id || null,
+      categoryLabel: row.category_label || "",
+      collectionId: row.collection_id || null,
+      collectionLabel: row.collection_label || "",
     });
-    linesByDeliveryId.set(row.delivery_list_id, items);
+    linesByDeliveryId.set(relatedDeliveryId, items);
   });
 
   return deliveryRows.map((row) => ({
@@ -243,6 +279,10 @@ function normalizeDelivery(values, existingRecord) {
       saleCurrency: line.saleCurrency || "TRY",
       quantity: Number(line.quantity || 0),
       description: line.description || "",
+      categoryId: line.categoryId || null,
+      categoryLabel: line.categoryLabel || "",
+      collectionId: line.collectionId || null,
+      collectionLabel: line.collectionLabel || "",
     })),
     createdAt: existingRecord?.createdAt || nowIso(),
     updatedAt: nowIso(),
@@ -250,13 +290,36 @@ function normalizeDelivery(values, existingRecord) {
 }
 
 async function replaceDeliveryLines(record) {
-  await sqlExec("DELETE FROM delivery_lines WHERE delivery_list_id = $1", [record.id]);
+  await ensureDeliveryLineSchema();
+  await sqlExec("DELETE FROM delivery_lines WHERE delivery_list_id = $1 OR delivery_id = $1", [record.id]);
   for (let index = 0; index < record.lines.length; index += 1) {
     const line = record.lines[index];
     await sqlExec(`
-      INSERT INTO delivery_lines (id, delivery_list_id, product_id, is_new_product, image, name, code, sale_price, sale_currency, quantity, description, sort_order)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-    `, [line.id, record.id, line.productId, line.isNewProduct, line.image, line.name, line.code, line.salePrice, line.saleCurrency, line.quantity, line.description, index + 1]);
+      INSERT INTO delivery_lines (
+        id, delivery_id, delivery_list_id, product_id, is_new_product, image, name, code,
+        sale_price, sale_currency, quantity, description, sort_order, category_id, category_label,
+        collection_id, collection_label
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+    `, [
+      line.id,
+      record.id,
+      record.id,
+      line.productId,
+      line.isNewProduct,
+      line.image,
+      line.name,
+      line.code,
+      line.salePrice,
+      line.saleCurrency,
+      line.quantity,
+      line.description,
+      index + 1,
+      line.categoryId,
+      line.categoryLabel || "",
+      line.collectionId,
+      line.collectionLabel || "",
+    ]);
   }
 }
 

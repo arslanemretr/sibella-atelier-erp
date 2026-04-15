@@ -266,6 +266,8 @@ CREATE TABLE IF NOT EXISTS delivery_lines (
   sort_order INTEGER
 );
 
+ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS delivery_list_id TEXT;
+
 CREATE TABLE IF NOT EXISTS system_parameters (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   product_code_control_enabled BOOLEAN,

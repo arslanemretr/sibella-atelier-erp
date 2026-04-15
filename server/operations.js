@@ -82,6 +82,20 @@ async function listStockEntryRows() {
   return mapStockEntryRows(entryRows, lineRows);
 }
 
+async function listStockEntryRowsForSupplier(supplierId) {
+  const entryRows = await sqlMany("SELECT * FROM stock_entries ORDER BY created_at DESC, document_no ASC");
+  const lineRows = await sqlMany(`
+    SELECT sl.*
+    FROM stock_lines sl
+    INNER JOIN products p ON p.id = sl.product_id
+    WHERE p.supplier_id = $1
+    ORDER BY sl.stock_entry_id ASC, sl.sort_order ASC, sl.id ASC
+  `, [supplierId]);
+
+  const filteredRows = mapStockEntryRows(entryRows, lineRows);
+  return filteredRows.filter((item) => Array.isArray(item.lines) && item.lines.length > 0);
+}
+
 async function getStockEntryRow(stockEntryId) {
   return (await listStockEntryRows()).find((item) => item.id === stockEntryId) || null;
 }
@@ -204,10 +218,16 @@ export async function handlePurchasesUpdate(req, res) {
   }
 }
 
-export async function handleStockEntriesList(_req, res) {
+export async function handleStockEntriesList(req, res) {
+  const authUser = req.authUser || null;
+  const items =
+    authUser?.role === "Tedarikci" && authUser?.supplierId
+      ? await listStockEntryRowsForSupplier(authUser.supplierId)
+      : await listStockEntryRows();
+
   return res.json({
     ok: true,
-    items: await listStockEntryRows(),
+    items,
   });
 }
 

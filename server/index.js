@@ -109,7 +109,7 @@ app.delete("/api/products/:id", requireRole("Yonetici"), handleProductsDelete);
 app.get("/api/purchases", requireRole("Yonetici", "Muhasebe"), handlePurchasesList);
 app.post("/api/purchases", requireRole("Yonetici", "Muhasebe"), handlePurchasesCreate);
 app.put("/api/purchases/:id", requireRole("Yonetici", "Muhasebe"), handlePurchasesUpdate);
-app.get("/api/stock-entries", requireRole("Yonetici", "Muhasebe"), handleStockEntriesList);
+app.get("/api/stock-entries", requireRole("Yonetici", "Muhasebe", "Tedarikci"), handleStockEntriesList);
 app.post("/api/stock-entries", requireRole("Yonetici", "Muhasebe"), handleStockEntriesCreate);
 app.put("/api/stock-entries/:id", requireRole("Yonetici", "Muhasebe"), handleStockEntriesUpdate);
 app.get("/api/contracts", requireRole("Yonetici", "Muhasebe"), handleContractsList);

@@ -48,6 +48,15 @@ function formatDisplayDate(value) {
   }).format(parsed);
 }
 
+function formatDisplayMoney(value, currency = "TRY") {
+  return new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+}
+
 export function SupplierPortalProductListPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -174,13 +183,14 @@ export function SupplierPortalProductListPage() {
   }, [filters, location.state?.dashboardFilter, products]);
 
   const handleExport = () => {
-    const header = ["Urun Kodu", "Urun Adi", "Aciklama", "Satis Fiyati", "Durum"];
+    const header = ["Urun Kodu", "Urun Adi", "Aciklama", "Satis Fiyati", "Kalan Stok Adet", "Toplam Tutar"];
     const rows = filteredProducts.map((item) => [
       item.code,
       item.name,
       item.notes || "",
       item.priceDisplay,
-      item.workflowStatus || "Taslak",
+      Number(item.stock || 0),
+      formatDisplayMoney(Number(item.stock || 0) * Number(item.salePrice || 0), item.saleCurrency || "TRY"),
     ]);
     downloadWorkbook([header, ...rows], "UrunListem", "tedarikci-urun-listesi.xlsx");
     message.success("Excel dosyasi indirildi.");
@@ -237,19 +247,11 @@ export function SupplierPortalProductListPage() {
       render: (value) => Number(value || 0),
     },
     {
-      title: "Durum",
-      dataIndex: "workflowStatus",
-      key: "workflowStatus",
-      width: 170,
-      render: (value) => {
-        const colorMap = {
-          Taslak: "default",
-          "Onaya Gonderildi": "gold",
-          Onaylandi: "green",
-          "Revizyon Istendi": "red",
-        };
-        return <Tag color={colorMap[value] || "blue"}>{value || "Taslak"}</Tag>;
-      },
+      title: "Toplam Tutar",
+      key: "totalAmount",
+      width: 180,
+      sorter: (a, b) => (Number(a.stock || 0) * Number(a.salePrice || 0)) - (Number(b.stock || 0) * Number(b.salePrice || 0)),
+      render: (_, record) => formatDisplayMoney(Number(record.stock || 0) * Number(record.salePrice || 0), record.saleCurrency || "TRY"),
     },
     {
       title: "Islemler",
@@ -1076,8 +1078,9 @@ export function SupplierPortalDeliveryEditorPage() {
   );
   const watchedStatus = Form.useWatch("status", form);
   const currentStatus = watchedStatus || form.getFieldValue("status") || targetRecord?.status || "Taslak";
-  const isEditableSupplierStatus = !isAdminView && ["Taslak", "Revizyon Istendi"].includes(currentStatus);
-  const isDeliveryLocked = isAdminView || !isEditableSupplierStatus;
+  const isEditableSupplierStatus = ["Taslak", "Revizyon Istendi"].includes(currentStatus);
+  const canEditDelivery = isAdminView || isEditableSupplierStatus;
+  const isDeliveryLocked = !canEditDelivery;
 
   React.useEffect(() => {
     let cancelled = false;
@@ -1498,7 +1501,12 @@ export function SupplierPortalDeliveryEditorPage() {
             PDF Olarak Indir
           </Button>
           {isAdminView ? (
-            <Button onClick={() => navigate("/supplier-portal/delivery-lists")}>Listeye Don</Button>
+            <>
+              <Button onClick={() => handleSave(form.getFieldValue("status") || currentStatus || "Taslak")} loading={loading}>
+                Guncelle
+              </Button>
+              <Button onClick={() => navigate("/supplier-portal/delivery-lists")}>Listeye Don</Button>
+            </>
           ) : (
             <>
               <Button onClick={() => handleSave("Taslak")} loading={loading} disabled={isDeliveryLocked}>
@@ -1512,7 +1520,7 @@ export function SupplierPortalDeliveryEditorPage() {
         </Space>
       </div>
 
-      {isDeliveryLocked ? (
+      {!isAdminView && isDeliveryLocked ? (
         <Card
           size="small"
           style={{
@@ -1556,7 +1564,7 @@ export function SupplierPortalDeliveryEditorPage() {
         </Card>
 
         <Card title="Urun Listesi" className="erp-card-logo-divider" bodyStyle={{ paddingTop: 16 }} style={{ marginTop: 12 }}>
-          {!isAdminView ? (
+          {!isDeliveryLocked ? (
           <Card size="small" title="Urun Ekleme" style={{ marginBottom: 12 }}>
             <Row gutter={[12, 12]} align="bottom" className="erp-delivery-draft-grid">
               <Col xs={24} xl={6} className="erp-delivery-draft-name">
@@ -1683,7 +1691,7 @@ export function SupplierPortalDeliveryEditorPage() {
                         <Button type="text" className="erp-icon-btn" icon={<PlusCircleOutlined />} onClick={() => openPromoteDrawer(record._rowIndex)} />
                       </Tooltip>
                     ) : null}
-                    {!isAdminView ? (
+                    {!isDeliveryLocked ? (
                       <Tooltip title="Sil">
                         <Button danger type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} onClick={() => handleDeleteLine(record._rowIndex)} disabled={isDeliveryLocked} />
                       </Tooltip>

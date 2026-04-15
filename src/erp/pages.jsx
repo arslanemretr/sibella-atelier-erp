@@ -536,7 +536,7 @@ export function SupplierDashboardPage() {
     [products],
   );
   const totalStockValue = React.useMemo(
-    () => products.reduce((sum, product) => sum + (Number(product.stock || 0) * Number(product.cost || 0)), 0),
+    () => products.reduce((sum, product) => sum + (Number(product.stock || 0) * Number(product.salePrice || 0)), 0),
     [products],
   );
   const totalProductVariety = React.useMemo(
