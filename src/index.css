@@ -404,6 +404,17 @@ html, body {
   min-width: 1240px;
 }
 
+.erp-supplier-products-table-card .ant-table {
+  min-width: 1180px;
+}
+
+.erp-supplier-products-table-card .ant-table-wrapper,
+.erp-supplier-products-table-card .ant-table-content,
+.erp-supplier-products-table-card .ant-table-body {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
 .erp-delivery-list-table-card .ant-table-wrapper {
   overflow: visible;
 }

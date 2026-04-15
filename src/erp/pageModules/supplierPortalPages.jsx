@@ -1,7 +1,7 @@
 ﻿import React from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AutoComplete, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Modal, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
-import { AppstoreOutlined, BarsOutlined, CheckOutlined, DeleteOutlined, DownloadOutlined, DownOutlined, EditOutlined, EyeOutlined, InboxOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
+import { AppstoreOutlined, BarsOutlined, CheckOutlined, DeleteOutlined, DownloadOutlined, DownOutlined, EditOutlined, EyeOutlined, FilterOutlined, InboxOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { getAuthUser } from "../../auth";
 import { completeDeliveryReceipt, createDeliveryList, createDeliveryPdf, getDeliveryListById, getNextDeliveryNoPreviewFresh, listDeliveryListsBySupplierFresh, listDeliveryListsFresh, updateDeliveryList } from "../deliveryListsData";
@@ -53,16 +53,50 @@ export function SupplierPortalProductListPage() {
   const location = useLocation();
   const authUser = getAuthUser();
   const supplierId = authUser?.supplierId || null;
+  const SAVED_FILTERS_KEY = "sibella.erp.supplierPortalProductFilters.v1";
   const [viewMode, setViewMode] = React.useState("liste");
   const [products, setProducts] = React.useState([]);
   const [tableLoading, setTableLoading] = React.useState(false);
-  const [search, setSearch] = React.useState("");
+  const [categoryOptions, setCategoryOptions] = React.useState([{ value: "all", label: "Tumu" }]);
+  const [collectionOptions, setCollectionOptions] = React.useState([{ value: "all", label: "Tumu" }]);
+  const [filters, setFilters] = React.useState({
+    search: "",
+    categoryId: undefined,
+    collectionId: undefined,
+    status: undefined,
+  });
+  const [filterModalOpen, setFilterModalOpen] = React.useState(false);
+  const [savedFilterName, setSavedFilterName] = React.useState("");
+  const [savedFilters, setSavedFilters] = React.useState(() => {
+    if (typeof window === "undefined") {
+      return [];
+    }
+
+    try {
+      return JSON.parse(window.localStorage.getItem(SAVED_FILTERS_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const statusOptions = ["Tumu", "Aktif", "Pasif"].map((value) => ({ value, label: value }));
 
   const refreshProducts = React.useCallback(async () => {
     try {
       setTableLoading(true);
-      const nextProducts = await listProductsFresh();
+      const [nextProducts, categories, collections] = await Promise.all([
+        listProductsFresh(),
+        listMasterDataFresh("categories"),
+        listMasterDataFresh("collections"),
+      ]);
       setProducts(supplierId ? nextProducts.filter((item) => item.supplierId === supplierId) : []);
+      setCategoryOptions([
+        { value: "all", label: "Tumu" },
+        ...categories.map((item) => ({ value: item.id, label: item.fullPath })),
+      ]);
+      setCollectionOptions([
+        { value: "all", label: "Tumu" },
+        ...collections.map((item) => ({ value: item.id, label: item.name })),
+      ]);
     } catch (error) {
       message.error(error?.message || "Urunler yuklenemedi.");
     } finally {
@@ -74,8 +108,49 @@ export function SupplierPortalProductListPage() {
     void refreshProducts();
   }, [refreshProducts]);
 
+  const persistSavedFilters = (nextSavedFilters) => {
+    setSavedFilters(nextSavedFilters);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(nextSavedFilters));
+    }
+  };
+
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      search: "",
+      categoryId: undefined,
+      collectionId: undefined,
+      status: undefined,
+    });
+  };
+
+  const handleSaveFilterPreset = () => {
+    if (!savedFilterName.trim()) {
+      message.warning("Filtre adini girin.");
+      return;
+    }
+
+    const nextSavedFilters = [
+      { name: savedFilterName.trim(), filters },
+      ...savedFilters.filter((item) => item.name !== savedFilterName.trim()),
+    ];
+    persistSavedFilters(nextSavedFilters);
+    setSavedFilterName("");
+    message.success("Filtre kaydedildi.");
+  };
+
+  const applySavedFilter = (savedFilter) => {
+    setFilters(savedFilter.filters);
+    setFilterModalOpen(false);
+    message.success(`${savedFilter.name} filtresi uygulandi.`);
+  };
+
   const filteredProducts = React.useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+    const normalizedSearch = filters.search.trim().toLowerCase();
     const dashboardFilter = location.state?.dashboardFilter;
     return products.filter((product) => {
       const stockValue = Number(product.stock || 0);
@@ -85,15 +160,18 @@ export function SupplierPortalProductListPage() {
       if (dashboardFilter === "out-of-stock" && stockValue !== 0) {
         return false;
       }
-      if (!normalizedSearch) {
-        return true;
-      }
+      const matchesSearch =
+        !normalizedSearch ||
+        [product.code, product.name, product.notes, product.workflowStatus, product.categoryLabel, product.collectionLabel]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+      const matchesCategory = !filters.categoryId || filters.categoryId === "all" || product.categoryId === filters.categoryId;
+      const matchesCollection = !filters.collectionId || filters.collectionId === "all" || product.collectionId === filters.collectionId;
+      const matchesStatus = !filters.status || filters.status === "Tumu" || product.status === filters.status;
 
-      return [product.code, product.name, product.notes, product.workflowStatus]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+      return matchesSearch && matchesCategory && matchesCollection && matchesStatus;
     });
-  }, [location.state?.dashboardFilter, products, search]);
+  }, [filters, location.state?.dashboardFilter, products]);
 
   const handleExport = () => {
     const header = ["Urun Kodu", "Urun Adi", "Aciklama", "Satis Fiyati", "Durum"];
@@ -113,6 +191,7 @@ export function SupplierPortalProductListPage() {
       title: "Urun Kodu",
       dataIndex: "code",
       key: "code",
+      width: 150,
       sorter: (a, b) => a.code.localeCompare(b.code, "tr"),
       render: (value, record) => (
         <button
@@ -131,18 +210,21 @@ export function SupplierPortalProductListPage() {
       title: "Urun Adi",
       dataIndex: "name",
       key: "name",
+      width: 220,
       sorter: (a, b) => a.name.localeCompare(b.name, "tr"),
     },
     {
       title: "Satis Fiyati",
       dataIndex: "priceDisplay",
       key: "priceDisplay",
+      width: 140,
       sorter: (a, b) => a.salePrice - b.salePrice,
     },
     {
       title: "Kalan Stok Adet",
       dataIndex: "stock",
       key: "stock",
+      width: 150,
       sorter: (a, b) => Number(a.stock || 0) - Number(b.stock || 0),
       render: (value) => <Tag color={Number(value || 0) > 0 ? "blue" : "red"}>{Number(value || 0)}</Tag>,
     },
@@ -150,6 +232,7 @@ export function SupplierPortalProductListPage() {
       title: "Satis Adet",
       dataIndex: "soldQuantity",
       key: "soldQuantity",
+      width: 120,
       sorter: (a, b) => Number(a.soldQuantity || 0) - Number(b.soldQuantity || 0),
       render: (value) => Number(value || 0),
     },
@@ -157,6 +240,7 @@ export function SupplierPortalProductListPage() {
       title: "Durum",
       dataIndex: "workflowStatus",
       key: "workflowStatus",
+      width: 170,
       render: (value) => {
         const colorMap = {
           Taslak: "default",
@@ -170,6 +254,7 @@ export function SupplierPortalProductListPage() {
     {
       title: "Islemler",
       key: "actions",
+      width: 100,
       render: (_, record) => (
         <Button type="text" className="erp-icon-btn erp-icon-btn-edit" icon={<EditOutlined />} onClick={() => navigate(`/supplier/products/${record.id}`)} />
       ),
@@ -192,33 +277,36 @@ export function SupplierPortalProductListPage() {
               { value: "liste", icon: <BarsOutlined />, label: "Liste" },
             ]}
           />
-          <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
         </Space>
       </div>
 
-      <Card bordered={false} className="erp-list-toolbar-card erp-mobile-hide">
+      <Card bordered={false} className="erp-list-toolbar-card">
         <div className="erp-list-toolbar erp-product-toolbar-single">
+          <Space wrap className="erp-product-toolbar-actions">
+            <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+          </Space>
           <div className="erp-product-toolbar-search">
             <Input
               prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
               placeholder="Ürün kodu veya adı"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              value={filters.search}
+              onChange={(event) => handleFilterChange("search", event.target.value)}
               allowClear
             />
+            <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
           </div>
         </div>
       </Card>
 
       {viewMode === "liste" ? (
-        <Card title="Ürün Listesi" className="erp-list-table-card erp-card-logo-divider">
+        <Card title="Ürün Listesi" className="erp-list-table-card erp-card-logo-divider erp-supplier-products-table-card">
           <Table
             rowKey="id"
             loading={tableLoading}
             columns={columns}
             dataSource={filteredProducts}
             pagination={false}
-            scroll={{ x: 980 }}
+            scroll={{ x: 1180 }}
             locale={{ emptyText: "Henuz urun kaydiniz bulunmuyor." }}
             onRow={(record) => ({
               onClick: () => navigate(`/supplier/products/${record.id}`),
@@ -258,6 +346,72 @@ export function SupplierPortalProductListPage() {
           </Row>
         </Card>
       )}
+
+      <Modal
+        title="Gelismis Filtreler"
+        open={filterModalOpen}
+        onCancel={() => setFilterModalOpen(false)}
+        footer={null}
+      >
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Row gutter={[12, 12]}>
+            <Col span={24}>
+              <Form.Item label="Kategori">
+                <Select
+                  placeholder="Tumu"
+                  value={filters.categoryId}
+                  onChange={(value) => handleFilterChange("categoryId", value)}
+                  options={categoryOptions}
+                  allowClear
+                />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item label="Koleksiyon">
+                <Select
+                  placeholder="Tumu"
+                  value={filters.collectionId}
+                  onChange={(value) => handleFilterChange("collectionId", value)}
+                  options={collectionOptions}
+                  allowClear
+                />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item label="Durum">
+                <Select
+                  placeholder="Tumu"
+                  value={filters.status}
+                  onChange={(value) => handleFilterChange("status", value)}
+                  options={statusOptions}
+                  allowClear
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Card size="small" title="Filtreyi Kaydet">
+            <Space.Compact style={{ width: "100%" }}>
+              <Input value={savedFilterName} onChange={(event) => setSavedFilterName(event.target.value)} placeholder="Filtre adi" />
+              <Button type="primary" onClick={handleSaveFilterPreset}>Kaydet</Button>
+            </Space.Compact>
+          </Card>
+
+          <Card size="small" title="Kayitli Filtreler">
+            <Space wrap>
+              {savedFilters.length === 0 ? <Text type="secondary">Henuz kayitli filtre yok.</Text> : null}
+              {savedFilters.map((item) => (
+                <Button key={item.name} onClick={() => applySavedFilter(item)}>{item.name}</Button>
+              ))}
+            </Space>
+          </Card>
+
+          <Space style={{ justifyContent: "space-between", width: "100%" }}>
+            <Button onClick={handleResetFilters}>Filtreleri Temizle</Button>
+            <Button type="primary" onClick={() => setFilterModalOpen(false)}>Uygula</Button>
+          </Space>
+        </Space>
+      </Modal>
     </Space>
   );
 }
