@@ -1068,8 +1068,8 @@ export function SupplierPortalDeliveryEditorPage() {
   const productOptions = React.useMemo(
     () => supplierProducts
       .slice()
-      .sort((a, b) => a.name.localeCompare(b.name, "tr"))
-      .map((item) => ({ value: item.id, label: `${item.name} - ${item.code}`, product: item })),
+      .sort((a, b) => `${b.code || ""} - ${b.name || ""}`.localeCompare(`${a.code || ""} - ${a.name || ""}`, "tr"))
+      .map((item) => ({ value: item.id, label: `${item.code || ""} - ${item.name || ""}`, product: item })),
     [supplierProducts],
   );
   const totalAmount = React.useMemo(
