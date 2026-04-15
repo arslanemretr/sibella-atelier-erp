@@ -27,6 +27,10 @@ async function ensureDeliveryLineSchema() {
   if (!ensureDeliveryLineSchemaPromise) {
     ensureDeliveryLineSchemaPromise = (async () => {
       await sqlExec("ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS delivery_list_id TEXT");
+      await sqlExec("ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS category_id TEXT");
+      await sqlExec("ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS category_label TEXT");
+      await sqlExec("ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS collection_id TEXT");
+      await sqlExec("ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS collection_label TEXT");
 
       const hasDeliveryId = await columnExists("delivery_lines", "delivery_id");
       deliveryLineSchemaInfo = {

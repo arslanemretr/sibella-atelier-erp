@@ -267,6 +267,10 @@ CREATE TABLE IF NOT EXISTS delivery_lines (
 );
 
 ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS delivery_list_id TEXT;
+ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS category_id TEXT;
+ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS category_label TEXT;
+ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS collection_id TEXT;
+ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS collection_label TEXT;
 
 CREATE TABLE IF NOT EXISTS system_parameters (
   id INTEGER PRIMARY KEY CHECK (id = 1),
