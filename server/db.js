@@ -49,6 +49,10 @@ async function ensureCoreSchema() {
     );
   `);
 
+  if (await tableExists("suppliers")) {
+    await sqlExec("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS logo TEXT");
+  }
+
   await sqlExec(`
     CREATE TABLE IF NOT EXISTS auth_sessions (
       id TEXT PRIMARY KEY,

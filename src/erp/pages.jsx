@@ -481,7 +481,6 @@ export function TableListPage({ title, description, columns, rows, filters = [],
 export function SupplierDashboardPage() {
   const navigate = useNavigate();
   const authUser = getAuthUser();
-  const supplierId = authUser?.supplierId || null;
   const [supplier, setSupplier] = React.useState(null);
   const [products, setProducts] = React.useState([]);
   const [deliveries, setDeliveries] = React.useState([]);
@@ -490,26 +489,35 @@ export function SupplierDashboardPage() {
   React.useEffect(() => {
     let cancelled = false;
     const loadDashboard = async () => {
-      if (!supplierId) {
-        setSupplier(null);
-        setProducts([]);
-        setDeliveries([]);
-        return;
-      }
-
       try {
         setPageLoading(true);
-        const [suppliers, nextProducts, nextDeliveries] = await Promise.all([
+        const [suppliers, nextProducts, allDeliveries] = await Promise.all([
           listSuppliersFresh(),
           listProductsFresh(),
-          listDeliveryListsBySupplierFresh(supplierId),
+          authUser?.supplierId ? listDeliveryListsBySupplierFresh(authUser.supplierId) : listDeliveryListsFresh(),
         ]);
         if (cancelled) {
           return;
         }
-        setSupplier(suppliers.find((item) => item.id === supplierId) || null);
-        setProducts(nextProducts.filter((item) => item.supplierId === supplierId));
-        setDeliveries(nextDeliveries);
+
+        const normalizedAuthEmail = String(authUser?.email || "").trim().toLowerCase();
+        const normalizedAuthName = String(authUser?.fullName || "").trim().toLowerCase();
+        const resolvedSupplier =
+          suppliers.find((item) => item.id === authUser?.supplierId) ||
+          suppliers.find((item) => normalizedAuthEmail && String(item.email || "").trim().toLowerCase() === normalizedAuthEmail) ||
+          suppliers.find((item) => normalizedAuthName && String(item.contact || "").trim().toLowerCase() === normalizedAuthName) ||
+          null;
+        const resolvedSupplierId = resolvedSupplier?.id || authUser?.supplierId || null;
+
+        setSupplier(resolvedSupplier);
+        setProducts(resolvedSupplierId ? nextProducts.filter((item) => item.supplierId === resolvedSupplierId) : []);
+        setDeliveries(resolvedSupplierId ? allDeliveries.filter((item) => item.supplierId === resolvedSupplierId) : []);
+      } catch {
+        if (!cancelled) {
+          setSupplier(null);
+          setProducts([]);
+          setDeliveries([]);
+        }
       } finally {
         if (!cancelled) {
           setPageLoading(false);
@@ -521,7 +529,7 @@ export function SupplierDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [supplierId]);
+  }, [authUser?.email, authUser?.fullName, authUser?.supplierId]);
 
   const totalStockQty = React.useMemo(
     () => products.reduce((sum, product) => sum + Number(product.stock || 0), 0),
@@ -630,7 +638,7 @@ export function SupplierDashboardPage() {
               </div>
               <div className="erp-supplier-info-visual">
                 {supplierVisual ? (
-                  <img src={supplierVisual} alt={supplier?.company || "Tedarikci gorseli"} className="erp-supplier-info-image" />
+                  <img src={supplierVisual} alt={supplier?.company || "Tedarikci logosu"} className="erp-supplier-info-image" />
                 ) : (
                   <Avatar size={96} className="erp-supplier-info-avatar">
                     {supplier?.initials || (supplier?.company || "TP").split(" ").map((part) => part[0] || "").slice(0, 2).join("").toUpperCase()}

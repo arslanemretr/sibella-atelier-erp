@@ -9,6 +9,19 @@ function createId(prefix) {
   return `${prefix}-${crypto.randomUUID()}`;
 }
 
+let ensureSupplierLogoColumnPromise = null;
+
+async function ensureSupplierLogoColumn() {
+  if (!ensureSupplierLogoColumnPromise) {
+    ensureSupplierLogoColumnPromise = sqlExec("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS logo TEXT").catch((error) => {
+      ensureSupplierLogoColumnPromise = null;
+      throw error;
+    });
+  }
+
+  await ensureSupplierLogoColumnPromise;
+}
+
 const MASTER_DATA_CONFIG = {
   categories: {
     table: "categories",
@@ -262,6 +275,7 @@ function mapSupplierRow(row) {
     id: row.id,
     shortCode: row.short_code || "",
     company: row.company || "",
+    logo: row.logo || "",
     contact: row.contact || "",
     email: row.email || "",
     phone: row.phone || "",
@@ -284,6 +298,7 @@ function normalizeSupplier(values, existingRecord) {
     id: existingRecord?.id || createId("sup"),
     shortCode: String(values.shortCode || "").trim(),
     company: String(values.company || "").trim(),
+    logo: String(values.logo || "").trim(),
     contact: String(values.contact || "").trim(),
     email: String(values.email || "").trim(),
     phone: String(values.phone || "").trim(),
@@ -319,11 +334,13 @@ async function getMasterDataRow(entityKey, recordId) {
 }
 
 async function listSuppliersRows() {
+  await ensureSupplierLogoColumn();
   const rows = await sqlMany("SELECT * FROM suppliers ORDER BY created_at DESC, company ASC");
   return rows.map(mapSupplierRow);
 }
 
 async function getSupplierRow(supplierId) {
+  await ensureSupplierLogoColumn();
   return mapSupplierRow(await sqlOne("SELECT * FROM suppliers WHERE id = $1", [supplierId]));
 }
 
@@ -491,15 +508,16 @@ export async function handleSuppliersList(_req, res) {
 
 export async function handleSuppliersCreate(req, res) {
   try {
+    await ensureSupplierLogoColumn();
     const item = normalizeSupplier(req.body || {});
     await sqlExec(`
       INSERT INTO suppliers (
-        id, short_code, company, contact, email, phone, city, iban, tax_number, tax_office, address,
+        id, short_code, company, logo, contact, email, phone, city, iban, tax_number, tax_office, address,
         procurement_type_id, payment_term_id, status, note, created_at, updated_at
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::timestamptz,$17::timestamptz)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::timestamptz,$18::timestamptz)
     `, [
-      item.id, item.shortCode, item.company, item.contact, item.email, item.phone, item.city, item.iban,
+      item.id, item.shortCode, item.company, item.logo, item.contact, item.email, item.phone, item.city, item.iban,
       item.taxNumber, item.taxOffice, item.address, item.procurementTypeId, item.paymentTermId, item.status,
       item.note, item.createdAt, item.updatedAt,
     ]);
@@ -510,6 +528,7 @@ export async function handleSuppliersCreate(req, res) {
 }
 
 export async function handleSuppliersUpdate(req, res) {
+  await ensureSupplierLogoColumn();
   const existing = await getSupplierRow(req.params.id);
   if (!existing) {
     return httpError(res, 404, "Tedarikci bulunamadi.");
@@ -518,12 +537,12 @@ export async function handleSuppliersUpdate(req, res) {
     const item = normalizeSupplier(req.body || {}, existing);
     await sqlExec(`
       UPDATE suppliers
-      SET short_code=$2, company=$3, contact=$4, email=$5, phone=$6, city=$7, iban=$8, tax_number=$9,
-          tax_office=$10, address=$11, procurement_type_id=$12, payment_term_id=$13, status=$14, note=$15,
-          updated_at=$16::timestamptz
+      SET short_code=$2, company=$3, logo=$4, contact=$5, email=$6, phone=$7, city=$8, iban=$9, tax_number=$10,
+          tax_office=$11, address=$12, procurement_type_id=$13, payment_term_id=$14, status=$15, note=$16,
+          updated_at=$17::timestamptz
       WHERE id=$1
     `, [
-      item.id, item.shortCode, item.company, item.contact, item.email, item.phone, item.city, item.iban,
+      item.id, item.shortCode, item.company, item.logo, item.contact, item.email, item.phone, item.city, item.iban,
       item.taxNumber, item.taxOffice, item.address, item.procurementTypeId, item.paymentTermId, item.status,
       item.note, item.updatedAt,
     ]);
@@ -534,6 +553,7 @@ export async function handleSuppliersUpdate(req, res) {
 }
 
 export async function handleSuppliersDelete(req, res) {
+  await ensureSupplierLogoColumn();
   const existing = await getSupplierRow(req.params.id);
   if (!existing) {
     return httpError(res, 404, "Tedarikci bulunamadi.");

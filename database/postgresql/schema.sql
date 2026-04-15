@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
   id TEXT PRIMARY KEY,
   short_code TEXT,
   company TEXT,
+  logo TEXT,
   contact TEXT,
   email TEXT,
   phone TEXT,
@@ -78,6 +79,8 @@ CREATE TABLE IF NOT EXISTS suppliers (
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 );
+
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS logo TEXT;
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,

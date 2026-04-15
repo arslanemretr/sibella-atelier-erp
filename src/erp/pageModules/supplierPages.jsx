@@ -377,6 +377,8 @@ export function SupplierEditorPage() {
   const [supplierList, setSupplierList] = React.useState([]);
   const [procurementOptions, setProcurementOptions] = React.useState([]);
   const [paymentOptions, setPaymentOptions] = React.useState([]);
+  const logoInputRef = React.useRef(null);
+  const [logoValue, setLogoValue] = React.useState("");
   const watchedCompany = Form.useWatch("company", form) || "Yeni Tedarikci";
   const watchedShortCode = Form.useWatch("shortCode", form) || "-";
   const watchedContact = Form.useWatch("contact", form) || "Yetkili kisi bilgisi";
@@ -403,6 +405,7 @@ export function SupplierEditorPage() {
     const baseValues = {
       shortCode: "",
       company: "",
+      logo: "",
       contact: "",
       email: "",
       phone: "",
@@ -444,6 +447,7 @@ export function SupplierEditorPage() {
 
         if (!isEditMode) {
           form.setFieldsValue(baseValues);
+          setLogoValue(baseValues.logo || "");
           return;
         }
 
@@ -455,6 +459,7 @@ export function SupplierEditorPage() {
         }
 
         form.setFieldsValue({ ...baseValues, ...supplier });
+        setLogoValue(supplier.logo || "");
       } catch (error) {
         if (!cancelled) {
           message.error(error?.message || "Tedarikci verileri alinamadi.");
@@ -473,10 +478,33 @@ export function SupplierEditorPage() {
     };
   }, [form, isEditMode, navigate, supplierId]);
 
+  const handleLogoUpload = (file) => {
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      message.error("Gecerli bir gorsel secmelisiniz.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setLogoValue(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async () => {
     try {
       setLoading(true);
-      const values = await form.validateFields();
+      const formValues = await form.validateFields();
+      const values = {
+        ...formValues,
+        logo: logoValue || "",
+      };
       const duplicateSupplier = supplierList.find((item) => item.email === values.email && item.id !== supplierId);
       if (values.email && duplicateSupplier) {
         message.error("Bu e-posta ile baska bir tedarikci kayitli.");
@@ -513,14 +541,13 @@ export function SupplierEditorPage() {
               <Card title="Tedarikci Ozet" loading={pageLoading}>
                 <Space direction="vertical" size={14} style={{ width: "100%" }}>
                   <div className="erp-supplier-summary">
-                    <div className="erp-supplier-avatar erp-supplier-avatar-large">
-                      {(watchedCompany || "TD")
-                        .split(" ")
-                        .slice(0, 2)
-                        .map((part) => part[0] || "")
-                        .join("")
-                        .toUpperCase()}
-                    </div>
+                    {logoValue ? (
+                      <img src={logoValue} alt={watchedCompany} className="erp-supplier-avatar erp-supplier-avatar-large erp-supplier-logo-image" />
+                    ) : (
+                      <div className="erp-supplier-avatar erp-supplier-avatar-large erp-supplier-logo-empty">
+                        Logo
+                      </div>
+                    )}
                     <div>
                       <Title level={5} style={{ margin: 0 }}>{watchedCompany}</Title>
                       <Text type="secondary">{watchedContact}</Text>
@@ -578,6 +605,32 @@ export function SupplierEditorPage() {
                 <Row gutter={[16, 16]}>
                   <Col xs={24} md={12}><Form.Item name="shortCode" label="Tedarikci Kisa Kod"><Input placeholder="MINA" /></Form.Item></Col>
                   <Col xs={24} md={12}><Form.Item name="company" label="Firma / Kisi Adi" rules={[{ required: true, message: "Firma adi zorunludur." }]}><Input placeholder="Mina Aksesuar" /></Form.Item></Col>
+                  <Col xs={24}>
+                    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                      <Text strong>Tedarikci Logosu</Text>
+                      <div className="erp-supplier-logo-upload">
+                        {logoValue ? (
+                          <img src={logoValue} alt={watchedCompany} className="erp-supplier-logo-preview" />
+                        ) : (
+                          <div className="erp-supplier-logo-placeholder">Logo onizleme</div>
+                        )}
+                      </div>
+                      <Space wrap>
+                        <Button onClick={() => logoInputRef.current?.click()}>Logo Sec</Button>
+                        {logoValue ? <Button onClick={() => setLogoValue("")}>Logoyu Kaldir</Button> : null}
+                      </Space>
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={(event) => {
+                          handleLogoUpload(event.target.files?.[0]);
+                          event.target.value = "";
+                        }}
+                      />
+                    </Space>
+                  </Col>
                   <Col xs={24} md={12}><Form.Item name="contact" label="Yetkili Kisi" rules={[{ required: true, message: "Yetkili kisi zorunludur." }]}><Input placeholder="Mina Demir" /></Form.Item></Col>
                   <Col xs={24} md={12}><Form.Item name="email" label="E-posta" rules={[{ type: "email", message: "Gecerli e-posta girin." }]}><Input placeholder="ornek@tedarikci.com" /></Form.Item></Col>
                   <Col xs={24} md={12}><Form.Item name="phone" label="Telefon"><Input placeholder="0532..." /></Form.Item></Col>
