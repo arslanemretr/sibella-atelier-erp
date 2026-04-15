@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button, Card, Col, Descriptions, Drawer, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography, message } from "antd";
 import { DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { listMasterDataFresh } from "../masterData";
+import { listPosSalesFresh } from "../posData";
 import { listProductsFresh } from "../productsData";
 import { listPurchasesFresh } from "../purchasesData";
 import { listStockEntriesFresh } from "../stockEntriesData";
@@ -24,6 +25,33 @@ function formatMovementMoney(value) {
   }).format(Number(value || 0));
 }
 
+function parseMovementDate(value) {
+  if (!value) {
+    return null;
+  }
+
+  const rawValue = String(value).trim();
+  const normalizedValue = /^\d{4}-\d{2}-\d{2}$/.test(rawValue) ? `${rawValue}T00:00:00` : rawValue;
+  const parsed = new Date(normalizedValue);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatMovementDateTime(value) {
+  const parsed = parseMovementDate(value);
+  if (!parsed) {
+    return String(value || "-");
+  }
+
+  return new Intl.DateTimeFormat("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(parsed);
+}
+
 function buildStockMovements() {
   return buildStockMovementsFromData({
     purchases: listPurchases(),
@@ -31,7 +59,7 @@ function buildStockMovements() {
   });
 }
 
-function buildStockMovementsFromData({ purchases = [], stockEntries = [] }) {
+function buildStockMovementsFromData({ purchases = [], stockEntries = [], posSales = [] }) {
   const purchaseMovements = purchases.flatMap((purchase) =>
     (purchase.lines || []).map((line) => ({
       id: `mov-pur-${purchase.id}-${line.id}`,
@@ -84,10 +112,37 @@ function buildStockMovementsFromData({ purchases = [], stockEntries = [] }) {
     })),
   );
 
-  return [...purchaseMovements, ...stockEntryMovements].sort((a, b) => {
-    const dateCompare = String(b.date || "").localeCompare(String(a.date || ""), "tr");
-    if (dateCompare !== 0) {
-      return dateCompare;
+  const posSaleMovements = posSales.flatMap((sale) =>
+    (sale.lines || []).map((line) => ({
+      id: `mov-pos-${sale.id}-${line.id}`,
+      movementType: "SATIS_CIKIS",
+      movementTypeLabel: "Stok Cikisi",
+      direction: "OUT",
+      date: sale.soldAt,
+      documentNo: sale.receiptNo,
+      partyName: sale.customerName || "POS",
+      productId: line.productId,
+      productCode: line.productCode || "-",
+      productName: line.productName || "-",
+      quantity: Number(line.quantity || 0),
+      quantitySigned: -Number(line.quantity || 0),
+      quantitySignedDisplay: `-${Number(line.quantity || 0)}`,
+      unitAmount: Number(line.unitPrice || 0),
+      unitAmountDisplay: line.unitPriceDisplay || formatMovementMoney(line.unitPrice),
+      totalAmount: Number(line.lineTotal || (Number(line.quantity || 0) * Number(line.unitPrice || 0))),
+      totalAmountDisplay: line.lineTotalDisplay || formatMovementMoney(line.lineTotal || (Number(line.quantity || 0) * Number(line.unitPrice || 0))),
+      note: sale.note || "",
+      detailPath: "/pos/sessions",
+      sourceModule: "pos-sale",
+      sourceId: sale.id,
+    })),
+  );
+
+  return [...purchaseMovements, ...stockEntryMovements, ...posSaleMovements].sort((a, b) => {
+    const leftDate = parseMovementDate(a.date)?.getTime() || 0;
+    const rightDate = parseMovementDate(b.date)?.getTime() || 0;
+    if (rightDate !== leftDate) {
+      return rightDate - leftDate;
     }
 
     return String(b.documentNo || "").localeCompare(String(a.documentNo || ""), "tr");
@@ -137,11 +192,12 @@ export function StockListPage() {
         listMasterDataFresh("procurement-types"),
         listMasterDataFresh("payment-terms"),
       ]);
-      const [purchases, stockEntries] = await Promise.all([
+      const [purchases, stockEntries, posSales] = await Promise.all([
         listPurchasesFresh({ suppliers, procurementTypes, paymentTerms, products }),
         listStockEntriesFresh({ suppliers, products }),
+        listPosSalesFresh(products),
       ]);
-      setMovements(buildStockMovementsFromData({ purchases, stockEntries }));
+      setMovements(buildStockMovementsFromData({ purchases, stockEntries, posSales }));
       setProductOptions([{ value: "all", label: "Tumu" }, ...products.map((item) => ({
         value: item.id,
         label: `${item.code} - ${item.name}`,
@@ -217,9 +273,9 @@ export function StockListPage() {
     });
 
   const handleExport = () => {
-    const header = ["Tarih", "Hareket Tipi", "Belge No", "Kaynak", "Urun", "Miktar", "Birim Maliyet", "Toplam", "Not"];
+    const header = ["Tarih", "Hareket Tipi", "Belge No", "Kaynak", "Urun", "Miktar", "Birim Fiyat", "Toplam", "Not"];
     const rows = filteredMovements.map((item) => [
-      item.date,
+      formatMovementDateTime(item.date),
       item.movementTypeLabel,
       item.documentNo,
       item.partyName,
@@ -244,7 +300,8 @@ export function StockListPage() {
       title: "Tarih",
       dataIndex: "date",
       key: "date",
-      sorter: (a, b) => a.date.localeCompare(b.date, "tr"),
+      sorter: (a, b) => (parseMovementDate(a.date)?.getTime() || 0) - (parseMovementDate(b.date)?.getTime() || 0),
+      render: (value) => formatMovementDateTime(value),
     },
     {
       title: "Hareket Tipi",
@@ -289,7 +346,7 @@ export function StockListPage() {
       sorter: (a, b) => a.quantitySigned - b.quantitySigned,
       render: (_, record) => <Tag color={record.direction === "IN" ? "blue" : "volcano"}>{record.quantitySignedDisplay}</Tag>,
     },
-    { title: "Birim Maliyet", dataIndex: "unitAmountDisplay", key: "unitAmountDisplay", sorter: (a, b) => a.unitAmount - b.unitAmount },
+    { title: "Birim Fiyat", dataIndex: "unitAmountDisplay", key: "unitAmountDisplay", sorter: (a, b) => a.unitAmount - b.unitAmount },
     {
       title: "Toplam",
       dataIndex: "totalAmountDisplay",
@@ -376,13 +433,13 @@ export function StockListPage() {
       <Drawer title="Stok Hareket Detayi" placement="right" width={460} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedMovement ? (
           <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="Tarih">{selectedMovement.date}</Descriptions.Item>
+            <Descriptions.Item label="Tarih">{formatMovementDateTime(selectedMovement.date)}</Descriptions.Item>
             <Descriptions.Item label="Hareket Tipi">{selectedMovement.movementTypeLabel}</Descriptions.Item>
             <Descriptions.Item label="Belge No">{selectedMovement.documentNo}</Descriptions.Item>
             <Descriptions.Item label="Kaynak">{selectedMovement.partyName}</Descriptions.Item>
             <Descriptions.Item label="Urun">{selectedMovement.productCode} - {selectedMovement.productName}</Descriptions.Item>
             <Descriptions.Item label="Miktar">{selectedMovement.quantitySignedDisplay}</Descriptions.Item>
-            <Descriptions.Item label="Birim Maliyet">{selectedMovement.unitAmountDisplay}</Descriptions.Item>
+            <Descriptions.Item label="Birim Fiyat">{selectedMovement.unitAmountDisplay}</Descriptions.Item>
             <Descriptions.Item label="Toplam">{selectedMovement.totalAmountDisplay}</Descriptions.Item>
             <Descriptions.Item label="Not">{selectedMovement.note || "-"}</Descriptions.Item>
           </Descriptions>
