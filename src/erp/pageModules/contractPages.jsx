@@ -135,11 +135,6 @@ export function ContractsPage() {
         return;
       }
 
-      if (!uploadedPdf.pdfDataUrl) {
-        message.error("Lutfen sozlesme PDF dosyasini yukleyin.");
-        return;
-      }
-
       const payload = {
         supplierId: values.supplierId,
         startDate,
@@ -423,11 +418,11 @@ export function ContractsPage() {
           >
             <InputNumber style={{ width: "100%" }} min={0} max={100} step={0.01} precision={2} />
           </Form.Item>
-          <Form.Item label="Sozlesme PDF Yukleme" required>
+          <Form.Item label="Sozlesme PDF Yukleme">
             <Space direction="vertical" size={6} style={{ width: "100%" }}>
               <input type="file" accept="application/pdf" onChange={handlePdfFileChange} />
               <Text type="secondary">
-                {uploadedPdf.pdfName ? `Yuklenen dosya: ${uploadedPdf.pdfName}` : "PDF dosyasi secilmedi."}
+                {uploadedPdf.pdfName ? `Yuklenen dosya: ${uploadedPdf.pdfName}` : "PDF dosyasi secilmedi. Isterseniz bos birakabilirsiniz."}
               </Text>
             </Space>
           </Form.Item>
