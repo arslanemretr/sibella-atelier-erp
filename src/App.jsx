@@ -29,6 +29,7 @@ const ContractsPage = React.lazy(() => import("./erp/pageModules/contractPages")
 const SupplierDeliveryListsPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierDeliveryListsPage })));
 const SupplierPortalDeliveryEditorPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalDeliveryEditorPage })));
 const SupplierPortalDeliveryListPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalDeliveryListPage })));
+const SupplierPortalEarningsPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalEarningsPage })));
 const SupplierPortalProductEditorPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalProductEditorPage })));
 const SupplierPortalProductListPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalProductListPage })));
 
@@ -144,6 +145,7 @@ function ProtectedApp() {
 
         <Route path="/supplier/products" element={withLazyPage(<SupplierPortalProductListPage />)} />
         <Route path="/supplier/dashboard" element={<SupplierDashboardPage />} />
+        <Route path="/supplier/earnings" element={withLazyPage(<SupplierPortalEarningsPage />)} />
         <Route path="/supplier/products/:productId" element={withLazyPage(<SupplierPortalProductEditorPage />)} />
         <Route path="/supplier/deliveries" element={withLazyPage(<SupplierPortalDeliveryListPage />)} />
         <Route path="/supplier/deliveries/new" element={withLazyPage(<SupplierPortalDeliveryEditorPage />)} />

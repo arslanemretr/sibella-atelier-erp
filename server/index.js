@@ -112,7 +112,7 @@ app.put("/api/purchases/:id", requireRole("Yonetici", "Muhasebe"), handlePurchas
 app.get("/api/stock-entries", requireRole("Yonetici", "Muhasebe", "Tedarikci"), handleStockEntriesList);
 app.post("/api/stock-entries", requireRole("Yonetici", "Muhasebe"), handleStockEntriesCreate);
 app.put("/api/stock-entries/:id", requireRole("Yonetici", "Muhasebe"), handleStockEntriesUpdate);
-app.get("/api/contracts", requireRole("Yonetici", "Muhasebe"), handleContractsList);
+app.get("/api/contracts", requireRole("Yonetici", "Muhasebe", "Tedarikci"), handleContractsList);
 app.post("/api/contracts", requireRole("Yonetici", "Muhasebe"), handleContractsCreate);
 app.put("/api/contracts/:id", requireRole("Yonetici", "Muhasebe"), handleContractsUpdate);
 app.delete("/api/contracts/:id", requireRole("Yonetici"), handleContractsDelete);

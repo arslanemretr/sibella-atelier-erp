@@ -62,6 +62,7 @@ const iconMap = {
   "/settings/smtp": menuIcon(Mail),
   "/supplier/dashboard": menuIcon(LayoutDashboard),
   "/supplier/products": menuIcon(Package),
+  "/supplier/earnings": menuIcon(HandCoins),
   "/supplier/deliveries/new": menuIcon(PackagePlus),
   "/supplier/deliveries": menuIcon(Truck),
 };

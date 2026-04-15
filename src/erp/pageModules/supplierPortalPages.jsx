@@ -4,8 +4,10 @@ import { AutoComplete, Button, Card, Col, Descriptions, Drawer, Form, Input, Inp
 import { AppstoreOutlined, BarsOutlined, CheckOutlined, DeleteOutlined, DownloadOutlined, DownOutlined, EditOutlined, EyeOutlined, FilterOutlined, InboxOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { getAuthUser } from "../../auth";
+import { listContractsFresh } from "../contractsData";
 import { completeDeliveryReceipt, createDeliveryList, createDeliveryPdf, getDeliveryListById, getNextDeliveryNoPreviewFresh, listDeliveryListsBySupplierFresh, listDeliveryListsFresh, updateDeliveryList } from "../deliveryListsData";
 import { listMasterDataFresh } from "../masterData";
+import { listPosSalesFresh } from "../posData";
 import { createProduct, listProductsFresh } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 
@@ -55,6 +57,494 @@ function formatDisplayMoney(value, currency = "TRY") {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
+}
+
+function toPeriodDate(value) {
+  return new Date(value.getFullYear(), value.getMonth(), 1);
+}
+
+function addMonths(value, amount) {
+  return new Date(value.getFullYear(), value.getMonth() + amount, 1);
+}
+
+function getDefaultEarningsPeriod() {
+  return addMonths(new Date(), -1);
+}
+
+function getMonthKey(value) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getDateFromMonthKey(value) {
+  const [year, month] = String(value || "").split("-").map((item) => Number(item || 0));
+  return new Date(year, Math.max(month - 1, 0), 1);
+}
+
+function parseDateValue(value) {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatPeriodLabel(value) {
+  return new Intl.DateTimeFormat("tr-TR", {
+    month: "long",
+    year: "numeric",
+  }).format(value);
+}
+
+function formatPeriodBadge(value) {
+  return new Intl.DateTimeFormat("tr-TR", {
+    month: "short",
+    year: "numeric",
+  }).format(value);
+}
+
+function formatDateDisplayShort(value) {
+  const parsed = parseDateValue(value);
+  if (!parsed) {
+    return "-";
+  }
+  return new Intl.DateTimeFormat("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(parsed);
+}
+
+function isCurrentPeriod(value) {
+  const now = new Date();
+  return value.getFullYear() === now.getFullYear() && value.getMonth() === now.getMonth();
+}
+
+function getPeriodBounds(value) {
+  const start = new Date(value.getFullYear(), value.getMonth(), 1, 0, 0, 0, 0);
+  const end = new Date(value.getFullYear(), value.getMonth() + 1, 0, 23, 59, 59, 999);
+  return { start, end };
+}
+
+function getPeriodContract(contracts, supplierId, periodDate) {
+  const { start, end } = getPeriodBounds(periodDate);
+  const relevantContracts = (contracts || [])
+    .filter((item) => item.supplierId === supplierId)
+    .slice()
+    .sort((a, b) => String(b.startDate || "").localeCompare(String(a.startDate || ""), "tr"));
+
+  return (
+    relevantContracts.find((item) => {
+      const contractStart = item.startDate ? parseDateValue(item.startDate) : null;
+      const contractEnd = item.endDate ? parseDateValue(item.endDate) : null;
+      const startsBeforePeriod = !contractStart || contractStart <= end;
+      const endsAfterPeriod = !contractEnd || contractEnd >= start;
+      return startsBeforePeriod && endsAfterPeriod;
+    }) ||
+    relevantContracts[0] ||
+    null
+  );
+}
+
+const earningsStatusMetaMap = {
+  "Fatura Bekleniyor": {
+    color: "gold",
+    cardBg: "#fff7e6",
+    cardBorder: "#ffd591",
+    icon: "ℹ️",
+    bandBg: "#fff7e6",
+  },
+  "Odeme Bekliyor": {
+    color: "orange",
+    cardBg: "#fff2e8",
+    cardBorder: "#ffbb96",
+    icon: "⏳",
+    bandBg: "#fff2e8",
+  },
+  Gecikmis: {
+    color: "red",
+    cardBg: "#fff1f0",
+    cardBorder: "#ffa39e",
+    icon: "⚠️",
+    bandBg: "#fff1f0",
+  },
+  Odendi: {
+    color: "green",
+    cardBg: "#f6ffed",
+    cardBorder: "#b7eb8f",
+    icon: "✅",
+    bandBg: "#f6ffed",
+  },
+  "Satis Yok": {
+    color: "default",
+    cardBg: "#fafafa",
+    cardBorder: "#d9d9d9",
+    icon: "ℹ️",
+    bandBg: "#fafafa",
+  },
+};
+
+function resolveEarningsStatus(summary) {
+  if (!Number(summary?.earningsTotal || 0)) {
+    return "Satis Yok";
+  }
+  return "Fatura Bekleniyor";
+}
+
+function buildEarningsSummary({ periodDate, products = [], sales = [], contracts = [], supplierId }) {
+  const relevantProducts = (products || []).filter((item) => item.supplierId === supplierId && item.productType === "konsinye");
+  const productMap = new Map(relevantProducts.map((item) => [item.id, item]));
+  const contract = getPeriodContract(contracts, supplierId, periodDate);
+  const commissionRate = Number(contract?.commissionRate || 0);
+  const { start, end } = getPeriodBounds(periodDate);
+  const groupedRows = new Map();
+
+  (sales || []).forEach((sale) => {
+    const soldAt = parseDateValue(sale.soldAt);
+    if (!soldAt || soldAt < start || soldAt > end) {
+      return;
+    }
+
+    (sale.lines || []).forEach((line) => {
+      const product = productMap.get(line.productId);
+      if (!product) {
+        return;
+      }
+
+      const grossAmount = Number(line.lineTotal || (Number(line.quantity || 0) * Number(line.unitPrice || 0)));
+      const existingRow = groupedRows.get(line.productId) || {
+        key: line.productId,
+        productCode: line.productCode || product.code || "-",
+        productName: line.productName || product.name || "-",
+        salesQuantity: 0,
+        unitPrice: Number(line.unitPrice || 0),
+        grossAmount: 0,
+      };
+
+      existingRow.salesQuantity += Number(line.quantity || 0);
+      existingRow.unitPrice = Number(line.unitPrice || existingRow.unitPrice || 0);
+      existingRow.grossAmount += grossAmount;
+      groupedRows.set(line.productId, existingRow);
+    });
+  });
+
+  const detailRows = Array.from(groupedRows.values())
+    .map((row) => {
+      const commissionAmount = row.grossAmount * (commissionRate / 100);
+      const netAmount = row.grossAmount - commissionAmount;
+      return {
+        ...row,
+        commissionRate,
+        commissionAmount,
+        netAmount,
+      };
+    })
+    .sort((a, b) => String(a.productCode || "").localeCompare(String(b.productCode || ""), "tr"));
+
+  const grossTotal = detailRows.reduce((sum, item) => sum + item.grossAmount, 0);
+  const commissionTotal = detailRows.reduce((sum, item) => sum + item.commissionAmount, 0);
+  const earningsTotal = detailRows.reduce((sum, item) => sum + item.netAmount, 0);
+  const status = resolveEarningsStatus({ earningsTotal });
+
+  return {
+    periodKey: getMonthKey(periodDate),
+    periodDate,
+    periodLabel: formatPeriodLabel(periodDate),
+    contract,
+    commissionRate,
+    detailRows,
+    grossTotal,
+    commissionTotal,
+    earningsTotal,
+    invoiceNo: null,
+    invoiceDate: null,
+    paymentDueDate: null,
+    status,
+  };
+}
+
+export function SupplierPortalEarningsPage() {
+  const navigate = useNavigate();
+  const authUser = getAuthUser();
+  const [periodDate, setPeriodDate] = React.useState(() => toPeriodDate(getDefaultEarningsPeriod()));
+  const [pageLoading, setPageLoading] = React.useState(false);
+  const [resolvedSupplierId, setResolvedSupplierId] = React.useState(authUser?.supplierId || null);
+  const [products, setProducts] = React.useState([]);
+  const [sales, setSales] = React.useState([]);
+  const [contracts, setContracts] = React.useState([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const loadEarnings = async () => {
+      try {
+        setPageLoading(true);
+        const [suppliers, nextProducts, nextSales, nextContracts] = await Promise.all([
+          listSuppliersFresh(),
+          listProductsFresh(),
+          listPosSalesFresh(),
+          listContractsFresh(),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        const normalizedAuthEmail = String(authUser?.email || "").trim().toLowerCase();
+        const normalizedAuthName = String(authUser?.fullName || "").trim().toLowerCase();
+        const resolvedSupplier =
+          suppliers.find((item) => item.id === authUser?.supplierId) ||
+          suppliers.find((item) => normalizedAuthEmail && String(item.email || "").trim().toLowerCase() === normalizedAuthEmail) ||
+          suppliers.find((item) => normalizedAuthName && String(item.contact || "").trim().toLowerCase() === normalizedAuthName) ||
+          null;
+        const supplierId = resolvedSupplier?.id || authUser?.supplierId || null;
+
+        setResolvedSupplierId(supplierId);
+        setProducts(supplierId ? nextProducts.filter((item) => item.supplierId === supplierId) : []);
+        setSales(nextSales || []);
+        setContracts(nextContracts || []);
+      } catch (error) {
+        if (!cancelled) {
+          setResolvedSupplierId(null);
+          setProducts([]);
+          setSales([]);
+          setContracts([]);
+          message.error(error?.message || "Hakediş verileri yüklenemedi.");
+        }
+      } finally {
+        if (!cancelled) {
+          setPageLoading(false);
+        }
+      }
+    };
+
+    void loadEarnings();
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser?.email, authUser?.fullName, authUser?.supplierId]);
+
+  const currentSummary = React.useMemo(
+    () => buildEarningsSummary({
+      periodDate,
+      products,
+      sales,
+      contracts,
+      supplierId: resolvedSupplierId,
+    }),
+    [contracts, periodDate, products, resolvedSupplierId, sales],
+  );
+
+  const historySummaries = React.useMemo(() => {
+    const keys = new Set([getMonthKey(periodDate)]);
+    const relevantProductIds = new Set(products.filter((item) => item.productType === "konsinye").map((item) => item.id));
+
+    (sales || []).forEach((sale) => {
+      const soldAt = parseDateValue(sale.soldAt);
+      if (!soldAt) {
+        return;
+      }
+      const hasSupplierConsignmentLine = (sale.lines || []).some((line) => relevantProductIds.has(line.productId));
+      if (hasSupplierConsignmentLine) {
+        keys.add(getMonthKey(new Date(soldAt.getFullYear(), soldAt.getMonth(), 1)));
+      }
+    });
+
+    return Array.from(keys)
+      .map((key) => getDateFromMonthKey(key))
+      .sort((a, b) => b.getTime() - a.getTime())
+      .map((item) => buildEarningsSummary({
+        periodDate: item,
+        products,
+        sales,
+        contracts,
+        supplierId: resolvedSupplierId,
+      }));
+  }, [contracts, periodDate, products, resolvedSupplierId, sales]);
+
+  const statusMeta = earningsStatusMetaMap[currentSummary.status] || earningsStatusMetaMap["Satis Yok"];
+
+  const handleExport = () => {
+    const rows = [
+      ["Dönem", currentSummary.periodLabel],
+      ["Toplam Satış", formatDisplayMoney(currentSummary.grossTotal)],
+      ["Komisyon Tutarı", formatDisplayMoney(currentSummary.commissionTotal)],
+      ["Hakediş Tutarı", formatDisplayMoney(currentSummary.earningsTotal)],
+      ["Ödeme Durumu", currentSummary.status],
+      [],
+      ["Ürün Kodu", "Ürün Adı", "Satış Adedi", "Birim Fiyat", "Brüt Tutar", "Komisyon %", "Komisyon Tutarı", "Net Tutar"],
+      ...currentSummary.detailRows.map((item) => [
+        item.productCode,
+        item.productName,
+        item.salesQuantity,
+        formatDisplayMoney(item.unitPrice),
+        formatDisplayMoney(item.grossAmount),
+        `${Number(item.commissionRate || 0).toFixed(2)}%`,
+        formatDisplayMoney(item.commissionAmount),
+        formatDisplayMoney(item.netAmount),
+      ]),
+      [],
+      ["Dönem", "Brüt Satış", "Komisyon", "Hakediş", "Fatura", "Ödeme Durumu"],
+      ...historySummaries.map((item) => [
+        item.periodLabel,
+        formatDisplayMoney(item.grossTotal),
+        formatDisplayMoney(item.commissionTotal),
+        formatDisplayMoney(item.earningsTotal),
+        item.invoiceNo || "—",
+        item.status,
+      ]),
+    ];
+    downloadWorkbook(rows, "HakedisOzeti", `hakedis-ozeti-${currentSummary.periodKey}.xlsx`);
+    message.success("Excel dosyasi indirildi.");
+  };
+
+  const summaryCards = [
+    {
+      title: "Toplam Satış",
+      value: formatDisplayMoney(currentSummary.grossTotal),
+      description: "Dönem içi brüt satış tutarı",
+    },
+    {
+      title: "Komisyon Oranı",
+      value: `%${Number(currentSummary.commissionRate || 0).toFixed(2)}`,
+      description: "Sözleşmelerde yer alan komisyon oranıdır",
+    },
+    {
+      title: "Hakediş Tutarı",
+      value: formatDisplayMoney(currentSummary.earningsTotal),
+      description: "Brüt − Komisyon",
+    },
+    {
+      title: "Ödeme Durumu",
+      value: currentSummary.status,
+      description: currentSummary.invoiceNo ? "Fatura ve ödeme takibi" : "Fatura süreci bekleniyor",
+      isStatus: true,
+    },
+  ];
+
+  return (
+    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+      <div className="erp-page-intro">
+        <div>
+          <Title level={3} style={{ marginBottom: 6 }}>Hakediş Özeti</Title>
+          <Text type="secondary">Konsinye stok satışlarına göre dönem bazlı hakediş tutarlarınızı buradan takip edebilirsiniz.</Text>
+        </div>
+        <Space wrap className="erp-page-intro-actions">
+          <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+        </Space>
+      </div>
+
+      <Card bordered={false} className="erp-list-toolbar-card">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <Space wrap>
+            <Button onClick={() => setPeriodDate((current) => addMonths(current, -1))}>← Önceki Ay</Button>
+            <Tag color="blue" style={{ padding: "6px 12px", fontSize: 14 }}>{formatPeriodBadge(periodDate)}</Tag>
+            <Button onClick={() => setPeriodDate((current) => addMonths(current, 1))}>Sonraki Ay →</Button>
+          </Space>
+          {isCurrentPeriod(periodDate) ? <Tag color="gold">Dönem henüz tamamlanmadı</Tag> : null}
+        </div>
+      </Card>
+
+      <Row gutter={[16, 16]}>
+        {summaryCards.map((card) => (
+          <Col xs={24} sm={12} xl={6} key={card.title}>
+            <Card
+              bordered={false}
+              loading={pageLoading}
+              style={card.isStatus ? { background: statusMeta.cardBg, border: `1px solid ${statusMeta.cardBorder}` } : undefined}
+            >
+              <Text type="secondary">{card.title}</Text>
+              <div style={{ fontSize: 28, fontWeight: 700, marginTop: 8, marginBottom: 6 }}>
+                {card.isStatus ? <Tag color={statusMeta.color} style={{ fontSize: 18, padding: "6px 10px" }}>{card.value}</Tag> : card.value}
+              </div>
+              <Text type="secondary">{card.description}</Text>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+
+      <Card bordered={false} loading={pageLoading} style={{ background: statusMeta.bandBg, border: `1px solid ${statusMeta.cardBorder}` }}>
+        {currentSummary.invoiceNo ? (
+          <Text>{statusMeta.icon} Fatura alındı: {currentSummary.invoiceNo} | Fatura Tarihi: {formatDateDisplayShort(currentSummary.invoiceDate)} | Son Ödeme: {formatDateDisplayShort(currentSummary.paymentDueDate)}</Text>
+        ) : Number(currentSummary.earningsTotal || 0) > 0 ? (
+          <Text>{statusMeta.icon} Fatura bilgisi: Hakediş tutarı olan {formatDisplayMoney(currentSummary.earningsTotal)} için fatura kesilmesi beklenmektedir. Son ödeme tarihi, fatura tarihinden itibaren 15 gün içinde gerçekleştirilecektir.</Text>
+        ) : (
+          <Text>{statusMeta.icon} Bu dönem için hakediş oluşturan konsinye satış bulunmamaktadır.</Text>
+        )}
+      </Card>
+
+      <Card title="Satış Detayı" bordered={false} loading={pageLoading} className="erp-card-logo-divider">
+        <Table
+          rowKey="key"
+          pagination={false}
+          dataSource={currentSummary.detailRows}
+          locale={{ emptyText: "Bu dönemde satış bulunmamaktadır." }}
+          scroll={{ x: 1080 }}
+          columns={[
+            { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 140 },
+            { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 220 },
+            { title: "Satış Adedi", dataIndex: "salesQuantity", key: "salesQuantity", width: 110 },
+            { title: "Birim Fiyat", dataIndex: "unitPrice", key: "unitPrice", width: 140, render: (value) => formatDisplayMoney(value) },
+            { title: "Brüt Tutar", dataIndex: "grossAmount", key: "grossAmount", width: 140, render: (value) => formatDisplayMoney(value) },
+            { title: "Komisyon %", dataIndex: "commissionRate", key: "commissionRate", width: 120, render: (value) => `%${Number(value || 0).toFixed(2)}` },
+            { title: "Komisyon Tutarı", dataIndex: "commissionAmount", key: "commissionAmount", width: 150, render: (value) => formatDisplayMoney(value) },
+            { title: "Net Tutar", dataIndex: "netAmount", key: "netAmount", width: 150, render: (value) => <Text strong>{formatDisplayMoney(value)}</Text> },
+          ]}
+          summary={() => (
+            <Table.Summary>
+              <Table.Summary.Row style={{ background: "#1f2937" }}>
+                <Table.Summary.Cell index={0} colSpan={4}>
+                  <Text strong style={{ color: "#fff" }}>Toplam</Text>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={1}>
+                  <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(currentSummary.grossTotal)}</Text>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={2} />
+                <Table.Summary.Cell index={3}>
+                  <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(currentSummary.commissionTotal)}</Text>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={4}>
+                  <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(currentSummary.earningsTotal)}</Text>
+                </Table.Summary.Cell>
+              </Table.Summary.Row>
+            </Table.Summary>
+          )}
+        />
+      </Card>
+
+      <Card
+        title="Dönem Geçmişi"
+        bordered={false}
+        loading={pageLoading}
+        className="erp-card-logo-divider"
+        extra={<Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>}
+      >
+        <Table
+          rowKey="periodKey"
+          pagination={false}
+          dataSource={historySummaries}
+          onRow={(record) => ({
+            onClick: () => setPeriodDate(record.periodDate),
+          })}
+          rowClassName={(record) => (record.periodKey === currentSummary.periodKey ? "erp-clickable-row ant-table-row-selected" : "erp-clickable-row")}
+          columns={[
+            { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel" },
+            { title: "Brüt Satış", dataIndex: "grossTotal", key: "grossTotal", render: (value) => formatDisplayMoney(value) },
+            { title: "Komisyon", dataIndex: "commissionTotal", key: "commissionTotal", render: (value) => formatDisplayMoney(value) },
+            { title: "Hakediş", dataIndex: "earningsTotal", key: "earningsTotal", render: (value) => formatDisplayMoney(value) },
+            { title: "Fatura", dataIndex: "invoiceNo", key: "invoiceNo", render: (value) => value || "—" },
+            {
+              title: "Ödeme Durumu",
+              dataIndex: "status",
+              key: "status",
+              render: (value) => {
+                const meta = earningsStatusMetaMap[value] || earningsStatusMetaMap["Satis Yok"];
+                return <Tag color={meta.color}>{value}</Tag>;
+              },
+            },
+          ]}
+        />
+      </Card>
+    </Space>
+  );
 }
 
 export function SupplierPortalProductListPage() {

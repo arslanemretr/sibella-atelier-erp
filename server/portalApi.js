@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { sqlExec, sqlMany } from "./db.js";
+import { sqlExec, sqlMany, sqlOne } from "./db.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -57,6 +57,33 @@ async function ensureDeliveryLineSchema() {
 
 function httpError(res, status, message) {
   return res.status(status).json({ ok: false, message });
+}
+
+async function resolveSupplierIdForAuthUser(authUser) {
+  if (authUser?.supplierId) {
+    return authUser.supplierId;
+  }
+
+  const normalizedEmail = String(authUser?.email || "").trim().toLowerCase();
+  const normalizedName = String(authUser?.fullName || "").trim().toLowerCase();
+  if (!normalizedEmail && !normalizedName) {
+    return null;
+  }
+
+  const row = await sqlOne(
+    `
+      SELECT id
+      FROM suppliers
+      WHERE ($1 <> '' AND LOWER(TRIM(COALESCE(email, ''))) = $1)
+         OR ($2 <> '' AND LOWER(TRIM(COALESCE(contact, ''))) = $2)
+         OR ($2 <> '' AND LOWER(TRIM(COALESCE(company, ''))) = $2)
+      ORDER BY created_at DESC, company ASC
+      LIMIT 1
+    `,
+    [normalizedEmail, normalizedName],
+  );
+
+  return row?.id || null;
 }
 
 async function listContractsRows() {
@@ -373,8 +400,18 @@ async function replaceDeliveryLines(record) {
   }
 }
 
-export async function handleContractsList(_req, res) {
-  return res.json({ ok: true, items: await listContractsRows() });
+export async function handleContractsList(req, res) {
+  const items = await listContractsRows();
+  if (req.authUser?.role !== "Tedarikci") {
+    return res.json({ ok: true, items });
+  }
+
+  const supplierId = await resolveSupplierIdForAuthUser(req.authUser);
+
+  return res.json({
+    ok: true,
+    items: items.filter((item) => item.supplierId === supplierId),
+  });
 }
 
 export async function handleContractsCreate(req, res) {
@@ -450,7 +487,8 @@ export async function handlePosSalesList(req, res) {
     return res.json({ ok: true, items });
   }
 
-  const supplierProductRows = await sqlMany("SELECT id FROM products WHERE supplier_id = $1", [req.authUser.supplierId || null]);
+  const supplierId = await resolveSupplierIdForAuthUser(req.authUser);
+  const supplierProductRows = await sqlMany("SELECT id FROM products WHERE supplier_id = $1", [supplierId]);
   const allowedProductIds = new Set(supplierProductRows.map((row) => row.id));
   const filteredItems = items
     .map((sale) => ({
