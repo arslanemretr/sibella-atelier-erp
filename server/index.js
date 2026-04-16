@@ -1,5 +1,7 @@
 /* global process */
 import express from "express";
+import fs from "node:fs";
+import path from "node:path";
 import {
   handleForgotPasswordConfirm,
   handleForgotPasswordRequest,
@@ -74,8 +76,15 @@ import { handleSmtpTestEmail } from "./smtp.js";
 
 const app = express();
 const port = Number(process.env.API_PORT || 4001);
+const assetStoragePath = path.resolve(String(process.env.ASSET_STORAGE_PATH || path.resolve(process.cwd(), "data/assets")).trim());
 
 app.use(express.json({ limit: "25mb" }));
+fs.mkdirSync(assetStoragePath, { recursive: true });
+app.use("/api/assets", express.static(assetStoragePath, {
+  fallthrough: false,
+  maxAge: "30d",
+  immutable: true,
+}));
 
 void ensureDatabaseReady()
   .then(() => migrateLegacyPasswords())

@@ -11,14 +11,18 @@ const SHOPIFY_API_VERSION = String(process.env.SHOPIFY_API_VERSION || "2026-04")
 const SHOPIFY_IMPORT_PAGE_SIZE = Math.min(Math.max(Number(process.env.SHOPIFY_IMPORT_PAGE_SIZE || 50), 1), 250);
 const SHOPIFY_IMPORT_MAX_ITEMS = Math.max(Number(process.env.SHOPIFY_IMPORT_MAX_ITEMS || 0), 0);
 const SHOPIFY_IMPORT_DRY_RUN = ["1", "true", "yes", "on"].includes(String(process.env.SHOPIFY_IMPORT_DRY_RUN || "").toLowerCase());
-const SHOPIFY_IMAGE_DIR = path.resolve(process.cwd(), "public/products/shopify");
+const ASSET_STORAGE_PATH = path.resolve(String(process.env.ASSET_STORAGE_PATH || path.resolve(process.cwd(), "data/assets")).trim());
+const SHOPIFY_IMAGE_DIR = path.join(ASSET_STORAGE_PATH, "shopify");
 const DEFAULT_PRODUCT_IMAGE = "/products/baroque-necklace.svg";
+const DEFAULT_SHOPIFY_IMAGE_PATH = "/api/assets/shopify";
 const DEFAULT_COLLECTION_NAME = "Yaz 2026";
 const CATEGORY_PATHS_BY_PRODUCT_TYPE = {
   "Kolye": ["Urunler / Marka / Kolye"],
   "Küpe": ["Urunler / Marka / Küpe", "Urunler / Marka / Kupe"],
   "Bileklik": ["Urunler / Marka / Bileklik"],
   "Yüzük": ["Urunler / Marka / Yüzük"],
+  "Kupe": ["Urunler / Marka / K\u00fcpe", "Urunler / Marka / Kupe"],
+  "Yuzuk": ["Urunler / Marka / Y\u00fcz\u00fck"],
   "Hal Hal": ["Urunler / Marka / Hal Hal"],
 };
 
@@ -121,7 +125,7 @@ async function downloadShopifyImage(product) {
   await fs.mkdir(SHOPIFY_IMAGE_DIR, { recursive: true });
   await fs.writeFile(diskPath, buffer);
 
-  return `/products/shopify/${fileName}`;
+  return `${DEFAULT_SHOPIFY_IMAGE_PATH}/${fileName}`;
 }
 
 async function fetchShopifyProductsPage(cursor = null) {
@@ -226,7 +230,7 @@ async function loadImportReferences() {
       `
         SELECT id, full_path
         FROM categories
-        WHERE full_path = ANY($1)
+        WHERE full_path = ANY($1::text[])
       `,
       [categoryPaths],
     ),
@@ -239,8 +243,15 @@ async function loadImportReferences() {
   };
 }
 
+function normalizeProductType(value) {
+  return String(value || "")
+    .trim()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function resolveCategoryId(productType, references) {
-  const candidates = CATEGORY_PATHS_BY_PRODUCT_TYPE[String(productType || "").trim()] || [];
+  const candidates = CATEGORY_PATHS_BY_PRODUCT_TYPE[normalizeProductType(productType)] || [];
   for (const pathLabel of candidates) {
     const categoryId = references.categoryIdByPath.get(pathLabel);
     if (categoryId) {

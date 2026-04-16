@@ -7,8 +7,9 @@ RUN npm ci --omit=dev
 
 COPY server ./server
 COPY database ./database
+COPY scripts ./scripts
 
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data/assets
 
 EXPOSE 4001
 
