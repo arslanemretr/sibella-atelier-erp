@@ -14,10 +14,12 @@ dist-ssr
 .env
 .env.*
 !.env.example
+!.env.docker.example
 data/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+.claude/
 
 # Editor directories and files
 .vscode/*

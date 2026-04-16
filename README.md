@@ -1,16 +1,69 @@
-# React + Vite
+# ERP Sibella
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Uygulama React/Vite arayuzu, Express API'si ve PostgreSQL veritabani ile calisir.
 
-Currently, two official plugins are available:
+## Docker ile tek komutta calistirma
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Docker stack'i burada ve canlida ayni `docker-compose.yml` ile calisir. Ortama gore degisen tek sey environment degerleridir.
 
-## React Compiler
+Ilk kurulumda `.env.docker.example` dosyasini ortamina uygun degerlerle `.env.docker` olarak hazirla. Ardindan:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+docker compose --env-file .env.docker up --build -d
+```
 
-## Expanding the ESLint configuration
+Erisim adresleri:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Web: http://localhost:8080
+- API: http://localhost:4001/api/health
+- PostgreSQL: localhost:5432
+
+Varsayilan olarak PostgreSQL portu sadece host makineden erisilebilir sekilde `127.0.0.1` uzerine baglanir. Dis agdan erisim gerekmiyorsa bu ayari boyle birak.
+
+Konteyner durumunu kontrol etmek icin:
+
+```bash
+docker compose --env-file .env.docker ps
+```
+
+Log izlemek icin:
+
+```bash
+docker compose --env-file .env.docker logs -f db api web
+```
+
+Durdurmak icin:
+
+```bash
+docker compose --env-file .env.docker down
+```
+
+Veritabani verisini silmeden yeniden baslatmak icin `down` yeterlidir. Veritabani verisini de sifirlamak istersen:
+
+```bash
+docker compose --env-file .env.docker down -v
+```
+
+Canli ortamda da ayni compose dosyasini kullan. Sadece `.env.docker` icindeki port, sifre ve `DOCKER_DATABASE_URL` degerleri ortama gore degissin. Boylece burada test ettigin container yapisi ile canlidaki yapi ayni kalir.
+
+Canliya gonderirken gercek `.env.docker` dosyasini repoya koyma; sadece `.env.docker.example` repoda kalmali.
+
+## Yerelde calistirma
+
+Yerelde calistiracaksan once PostgreSQL'in ayakta oldugundan emin ol ve `.env` icindeki `DATABASE_URL` degerini host makine icin kullan:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/erpsibella
+```
+
+Ardindan ayri terminallerde:
+
+```bash
+npm run server
+```
+
+```bash
+npm run dev
+```
+
+Not: Docker icindeki API `localhost` yerine `db` servis adini kullanir. Bu yuzden Docker ve yerel calisma modlarinin veritabani baglanti ayari farklidir; `docker-compose.yml` bunu otomatik olarak dogru degerle ayarlar.
