@@ -18,6 +18,8 @@ Erisim adresleri:
 - API: http://localhost:4001/api/health
 - PostgreSQL: localhost:5432
 
+Varsayilan olarak API portu sadece host makineden erisilebilir sekilde `127.0.0.1` uzerine baglanir. Dis dunyaya yalnizca web portunu acmak daha guvenlidir; `nginx` zaten `/api` isteklerini iceride API servisine yonlendirir.
+
 Varsayilan olarak PostgreSQL portu sadece host makineden erisilebilir sekilde `127.0.0.1` uzerine baglanir. Dis agdan erisim gerekmiyorsa bu ayari boyle birak.
 
 Konteyner durumunu kontrol etmek icin:
