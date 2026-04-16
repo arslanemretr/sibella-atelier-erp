@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { sqlExec, sqlMany, sqlOne } from "./db.js";
+import { listProductStockLocationBalances, syncMainBalanceWithProductStock } from "./inventory.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -592,6 +593,7 @@ export async function handleProductsCreate(req, res) {
       item.createdBy, item.notes, item.createdAt, item.updatedAt,
     ]);
     await replaceProductFeatures(item.id, item.features);
+    await syncMainBalanceWithProductStock(item.id);
     return res.status(201).json({ ok: true, item: await getProductRow(item.id) });
   } catch (error) {
     return httpError(res, 400, error?.message || "Urun olusturulamadi.");
@@ -620,10 +622,23 @@ export async function handleProductsUpdate(req, res) {
       item.createdBy, item.notes, item.updatedAt,
     ]);
     await replaceProductFeatures(item.id, item.features);
+    await syncMainBalanceWithProductStock(item.id);
     return res.json({ ok: true, item: await getProductRow(item.id) });
   } catch (error) {
     return httpError(res, 400, error?.message || "Urun guncellenemedi.");
   }
+}
+
+export async function handleProductStockLocationBalances(req, res) {
+  const existing = await getProductRow(req.params.id);
+  if (!existing) {
+    return httpError(res, 404, "Urun bulunamadi.");
+  }
+
+  return res.json({
+    ok: true,
+    items: await listProductStockLocationBalances(req.params.id),
+  });
 }
 
 export async function handleProductsDelete(req, res) {

@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Layout, Button, Avatar, Dropdown, Space } from "antd";
 import { MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined, UserOutlined } from "@ant-design/icons";
-import { mainMenuItems, supplierMainMenuItems } from "../../erp/navigation";
+import { filterNavigationItems, mainMenuItems, supplierMainMenuItems } from "../../erp/navigation";
 import { getAuthUser, logoutUser, onAuthChange } from "../../auth";
 import logo from "../../assets/logo.png";
 import mobileLogo from "../../assets/logo-mobile.png";
@@ -16,7 +16,9 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
 
   React.useEffect(() => onAuthChange(() => setAuthUser(getAuthUser())), []);
 
-  const visibleMenuItems = authUser?.role === "Tedarikci" ? supplierMainMenuItems : mainMenuItems;
+  const visibleMenuItems = authUser?.role === "Tedarikci"
+    ? supplierMainMenuItems
+    : filterNavigationItems(mainMenuItems, authUser?.role);
 
   const activeMainMenu = useMemo(
     () =>

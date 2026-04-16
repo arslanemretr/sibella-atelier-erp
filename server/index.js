@@ -20,6 +20,7 @@ import {
   handleProductsCreate,
   handleProductsDelete,
   handleProductsList,
+  handleProductStockLocationBalances,
   handleProductsUpdate,
   handleSuppliersCreate,
   handleSuppliersDelete,
@@ -51,6 +52,18 @@ import {
   handlePosSessionsCreate,
   handlePosSessionsList,
 } from "./portalApi.js";
+import {
+  handleStockLocationBalancesList,
+  handleStockLocationsList,
+  handleStoreShipmentsCreate,
+  handleStoreShipmentsList,
+  handleStoreShipmentsSend,
+  handleStoreShipmentsUpdate,
+  handleStoresCreate,
+  handleStoresDelete,
+  handleStoresList,
+  handleStoresUpdate,
+} from "./stores.js";
 import {
   handleSmtpSettingsGet,
   handleSmtpSettingsPut,
@@ -103,6 +116,7 @@ app.post("/api/suppliers", requireRole("Yonetici"), handleSuppliersCreate);
 app.put("/api/suppliers/:id", requireRole("Yonetici"), handleSuppliersUpdate);
 app.delete("/api/suppliers/:id", requireRole("Yonetici"), handleSuppliersDelete);
 app.get("/api/products", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleProductsList);
+app.get("/api/products/:id/stock-locations", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleProductStockLocationBalances);
 app.post("/api/products", requireRole("Yonetici", "Tedarikci"), handleProductsCreate);
 app.put("/api/products/:id", requireRole("Yonetici", "Tedarikci"), handleProductsUpdate);
 app.delete("/api/products/:id", requireRole("Yonetici"), handleProductsDelete);
@@ -112,6 +126,8 @@ app.put("/api/purchases/:id", requireRole("Yonetici", "Muhasebe"), handlePurchas
 app.get("/api/stock-entries", requireRole("Yonetici", "Muhasebe", "Tedarikci"), handleStockEntriesList);
 app.post("/api/stock-entries", requireRole("Yonetici", "Muhasebe"), handleStockEntriesCreate);
 app.put("/api/stock-entries/:id", requireRole("Yonetici", "Muhasebe"), handleStockEntriesUpdate);
+app.get("/api/stock-locations", requireRole("Yonetici", "Muhasebe"), handleStockLocationsList);
+app.get("/api/stock-locations/:id/balances", requireRole("Yonetici", "Muhasebe"), handleStockLocationBalancesList);
 app.get("/api/contracts", requireRole("Yonetici", "Muhasebe", "Tedarikci"), handleContractsList);
 app.post("/api/contracts", requireRole("Yonetici", "Muhasebe"), handleContractsCreate);
 app.put("/api/contracts/:id", requireRole("Yonetici", "Muhasebe"), handleContractsUpdate);
@@ -125,6 +141,14 @@ app.get("/api/delivery-lists", requireRole("Yonetici", "Tedarikci"), handleDeliv
 app.post("/api/delivery-lists", requireRole("Yonetici", "Tedarikci"), handleDeliveryListsCreate);
 app.put("/api/delivery-lists/:id", requireRole("Yonetici", "Tedarikci"), handleDeliveryListsUpdate);
 app.post("/api/delivery-lists/:id/complete", requireRole("Yonetici"), handleDeliveryListsComplete);
+app.get("/api/stores", requireRole("Yonetici", "Muhasebe"), handleStoresList);
+app.post("/api/stores", requireRole("Yonetici", "Muhasebe"), handleStoresCreate);
+app.put("/api/stores/:id", requireRole("Yonetici", "Muhasebe"), handleStoresUpdate);
+app.delete("/api/stores/:id", requireRole("Yonetici", "Muhasebe"), handleStoresDelete);
+app.get("/api/store-shipments", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsList);
+app.post("/api/store-shipments", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsCreate);
+app.put("/api/store-shipments/:id", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsUpdate);
+app.post("/api/store-shipments/:id/send", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsSend);
 
 app.listen(port, () => {
   console.log(`ERP DB API running on http://localhost:${port}`);

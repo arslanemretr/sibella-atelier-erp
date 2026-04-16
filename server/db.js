@@ -28,6 +28,35 @@ async function sqlExec(text, params = []) {
   await pool.query(text, params);
 }
 
+async function withTransaction(callback) {
+  const client = await pool.connect();
+  const tx = {
+    async many(text, params = []) {
+      const result = await client.query(text, params);
+      return result.rows;
+    },
+    async one(text, params = []) {
+      const rows = await tx.many(text, params);
+      return rows[0] || null;
+    },
+    async exec(text, params = []) {
+      await client.query(text, params);
+    },
+  };
+
+  try {
+    await client.query("BEGIN");
+    const result = await callback(tx, client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function tableExists(tableName) {
   const row = await sqlOne("SELECT to_regclass($1) AS reg", [`public.${tableName}`]);
   return Boolean(row?.reg);
@@ -112,11 +141,73 @@ async function ensureApplicationSchema() {
   }
 }
 
+async function ensureDefaultStockLocationAndBalances() {
+  const now = new Date().toISOString();
+  const defaultLocationName = "Şarköy Mağaza";
+
+  let mainLocation = await sqlOne(
+    `
+      SELECT id
+      FROM stock_locations
+      WHERE is_default_main = TRUE
+      ORDER BY created_at ASC NULLS LAST, id ASC
+      LIMIT 1
+    `,
+  );
+
+  if (!mainLocation) {
+    mainLocation = await sqlOne(
+      `
+        INSERT INTO stock_locations (id, name, store_id, is_default_main, created_at, updated_at)
+        VALUES ($1, $2, NULL, TRUE, $3::timestamptz, $4::timestamptz)
+        ON CONFLICT (name)
+        DO UPDATE
+        SET is_default_main = TRUE,
+            updated_at = EXCLUDED.updated_at
+        RETURNING id
+      `,
+      ["stockloc-main", defaultLocationName, now, now],
+    );
+  }
+
+  await sqlExec(
+    `
+      UPDATE stock_locations
+      SET is_default_main = CASE WHEN id = $1 THEN TRUE ELSE FALSE END,
+          updated_at = $2::timestamptz
+    `,
+    [mainLocation.id, now],
+  );
+
+  const existingBalances = await sqlOne(
+    "SELECT COUNT(*)::int AS count FROM stock_location_balances WHERE stock_location_id = $1",
+    [mainLocation.id],
+  );
+
+  if (Number(existingBalances?.count || 0) === 0) {
+    const productRows = await sqlMany("SELECT id, stock FROM products");
+    for (const product of productRows) {
+      await sqlExec(
+        `
+          INSERT INTO stock_location_balances (stock_location_id, product_id, quantity, updated_at)
+          VALUES ($1, $2, $3, $4::timestamptz)
+          ON CONFLICT (stock_location_id, product_id)
+          DO UPDATE
+          SET quantity = EXCLUDED.quantity,
+              updated_at = EXCLUDED.updated_at
+        `,
+        [mainLocation.id, product.id, Number(product.stock || 0), now],
+      );
+    }
+  }
+}
+
 async function ensureInitialized() {
   if (!initPromise) {
     initPromise = (async () => {
       await ensureCoreSchema();
       await ensureApplicationSchema();
+      await ensureDefaultStockLocationAndBalances();
     })().catch((error) => {
       initPromise = null;
       throw error;
@@ -138,4 +229,4 @@ export function getDatabaseRuntimeInfo() {
   };
 }
 
-export { sqlExec, sqlMany, sqlOne, tableExists };
+export { sqlExec, sqlMany, sqlOne, tableExists, withTransaction };

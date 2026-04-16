@@ -2,9 +2,6 @@ import { listMasterData } from "./masterData";
 import { listSuppliers } from "./suppliersData";
 import { mutateResourceSync, requestCollection, requestCollectionSync, requestJsonSync } from "./apiClient";
 
-const STOCK_ENTRY_SEED = [];
-const POS_SALES_SEED = [];
-
 function createId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return `${prefix}-${crypto.randomUUID()}`;
@@ -214,48 +211,6 @@ function seedProducts() {
   ];
 }
 
-function toNumber(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function addMovementDelta(map, productId, delta) {
-  if (!productId) {
-    return;
-  }
-
-  map.set(productId, toNumber(map.get(productId)) + toNumber(delta));
-}
-
-function buildProductMovementDeltaMap() {
-  const stockEntries = requestCollectionSync("/api/stock-entries", STOCK_ENTRY_SEED, { suppressStatuses: [403] });
-  const posSales = requestCollectionSync("/api/pos-sales", POS_SALES_SEED, { suppressStatuses: [403] });
-  const movementByProductId = new Map();
-
-  stockEntries.forEach((entry) => {
-    (entry?.lines || []).forEach((line) => {
-      addMovementDelta(movementByProductId, line?.productId, toNumber(line?.quantity));
-    });
-  });
-
-  posSales.forEach((sale) => {
-    (sale?.lines || []).forEach((line) => {
-      addMovementDelta(movementByProductId, line?.productId, -toNumber(line?.quantity));
-    });
-  });
-
-  return movementByProductId;
-}
-
-function calculateProductStock(product, movementByProductId) {
-  if (!product?.trackInventory) {
-    return toNumber(product?.stock);
-  }
-
-  const movementDelta = toNumber(movementByProductId.get(product.id));
-  return Math.max(0, movementDelta);
-}
-
 function loadStore() {
   return requestCollectionSync("/api/products", seedProducts());
 }
@@ -264,12 +219,12 @@ function mapLookup(entityKey, idKey, labelKey) {
   return Object.fromEntries(listMasterData(entityKey).map((item) => [item[idKey], item[labelKey]]));
 }
 
-function enrichProduct(product, movementByProductId = buildProductMovementDeltaMap()) {
+function enrichProduct(product) {
   const categoryMap = mapLookup("categories", "id", "fullPath");
   const collectionMap = mapLookup("collections", "id", "name");
   const posCategoryMap = mapLookup("pos-categories", "id", "name");
   const supplierMap = Object.fromEntries(listSuppliers().map((item) => [item.id, item.company]));
-  const liveStock = calculateProductStock(product, movementByProductId);
+  const liveStock = Number(product?.stock || 0);
 
   return {
     ...product,
@@ -285,7 +240,7 @@ function enrichProduct(product, movementByProductId = buildProductMovementDeltaM
   };
 }
 
-function enrichProductsWithLookups(products, lookups, movementByProductId) {
+function enrichProductsWithLookups(products, lookups) {
   const {
     categories = [],
     collections = [],
@@ -300,7 +255,7 @@ function enrichProductsWithLookups(products, lookups, movementByProductId) {
   const supplierMap = Object.fromEntries(suppliers.map((item) => [item.id, item.company]));
 
   return products.map((product) => {
-    const liveStock = calculateProductStock(product, movementByProductId);
+    const liveStock = Number(product?.stock || 0);
     return {
       ...product,
       stock: liveStock,
@@ -358,32 +313,27 @@ function normalizeProduct(values, existingProduct) {
 }
 
 export function listProducts() {
-  const movementByProductId = buildProductMovementDeltaMap();
-  return loadStore().map((product) => enrichProduct(product, movementByProductId));
+  return loadStore().map((product) => enrichProduct(product));
 }
 
 export async function listProductsFresh() {
-  const [products, stockEntries, posSales, categories, collections, posCategories, suppliers] = await Promise.all([
+  const [products, posSales, categories, collections, posCategories, suppliers] = await Promise.all([
     requestCollection("/api/products", seedProducts()),
-    requestCollection("/api/stock-entries", STOCK_ENTRY_SEED, { suppressStatuses: [403] }),
-    requestCollection("/api/pos-sales", POS_SALES_SEED, { suppressStatuses: [403] }),
+    requestCollection("/api/pos-sales", [], { suppressStatuses: [403] }),
     requestCollection("/api/master-data/categories", []),
     requestCollection("/api/master-data/collections", []),
     requestCollection("/api/master-data/pos-categories", []),
     requestCollection("/api/suppliers", []),
   ]);
 
-  const movementByProductId = new Map();
   const salesByProductId = new Map();
-  stockEntries.forEach((entry) => {
-    (entry?.lines || []).forEach((line) => {
-      addMovementDelta(movementByProductId, line?.productId, toNumber(line?.quantity));
-    });
-  });
   posSales.forEach((sale) => {
     (sale?.lines || []).forEach((line) => {
-      addMovementDelta(movementByProductId, line?.productId, -toNumber(line?.quantity));
-      addMovementDelta(salesByProductId, line?.productId, toNumber(line?.quantity));
+      const productId = line?.productId;
+      if (!productId) {
+        return;
+      }
+      salesByProductId.set(productId, Number(salesByProductId.get(productId) || 0) + Number(line.quantity || 0));
     });
   });
 
@@ -393,20 +343,18 @@ export async function listProductsFresh() {
     posCategories,
     suppliers,
     salesByProductId,
-  }, movementByProductId);
+  });
 }
 
 export function listProductsBySupplier(supplierId) {
-  const movementByProductId = buildProductMovementDeltaMap();
   return loadStore()
     .filter((item) => item.supplierId === supplierId)
-    .map((product) => enrichProduct(product, movementByProductId));
+    .map((product) => enrichProduct(product));
 }
 
 export function getProductById(productId) {
-  const movementByProductId = buildProductMovementDeltaMap();
   const product = loadStore().find((item) => item.id === productId);
-  return product ? enrichProduct(product, movementByProductId) : null;
+  return product ? enrichProduct(product) : null;
 }
 
 export function generateProductCodeForSupplier(supplierId, currentProductId) {
@@ -458,6 +406,9 @@ export function importProducts(rows) {
       mutateResourceSync("POST", "/api/products", record);
     }
   });
-  const movementByProductId = buildProductMovementDeltaMap();
-  return loadStore().map((product) => enrichProduct(product, movementByProductId));
+  return loadStore().map((product) => enrichProduct(product));
+}
+
+export async function listProductStockLocationsFresh(productId) {
+  return requestCollection(`/api/products/${encodeURIComponent(productId)}/stock-locations`, []);
 }

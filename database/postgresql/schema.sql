@@ -272,6 +272,73 @@ ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS category_label TEXT;
 ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS collection_id TEXT;
 ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS collection_label TEXT;
 
+CREATE TABLE IF NOT EXISTS stock_locations (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  store_id TEXT,
+  is_default_main BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS stock_locations_single_main_idx
+  ON stock_locations (is_default_main)
+  WHERE is_default_main = TRUE;
+
+CREATE TABLE IF NOT EXISTS stock_location_balances (
+  stock_location_id TEXT NOT NULL REFERENCES stock_locations(id) ON DELETE CASCADE,
+  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  quantity DOUBLE PRECISION NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ,
+  PRIMARY KEY (stock_location_id, product_id)
+);
+
+CREATE TABLE IF NOT EXISTS stores (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  tax_number TEXT,
+  commission_rate DOUBLE PRECISION NOT NULL DEFAULT 0,
+  address TEXT,
+  contact_name TEXT,
+  contact_phone TEXT,
+  contact_email TEXT,
+  stock_location_id TEXT NOT NULL UNIQUE REFERENCES stock_locations(id),
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS store_shipments (
+  id TEXT PRIMARY KEY,
+  shipment_no TEXT NOT NULL UNIQUE,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  store_name TEXT,
+  date DATE,
+  shipping_method TEXT,
+  tracking_no TEXT,
+  note TEXT,
+  status TEXT,
+  created_by TEXT REFERENCES users(id),
+  sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS store_shipment_lines (
+  id TEXT PRIMARY KEY,
+  shipment_id TEXT NOT NULL REFERENCES store_shipments(id) ON DELETE CASCADE,
+  product_id TEXT REFERENCES products(id),
+  is_manual_product BOOLEAN NOT NULL DEFAULT FALSE,
+  image TEXT,
+  name TEXT,
+  code TEXT,
+  sale_price DOUBLE PRECISION,
+  sale_currency TEXT,
+  quantity DOUBLE PRECISION,
+  description TEXT,
+  sort_order INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS system_parameters (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   product_code_control_enabled BOOLEAN,

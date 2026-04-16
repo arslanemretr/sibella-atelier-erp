@@ -4,7 +4,7 @@ import { Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumbe
 import { AppstoreOutlined, BarsOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, LeftOutlined, PlusOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { listMasterDataFresh } from "../masterData";
-import { createProduct, deleteProduct, importProducts, listProductsFresh, updateProduct } from "../productsData";
+import { createProduct, deleteProduct, importProducts, listProductStockLocationsFresh, listProductsFresh, updateProduct } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 import { getSystemParametersFresh } from "../systemParameters";
 
@@ -26,12 +26,62 @@ function preventRowClick(event) {
   event.stopPropagation();
 }
 
+function StockBreakdownDrawer({ open, onClose, product, items, loading }) {
+  return (
+    <Drawer
+      title={product ? `${product.name} - Stok Yerleri` : "Stok Yerleri"}
+      placement="right"
+      width={520}
+      open={open}
+      onClose={onClose}
+    >
+      {product ? (
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Descriptions column={1} size="small" bordered>
+            <Descriptions.Item label="Urun Kodu">{product.code}</Descriptions.Item>
+            <Descriptions.Item label="Urun Adi">{product.name}</Descriptions.Item>
+            <Descriptions.Item label="Merkez Stok">{product.stock}</Descriptions.Item>
+          </Descriptions>
+
+          <Table
+            rowKey={(record) => `${record.stockLocationId}-${record.productId}`}
+            loading={loading}
+            pagination={false}
+            dataSource={items}
+            locale={{ emptyText: "Pozitif bakiye bulunan stok yeri yok." }}
+            columns={[
+              { title: "Stok Yeri", dataIndex: "stockLocationName", key: "stockLocationName" },
+              {
+                title: "Bagli Magaza",
+                dataIndex: "storeName",
+                key: "storeName",
+                render: (value, record) => value || (record.isDefaultMain ? "Merkez" : "-"),
+              },
+              {
+                title: "Merkez",
+                dataIndex: "isDefaultMain",
+                key: "isDefaultMain",
+                width: 100,
+                render: (value) => <Tag color={value ? "blue" : "default"}>{value ? "Evet" : "Hayir"}</Tag>,
+              },
+              { title: "Adet", dataIndex: "quantity", key: "quantity", width: 100 },
+            ]}
+          />
+        </Space>
+      ) : null}
+    </Drawer>
+  );
+}
+
 export function ProductListPage() {
   const navigate = useNavigate();
   const SAVED_FILTERS_KEY = "sibella.erp.productFilters.v1";
   const [viewMode, setViewMode] = React.useState("liste");
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedProduct, setSelectedProduct] = React.useState(null);
+  const [stockDrawerOpen, setStockDrawerOpen] = React.useState(false);
+  const [stockDrawerLoading, setStockDrawerLoading] = React.useState(false);
+  const [stockBreakdownItems, setStockBreakdownItems] = React.useState([]);
   const [products, setProducts] = React.useState([]);
   const [tableLoading, setTableLoading] = React.useState(true);
   const [categoryOptions, setCategoryOptions] = React.useState([{ value: "all", label: "Tumu" }]);
@@ -130,6 +180,19 @@ export function ProductListPage() {
     deleteProduct(productId);
     void refreshProducts();
     message.success("Urun silindi.");
+  };
+
+  const openStockDrawer = async (product) => {
+    try {
+      setSelectedProduct(product);
+      setStockDrawerOpen(true);
+      setStockDrawerLoading(true);
+      setStockBreakdownItems(await listProductStockLocationsFresh(product.id));
+    } catch (error) {
+      message.error(error?.message || "Stok yeri dagilimi yuklenemedi.");
+    } finally {
+      setStockDrawerLoading(false);
+    }
   };
 
   const handleExport = () => {
@@ -361,7 +424,24 @@ export function ProductListPage() {
     { title: "Maliyet", dataIndex: "costDisplay", key: "costDisplay", sorter: (a, b) => a.cost - b.cost },
     { title: "Kategori", dataIndex: "categoryLabel", key: "categoryLabel", sorter: (a, b) => a.categoryLabel.localeCompare(b.categoryLabel, "tr") },
     { title: "Koleksiyon", dataIndex: "collectionLabel", key: "collectionLabel", sorter: (a, b) => a.collectionLabel.localeCompare(b.collectionLabel, "tr") },
-    { title: "Stok", dataIndex: "stock", key: "stock", sorter: (a, b) => a.stock - b.stock, render: (value) => <Tag color="blue">{value}</Tag> },
+    {
+      title: "Stok",
+      dataIndex: "stock",
+      key: "stock",
+      sorter: (a, b) => a.stock - b.stock,
+      render: (value, record) => (
+        <Button
+          type="link"
+          style={{ padding: 0 }}
+          onClick={(event) => {
+            event.stopPropagation();
+            void openStockDrawer(record);
+          }}
+        >
+          <Tag color="blue">{value}</Tag>
+        </Button>
+      ),
+    },
     { title: "Durum", dataIndex: "status", key: "status", sorter: (a, b) => a.status.localeCompare(b.status, "tr"), render: (value) => <Tag color={value === "Aktif" ? "green" : "default"}>{value}</Tag> },
     {
       title: "Islemler",
@@ -523,12 +603,26 @@ export function ProductListPage() {
             <Descriptions.Item label="Maliyet">{selectedProduct.costDisplay}</Descriptions.Item>
             <Descriptions.Item label="Kategori">{selectedProduct.categoryLabel}</Descriptions.Item>
             <Descriptions.Item label="Koleksiyon">{selectedProduct.collectionLabel}</Descriptions.Item>
-            <Descriptions.Item label="Stok">{selectedProduct.stock}</Descriptions.Item>
+            <Descriptions.Item
+              label="Stok"
+            >
+              <Button type="link" style={{ padding: 0 }} onClick={() => void openStockDrawer(selectedProduct)}>
+                {selectedProduct.stock}
+              </Button>
+            </Descriptions.Item>
             <Descriptions.Item label="Barkod">{selectedProduct.barcode || "-"}</Descriptions.Item>
             <Descriptions.Item label="Durum">{selectedProduct.status}</Descriptions.Item>
           </Descriptions>
         ) : null}
       </Drawer>
+
+      <StockBreakdownDrawer
+        open={stockDrawerOpen}
+        onClose={() => setStockDrawerOpen(false)}
+        product={selectedProduct}
+        items={stockBreakdownItems}
+        loading={stockDrawerLoading}
+      />
 
       <Modal
         title="Gelismis Filtreler"
@@ -649,6 +743,9 @@ export function ProductEditorPage() {
   const [pageLoading, setPageLoading] = React.useState(false);
   const [imageModalOpen, setImageModalOpen] = React.useState(false);
   const [imagePreviewOpen, setImagePreviewOpen] = React.useState(false);
+  const [stockDrawerOpen, setStockDrawerOpen] = React.useState(false);
+  const [stockDrawerLoading, setStockDrawerLoading] = React.useState(false);
+  const [stockBreakdownItems, setStockBreakdownItems] = React.useState([]);
   const imageInputRef = React.useRef(null);
   const initialSupplierIdRef = React.useRef(null);
   const initialProductCodeRef = React.useRef("");
@@ -850,6 +947,21 @@ export function ProductEditorPage() {
 
     reader.readAsDataURL(file);
     event.target.value = "";
+  };
+
+  const openStockDrawer = async () => {
+    if (!productId) {
+      return;
+    }
+    try {
+      setStockDrawerOpen(true);
+      setStockDrawerLoading(true);
+      setStockBreakdownItems(await listProductStockLocationsFresh(productId));
+    } catch (error) {
+      message.error(error?.message || "Stok yeri dagilimi yuklenemedi.");
+    } finally {
+      setStockDrawerLoading(false);
+    }
   };
 
   const priceInputAddon = (
@@ -1057,7 +1169,9 @@ export function ProductEditorPage() {
                         <Col xs={24} md={12}>
                           <Card size="small" className="erp-readonly-card">
                             <Text type="secondary">Mevcut Stok</Text>
-                            <Title level={4} style={{ margin: "8px 0 0" }}>{currentStock}</Title>
+                            <Button type="link" style={{ padding: 0, height: "auto" }} onClick={() => void openStockDrawer()}>
+                              <Title level={4} style={{ margin: "8px 0 0" }}>{currentStock}</Title>
+                            </Button>
                             <Text type="secondary">Stok giris ve satis hareketlerinden otomatik gelir.</Text>
                           </Card>
                         </Col>
@@ -1162,6 +1276,14 @@ export function ProductEditorPage() {
           <img src={imagePath} alt="Urun gorseli buyuk onizleme" className="erp-product-image-zoom" />
         </div>
       </Modal>
+
+      <StockBreakdownDrawer
+        open={stockDrawerOpen}
+        onClose={() => setStockDrawerOpen(false)}
+        product={productList.find((item) => item.id === productId) || (isEditMode ? { id: productId, name: form.getFieldValue("name"), code: form.getFieldValue("code"), stock: currentStock } : null)}
+        items={stockBreakdownItems}
+        loading={stockDrawerLoading}
+      />
     </Space>
   );
 }

@@ -17,10 +17,15 @@ const SettingsDefinitionPage = React.lazy(() => import("./erp/pageModules/settin
 const ParametersPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.ParametersPage })));
 const SmtpSettingsPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.SmtpSettingsPage })));
 const StockListPage = React.lazy(() => import("./erp/pageModules/stockListPage").then((module) => ({ default: module.StockListPage })));
+const StockLocationListPage = React.lazy(() => import("./erp/pageModules/stockLocationPages").then((module) => ({ default: module.StockLocationListPage })));
 const StockEntryListPage = React.lazy(() => import("./erp/pageModules/stockEntryPages").then((module) => ({ default: module.StockEntryListPage })));
 const StockEntryEditorPage = React.lazy(() => import("./erp/pageModules/stockEntryPages").then((module) => ({ default: module.StockEntryEditorPage })));
 const SupplierListPage = React.lazy(() => import("./erp/pageModules/supplierPages").then((module) => ({ default: module.SupplierListPage })));
 const SupplierEditorPage = React.lazy(() => import("./erp/pageModules/supplierPages").then((module) => ({ default: module.SupplierEditorPage })));
+const StoreListPage = React.lazy(() => import("./erp/pageModules/storePages").then((module) => ({ default: module.StoreListPage })));
+const StoreEditorPage = React.lazy(() => import("./erp/pageModules/storePages").then((module) => ({ default: module.StoreEditorPage })));
+const StoreShipmentListPage = React.lazy(() => import("./erp/pageModules/storeShipmentPages").then((module) => ({ default: module.StoreShipmentListPage })));
+const StoreShipmentEditorPage = React.lazy(() => import("./erp/pageModules/storeShipmentPages").then((module) => ({ default: module.StoreShipmentEditorPage })));
 const PurchaseListPage = React.lazy(() => import("./erp/pageModules/purchasePages").then((module) => ({ default: module.PurchaseListPage })));
 const PurchaseEditorPage = React.lazy(() => import("./erp/pageModules/purchasePages").then((module) => ({ default: module.PurchaseEditorPage })));
 const PosSessionsPage = React.lazy(() => import("./erp/pageModules/posPages").then((module) => ({ default: module.PosSessionsPage })));
@@ -43,6 +48,13 @@ function PageFallback() {
 
 function withLazyPage(element) {
   return <React.Suspense fallback={<PageFallback />}>{element}</React.Suspense>;
+}
+
+function withRolePage(element, authUser, ...roles) {
+  if (!roles.includes(authUser?.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return withLazyPage(element);
 }
 
 function ProtectedApp() {
@@ -126,10 +138,18 @@ function ProtectedApp() {
         <Route path="/purchasing/entry/:purchaseId" element={withLazyPage(<PurchaseEditorPage />)} />
         <Route path="/purchasing/contracts" element={withLazyPage(<ContractsPage />)} />
 
+        <Route path="/stores/list" element={withRolePage(<StoreListPage />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/stores/new" element={withRolePage(<StoreEditorPage />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/stores/:storeId" element={withRolePage(<StoreEditorPage />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/stores/shipments" element={withRolePage(<StoreShipmentListPage />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/stores/shipments/new" element={withRolePage(<StoreShipmentEditorPage />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/stores/shipments/:shipmentId" element={withRolePage(<StoreShipmentEditorPage />, authUser, "Yonetici", "Muhasebe")} />
+
         <Route path="/stock/entry" element={withLazyPage(<StockEntryListPage />)} />
         <Route path="/stock/entry/new" element={withLazyPage(<StockEntryEditorPage />)} />
         <Route path="/stock/entry/:stockEntryId" element={withLazyPage(<StockEntryEditorPage />)} />
         <Route path="/stock/list" element={withLazyPage(<StockListPage />)} />
+        <Route path="/stock/locations" element={withRolePage(<StockLocationListPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/supplier-portal/delivery-lists" element={withLazyPage(<SupplierDeliveryListsPage />)} />
         <Route path="/supplier-portal/delivery-lists/:deliveryId" element={withLazyPage(<SupplierPortalDeliveryEditorPage />)} />
 

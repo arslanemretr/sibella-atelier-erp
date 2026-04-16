@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { sqlExec, sqlMany, sqlOne } from "./db.js";
+import { applyProductStockDelta, withInventoryTransaction } from "./inventory.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -7,6 +8,23 @@ function nowIso() {
 
 function createId(prefix) {
   return `${prefix}-${crypto.randomUUID()}`;
+}
+
+function buildLineDeltaMap(previousLines = [], nextLines = []) {
+  const deltaMap = new Map();
+  const addLine = (line, direction) => {
+    if (!line?.productId) {
+      return;
+    }
+    deltaMap.set(
+      line.productId,
+      Number(deltaMap.get(line.productId) || 0) + (Number(line.quantity || 0) * direction),
+    );
+  };
+
+  previousLines.forEach((line) => addLine(line, -1));
+  nextLines.forEach((line) => addLine(line, 1));
+  return deltaMap;
 }
 
 function mapPurchaseRows(purchaseRows, lineRows) {
@@ -234,11 +252,21 @@ export async function handleStockEntriesList(req, res) {
 export async function handleStockEntriesCreate(req, res) {
   try {
     const item = normalizeStockEntry(req.body || {});
-    await sqlExec(`
-      INSERT INTO stock_entries (id, document_no, source_party_id, date, stock_type, source_type, status, note, created_at, updated_at)
-      VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8,$9::timestamptz,$10::timestamptz)
-    `, [item.id, item.documentNo, item.sourcePartyId, item.date || null, item.stockType, item.sourceType, item.status, item.note, item.createdAt, item.updatedAt]);
-    await replaceStockLines(item);
+    await withInventoryTransaction(async (tx) => {
+      await tx.exec(`
+        INSERT INTO stock_entries (id, document_no, source_party_id, date, stock_type, source_type, status, note, created_at, updated_at)
+        VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8,$9::timestamptz,$10::timestamptz)
+      `, [item.id, item.documentNo, item.sourcePartyId, item.date || null, item.stockType, item.sourceType, item.status, item.note, item.createdAt, item.updatedAt]);
+      await tx.exec("DELETE FROM stock_lines WHERE stock_entry_id = $1", [item.id]);
+      for (let index = 0; index < item.lines.length; index += 1) {
+        const line = item.lines[index];
+        await tx.exec(`
+          INSERT INTO stock_lines (id, stock_entry_id, product_id, quantity, unit_cost, note, sort_order)
+          VALUES ($1,$2,$3,$4,$5,$6,$7)
+        `, [line.id, item.id, line.productId, line.quantity, line.unitCost, line.note, index + 1]);
+        await applyProductStockDelta(line.productId, Number(line.quantity || 0), tx);
+      }
+    });
     return res.status(201).json({ ok: true, item: await getStockEntryRow(item.id) });
   } catch (error) {
     return httpError(res, 400, error?.message || "Stok girisi olusturulamadi.");
@@ -252,12 +280,28 @@ export async function handleStockEntriesUpdate(req, res) {
   }
   try {
     const item = normalizeStockEntry(req.body || {}, existing);
-    await sqlExec(`
-      UPDATE stock_entries
-      SET document_no=$2, source_party_id=$3, date=$4::date, stock_type=$5, source_type=$6, status=$7, note=$8, updated_at=$9::timestamptz
-      WHERE id=$1
-    `, [item.id, item.documentNo, item.sourcePartyId, item.date || null, item.stockType, item.sourceType, item.status, item.note, item.updatedAt]);
-    await replaceStockLines(item);
+    await withInventoryTransaction(async (tx) => {
+      await tx.exec(`
+        UPDATE stock_entries
+        SET document_no=$2, source_party_id=$3, date=$4::date, stock_type=$5, source_type=$6, status=$7, note=$8, updated_at=$9::timestamptz
+        WHERE id=$1
+      `, [item.id, item.documentNo, item.sourcePartyId, item.date || null, item.stockType, item.sourceType, item.status, item.note, item.updatedAt]);
+      await tx.exec("DELETE FROM stock_lines WHERE stock_entry_id = $1", [item.id]);
+      for (let index = 0; index < item.lines.length; index += 1) {
+        const line = item.lines[index];
+        await tx.exec(`
+          INSERT INTO stock_lines (id, stock_entry_id, product_id, quantity, unit_cost, note, sort_order)
+          VALUES ($1,$2,$3,$4,$5,$6,$7)
+        `, [line.id, item.id, line.productId, line.quantity, line.unitCost, line.note, index + 1]);
+      }
+
+      const deltaMap = buildLineDeltaMap(existing.lines, item.lines);
+      for (const [productId, delta] of deltaMap.entries()) {
+        if (Number(delta || 0) !== 0) {
+          await applyProductStockDelta(productId, delta, tx);
+        }
+      }
+    });
     return res.json({ ok: true, item: await getStockEntryRow(item.id) });
   } catch (error) {
     return httpError(res, 400, error?.message || "Stok girisi guncellenemedi.");

@@ -26,11 +26,23 @@ export const mainMenuItems = [
     ],
   },
   {
+    key: "stores",
+    label: "Magaza",
+    roles: ["Yonetici", "Muhasebe"],
+    children: [
+      { key: "/stores/list", label: "Magaza Listesi", roles: ["Yonetici", "Muhasebe"] },
+      { key: "/stores/new", label: "Magaza Tanimla", roles: ["Yonetici", "Muhasebe"] },
+      { key: "/stores/shipments", label: "Gonderi Listesi", roles: ["Yonetici", "Muhasebe"] },
+      { key: "/stores/shipments/new", label: "Gonderi Olustur", roles: ["Yonetici", "Muhasebe"] },
+    ],
+  },
+  {
     key: "stock",
     label: "Stok",
     children: [
       { key: "/stock/entry", label: "Stok Giris Ekrani" },
       { key: "/stock/list", label: "Stok Hareketleri" },
+      { key: "/stock/locations", label: "Stok Yerleri", roles: ["Yonetici", "Muhasebe"] },
     ],
   },
   {
@@ -88,11 +100,23 @@ export const sidebarGroups = [
         ],
       },
       {
+        key: "stores-group",
+        label: "Magaza",
+        roles: ["Yonetici", "Muhasebe"],
+        children: [
+          { key: "/stores/list", label: "Magaza Listesi", roles: ["Yonetici", "Muhasebe"] },
+          { key: "/stores/new", label: "Magaza Tanimla", roles: ["Yonetici", "Muhasebe"] },
+          { key: "/stores/shipments", label: "Gonderi Listesi", roles: ["Yonetici", "Muhasebe"] },
+          { key: "/stores/shipments/new", label: "Gonderi Olustur", roles: ["Yonetici", "Muhasebe"] },
+        ],
+      },
+      {
         key: "stock-group",
         label: "Stok",
         children: [
           { key: "/stock/entry", label: "Stok Giris Ekrani" },
           { key: "/stock/list", label: "Stok Hareketleri" },
+          { key: "/stock/locations", label: "Stok Yerleri", roles: ["Yonetici", "Muhasebe"] },
         ],
       },
       {
@@ -142,3 +166,28 @@ export const supplierSidebarGroups = [
     ],
   },
 ];
+
+function isItemVisibleForRole(item, role) {
+  if (!item?.roles || item.roles.length === 0) {
+    return true;
+  }
+  return item.roles.includes(role);
+}
+
+export function filterNavigationItems(items, role) {
+  return (items || [])
+    .map((item) => {
+      const nextChildren = item.children ? filterNavigationItems(item.children, role) : undefined;
+      if (!isItemVisibleForRole(item, role)) {
+        return null;
+      }
+      if (item.children && (!nextChildren || nextChildren.length === 0)) {
+        return null;
+      }
+      return {
+        ...item,
+        children: nextChildren,
+      };
+    })
+    .filter(Boolean);
+}

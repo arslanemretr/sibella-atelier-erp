@@ -14,11 +14,13 @@ import {
   ScanLine,
   Settings2,
   ShieldUser,
+  Store,
   Truck,
   Users,
+  Warehouse,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { sidebarGroups, supplierSidebarGroups } from "../../erp/navigation";
+import { filterNavigationItems, sidebarGroups, supplierSidebarGroups } from "../../erp/navigation";
 import { getAuthUser, onAuthChange } from "../../auth";
 
 const { Sider } = Layout;
@@ -42,10 +44,17 @@ const iconMap = {
   "/purchasing/suppliers": menuIcon(Truck),
   "/purchasing/suppliers/new": menuIcon(Users),
   "/purchasing/contracts": menuIcon(ClipboardList),
+  stores: menuIcon(Store),
+  "stores-group": menuIcon(Store),
+  "/stores/list": menuIcon(Store),
+  "/stores/new": menuIcon(Users),
+  "/stores/shipments": menuIcon(Truck),
+  "/stores/shipments/new": menuIcon(PackagePlus),
   stock: menuIcon(Package),
   "stock-group": menuIcon(Package),
   "/stock/entry": menuIcon(PackagePlus),
   "/stock/list": menuIcon(ClipboardList),
+  "/stock/locations": menuIcon(Warehouse),
   "supplier-portal": menuIcon(ShieldUser),
   "supplier-portal-group": menuIcon(ShieldUser),
   "/supplier-portal/delivery-lists": menuIcon(Truck),
@@ -80,7 +89,11 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
   const location = useLocation();
   const [authUser, setAuthUser] = React.useState(() => getAuthUser());
   React.useEffect(() => onAuthChange(() => setAuthUser(getAuthUser())), []);
-  const items = withIcons(authUser?.role === "Tedarikci" ? supplierSidebarGroups : sidebarGroups);
+  const items = withIcons(
+    authUser?.role === "Tedarikci"
+      ? supplierSidebarGroups
+      : filterNavigationItems(sidebarGroups, authUser?.role),
+  );
   const selectedKey = React.useMemo(() => {
     const allRoutes = [];
     const collect = (nodes) => {
