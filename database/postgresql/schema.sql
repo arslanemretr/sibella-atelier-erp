@@ -121,11 +121,18 @@ CREATE TABLE IF NOT EXISTS products (
   track_inventory BOOLEAN,
   status TEXT,
   workflow_status TEXT,
+  shopify_product_gid TEXT,
   created_by TEXT REFERENCES users(id),
   notes TEXT,
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 );
+
+ALTER TABLE products ADD COLUMN IF NOT EXISTS shopify_product_gid TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS products_shopify_product_gid_idx
+  ON products (shopify_product_gid)
+  WHERE shopify_product_gid IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS product_features (
   id TEXT PRIMARY KEY,

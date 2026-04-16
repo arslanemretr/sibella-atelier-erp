@@ -9,6 +9,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "shopify:import": "node scripts/import-shopify-products.mjs",
     "db:schema:sqlite": "node scripts/export-sqlite-schema.mjs",
     "db:migrate:pg": "node scripts/migrate-sqlite-to-postgres.mjs --apply-schema",
     "db:migrate:pg:data": "node scripts/migrate-sqlite-to-postgres.mjs"
