@@ -1,6 +1,11 @@
 import crypto from "node:crypto";
 import { sqlExec, sqlMany, sqlOne } from "./db.js";
-import { applyProductStockDelta, withInventoryTransaction } from "./inventory.js";
+import {
+  getMainStockLocation,
+  rebuildStockBalancesFromMovements,
+  replaceStockMovementsForSource,
+  withInventoryTransaction,
+} from "./inventory.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -167,22 +172,24 @@ function normalizeStockEntry(values, existingEntry) {
   };
 }
 
-async function replacePurchaseLines(record) {
-  await sqlExec("DELETE FROM purchase_lines WHERE purchase_id = $1", [record.id]);
+async function replacePurchaseLines(record, tx) {
+  const executor = tx || { exec: sqlExec };
+  await executor.exec("DELETE FROM purchase_lines WHERE purchase_id = $1", [record.id]);
   for (let index = 0; index < record.lines.length; index += 1) {
     const line = record.lines[index];
-    await sqlExec(`
+    await executor.exec(`
       INSERT INTO purchase_lines (id, purchase_id, product_id, quantity, unit_price, note, sort_order)
       VALUES ($1,$2,$3,$4,$5,$6,$7)
     `, [line.id, record.id, line.productId, line.quantity, line.unitPrice, line.note, index + 1]);
   }
 }
 
-async function replaceStockLines(record) {
-  await sqlExec("DELETE FROM stock_lines WHERE stock_entry_id = $1", [record.id]);
+async function replaceStockLines(record, tx) {
+  const executor = tx || { exec: sqlExec };
+  await executor.exec("DELETE FROM stock_lines WHERE stock_entry_id = $1", [record.id]);
   for (let index = 0; index < record.lines.length; index += 1) {
     const line = record.lines[index];
-    await sqlExec(`
+    await executor.exec(`
       INSERT INTO stock_lines (id, stock_entry_id, product_id, quantity, unit_cost, note, sort_order)
       VALUES ($1,$2,$3,$4,$5,$6,$7)
     `, [line.id, record.id, line.productId, line.quantity, line.unitCost, line.note, index + 1]);
@@ -196,6 +203,14 @@ function httpError(res, status, message) {
   });
 }
 
+async function resolveSupplierName(supplierId, tx) {
+  if (!supplierId) {
+    return "";
+  }
+  const row = await tx.one("SELECT company FROM suppliers WHERE id = $1", [supplierId]);
+  return row?.company || "";
+}
+
 export async function handlePurchasesList(_req, res) {
   return res.json({
     ok: true,
@@ -206,11 +221,38 @@ export async function handlePurchasesList(_req, res) {
 export async function handlePurchasesCreate(req, res) {
   try {
     const item = normalizePurchase(req.body || {});
-    await sqlExec(`
-      INSERT INTO purchases (id, document_no, supplier_id, date, procurement_type_id, payment_term_id, description, created_at, updated_at)
-      VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8::timestamptz,$9::timestamptz)
-    `, [item.id, item.documentNo, item.supplierId, item.date || null, item.procurementTypeId, item.paymentTermId, item.description, item.createdAt, item.updatedAt]);
-    await replacePurchaseLines(item);
+    await withInventoryTransaction(async (tx) => {
+      await tx.exec(`
+        INSERT INTO purchases (id, document_no, supplier_id, date, procurement_type_id, payment_term_id, description, created_at, updated_at)
+        VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8::timestamptz,$9::timestamptz)
+      `, [item.id, item.documentNo, item.supplierId, item.date || null, item.procurementTypeId, item.paymentTermId, item.description, item.createdAt, item.updatedAt]);
+      await replacePurchaseLines(item, tx);
+      const mainLocation = await getMainStockLocation(tx);
+      const supplierName = await resolveSupplierName(item.supplierId, tx);
+      await replaceStockMovementsForSource(
+        "purchase",
+        item.id,
+        item.lines.map((line) => ({
+          movementType: "SATINALMA_BELGESI",
+          direction: "IN",
+          affectsStock: false,
+          quantity: Number(line.quantity || 0),
+          stockDelta: 0,
+          productId: line.productId,
+          stockLocationId: mainLocation?.id || null,
+          documentNo: item.documentNo,
+          documentDate: item.date || item.createdAt,
+          sourceLineId: line.id,
+          partyId: item.supplierId,
+          partyName: supplierName,
+          unitAmount: Number(line.unitPrice || 0),
+          totalAmount: Number(line.quantity || 0) * Number(line.unitPrice || 0),
+          note: line.note || item.description || "",
+          createdAt: item.createdAt,
+        })),
+        tx,
+      );
+    });
     return res.status(201).json({ ok: true, item: await getPurchaseRow(item.id) });
   } catch (error) {
     return httpError(res, 400, error?.message || "Satin alma kaydi olusturulamadi.");
@@ -224,12 +266,39 @@ export async function handlePurchasesUpdate(req, res) {
   }
   try {
     const item = normalizePurchase(req.body || {}, existing);
-    await sqlExec(`
-      UPDATE purchases
-      SET document_no=$2, supplier_id=$3, date=$4::date, procurement_type_id=$5, payment_term_id=$6, description=$7, updated_at=$8::timestamptz
-      WHERE id=$1
-    `, [item.id, item.documentNo, item.supplierId, item.date || null, item.procurementTypeId, item.paymentTermId, item.description, item.updatedAt]);
-    await replacePurchaseLines(item);
+    await withInventoryTransaction(async (tx) => {
+      await tx.exec(`
+        UPDATE purchases
+        SET document_no=$2, supplier_id=$3, date=$4::date, procurement_type_id=$5, payment_term_id=$6, description=$7, updated_at=$8::timestamptz
+        WHERE id=$1
+      `, [item.id, item.documentNo, item.supplierId, item.date || null, item.procurementTypeId, item.paymentTermId, item.description, item.updatedAt]);
+      await replacePurchaseLines(item, tx);
+      const mainLocation = await getMainStockLocation(tx);
+      const supplierName = await resolveSupplierName(item.supplierId, tx);
+      await replaceStockMovementsForSource(
+        "purchase",
+        item.id,
+        item.lines.map((line) => ({
+          movementType: "SATINALMA_BELGESI",
+          direction: "IN",
+          affectsStock: false,
+          quantity: Number(line.quantity || 0),
+          stockDelta: 0,
+          productId: line.productId,
+          stockLocationId: mainLocation?.id || null,
+          documentNo: item.documentNo,
+          documentDate: item.date || item.updatedAt,
+          sourceLineId: line.id,
+          partyId: item.supplierId,
+          partyName: supplierName,
+          unitAmount: Number(line.unitPrice || 0),
+          totalAmount: Number(line.quantity || 0) * Number(line.unitPrice || 0),
+          note: line.note || item.description || "",
+          createdAt: item.createdAt,
+        })),
+        tx,
+      );
+    });
     return res.json({ ok: true, item: await getPurchaseRow(item.id) });
   } catch (error) {
     return httpError(res, 400, error?.message || "Satin alma kaydi guncellenemedi.");
@@ -253,6 +322,8 @@ export async function handleStockEntriesCreate(req, res) {
   try {
     const item = normalizeStockEntry(req.body || {});
     await withInventoryTransaction(async (tx) => {
+      const mainLocation = await getMainStockLocation(tx);
+      const supplierName = await resolveSupplierName(item.sourcePartyId, tx);
       await tx.exec(`
         INSERT INTO stock_entries (id, document_no, source_party_id, date, stock_type, source_type, status, note, created_at, updated_at)
         VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8,$9::timestamptz,$10::timestamptz)
@@ -264,8 +335,36 @@ export async function handleStockEntriesCreate(req, res) {
           INSERT INTO stock_lines (id, stock_entry_id, product_id, quantity, unit_cost, note, sort_order)
           VALUES ($1,$2,$3,$4,$5,$6,$7)
         `, [line.id, item.id, line.productId, line.quantity, line.unitCost, line.note, index + 1]);
-        await applyProductStockDelta(line.productId, Number(line.quantity || 0), tx);
       }
+      await replaceStockMovementsForSource(
+        "stock-entry",
+        item.id,
+        item.lines.map((line) => ({
+          movementType:
+            item.sourceType === "Sayim Duzeltme"
+              ? "STOK_DUZELTME"
+              : item.sourceType === "Tedarikci Teslimati"
+                ? "MAGAZA_STOK_GIRISI"
+                : "STOK_GIRIS",
+          direction: "IN",
+          affectsStock: true,
+          quantity: Number(line.quantity || 0),
+          stockDelta: Number(line.quantity || 0),
+          productId: line.productId,
+          stockLocationId: mainLocation?.id || null,
+          documentNo: item.documentNo,
+          documentDate: item.date || item.createdAt,
+          sourceLineId: line.id,
+          partyId: item.sourcePartyId,
+          partyName: supplierName || item.sourceType || "",
+          unitAmount: Number(line.unitCost || 0),
+          totalAmount: Number(line.quantity || 0) * Number(line.unitCost || 0),
+          note: line.note || item.note || "",
+          createdAt: item.createdAt,
+        })),
+        tx,
+      );
+      await rebuildStockBalancesFromMovements(tx);
     });
     return res.status(201).json({ ok: true, item: await getStockEntryRow(item.id) });
   } catch (error) {
@@ -281,6 +380,8 @@ export async function handleStockEntriesUpdate(req, res) {
   try {
     const item = normalizeStockEntry(req.body || {}, existing);
     await withInventoryTransaction(async (tx) => {
+      const mainLocation = await getMainStockLocation(tx);
+      const supplierName = await resolveSupplierName(item.sourcePartyId, tx);
       await tx.exec(`
         UPDATE stock_entries
         SET document_no=$2, source_party_id=$3, date=$4::date, stock_type=$5, source_type=$6, status=$7, note=$8, updated_at=$9::timestamptz
@@ -294,13 +395,35 @@ export async function handleStockEntriesUpdate(req, res) {
           VALUES ($1,$2,$3,$4,$5,$6,$7)
         `, [line.id, item.id, line.productId, line.quantity, line.unitCost, line.note, index + 1]);
       }
-
-      const deltaMap = buildLineDeltaMap(existing.lines, item.lines);
-      for (const [productId, delta] of deltaMap.entries()) {
-        if (Number(delta || 0) !== 0) {
-          await applyProductStockDelta(productId, delta, tx);
-        }
-      }
+      await replaceStockMovementsForSource(
+        "stock-entry",
+        item.id,
+        item.lines.map((line) => ({
+          movementType:
+            item.sourceType === "Sayim Duzeltme"
+              ? "STOK_DUZELTME"
+              : item.sourceType === "Tedarikci Teslimati"
+                ? "MAGAZA_STOK_GIRISI"
+                : "STOK_GIRIS",
+          direction: "IN",
+          affectsStock: true,
+          quantity: Number(line.quantity || 0),
+          stockDelta: Number(line.quantity || 0),
+          productId: line.productId,
+          stockLocationId: mainLocation?.id || null,
+          documentNo: item.documentNo,
+          documentDate: item.date || item.updatedAt,
+          sourceLineId: line.id,
+          partyId: item.sourcePartyId,
+          partyName: supplierName || item.sourceType || "",
+          unitAmount: Number(line.unitCost || 0),
+          totalAmount: Number(line.quantity || 0) * Number(line.unitCost || 0),
+          note: line.note || item.note || "",
+          createdAt: item.createdAt,
+        })),
+        tx,
+      );
+      await rebuildStockBalancesFromMovements(tx);
     });
     return res.json({ ok: true, item: await getStockEntryRow(item.id) });
   } catch (error) {

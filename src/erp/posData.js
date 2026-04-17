@@ -75,6 +75,7 @@ function normalizeSale(values) {
 
   return {
     sessionId: values.sessionId,
+    stockLocationId: values.stockLocationId || null,
     receiptNo: values.receiptNo || `FIS-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
     soldAt: values.soldAt || nowIso(),
     customerName: values.customerName || "Magaza Musterisi",
@@ -211,7 +212,7 @@ export function buildPosProductCatalog() {
     .filter((item) => item.useInPos && item.status === "Aktif")
     .map((item) => ({
       ...item,
-      quantityAvailable: Number(item.stock || 0),
+      quantityAvailable: Number((item.totalStock ?? item.stock) || 0),
       imageUrl: item.image,
     }));
 }
@@ -222,7 +223,7 @@ export async function buildPosProductCatalogFresh() {
     .filter((item) => item.useInPos && item.status === "Aktif")
     .map((item) => ({
       ...item,
-      quantityAvailable: Number(item.stock || 0),
+      quantityAvailable: Number((item.totalStock ?? item.stock) || 0),
       imageUrl: item.image,
     }));
 }

@@ -4,6 +4,7 @@ import { Avatar, Button, Card, Col, Descriptions, Drawer, Dropdown, Empty, Form,
 import { BarcodeOutlined, DeleteOutlined, EditOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import { listMasterDataFresh } from "../masterData";
 import { buildPosProductCatalogFresh, closePosSession, createPosSale, createPosSession, findProductByBarcode, getOpenPosSessionsFresh, listPosSalesFresh, listPosSessionsFresh } from "../posData";
+import { listStockLocationBalancesFresh, listStockLocationsFresh } from "../stockLocationsData";
 
 const { Title, Text } = Typography;
 
@@ -230,6 +231,8 @@ export function PosScreenPage() {
   const navigate = useNavigate();
   const DRAFT_STORAGE_KEY = "sibella.erp.posDraftOrders.v1";
   const [catalog, setCatalog] = React.useState([]);
+  const [stockLocations, setStockLocations] = React.useState([]);
+  const [stockBalancesByLocation, setStockBalancesByLocation] = React.useState({});
   const [sessions, setSessions] = React.useState([]);
   const [posSales, setPosSales] = React.useState([]);
   const [posCategoryStateOptions, setPosCategoryStateOptions] = React.useState([{ id: "all", name: "Tumu", color: "#fee89a" }]);
@@ -277,6 +280,7 @@ export function PosScreenPage() {
     title: `${1000 + index}`,
     customerName: "",
     note: "",
+    stockLocationId: null,
     discountType: "amount",
     discountValue: 0,
     lines: [],
@@ -331,15 +335,18 @@ export function PosScreenPage() {
   const refreshPosContext = React.useCallback(async () => {
     try {
       setPageLoading(true);
-      const [nextCatalog, nextSessions, nextSales, posCategories] = await Promise.all([
+      const [nextCatalog, nextSessions, nextSales, posCategories, nextStockLocations] = await Promise.all([
         buildPosProductCatalogFresh(),
         getOpenPosSessionsFresh(),
         listPosSalesFresh(),
         listMasterDataFresh("pos-categories"),
+        listStockLocationsFresh(),
       ]);
       setCatalog(nextCatalog);
       setSessions(nextSessions);
       setPosSales(nextSales);
+      setStockLocations(nextStockLocations);
+      setStockBalancesByLocation({});
       setPosCategoryStateOptions([
         { id: "all", name: "Tumu", color: "#fee89a" },
         ...posCategories
@@ -368,6 +375,7 @@ export function PosScreenPage() {
   const closedDraftOrders = draftOrders.filter((item) => item.status === "closed");
   const activeOrderId = activeOrderIdBySession[activeSessionId];
   const activeOrder = openDraftOrders.find((item) => item.id === activeOrderId) || openDraftOrders[0];
+  const activeOrderStockLocationId = activeOrder?.stockLocationId || null;
   const activeOrderLines = activeOrder?.lines;
   const cart = activeOrderLines || [];
   const sessionOrders = posSales.filter((sale) => sale.sessionId === activeSessionId);
@@ -384,7 +392,62 @@ export function PosScreenPage() {
   ];
 
   */
-  const filteredCatalog = catalog.filter((product) => {
+  React.useEffect(() => {
+    if (!activeOrderStockLocationId || stockBalancesByLocation[activeOrderStockLocationId]) {
+      return;
+    }
+
+    let ignore = false;
+    void listStockLocationBalancesFresh(activeOrderStockLocationId)
+      .then((items) => {
+        if (ignore) {
+          return;
+        }
+        setStockBalancesByLocation((prev) => ({
+          ...prev,
+          [activeOrderStockLocationId]: items,
+        }));
+      })
+      .catch((error) => {
+        if (!ignore) {
+          message.error(error?.message || "Stok yeri bakiyeleri yuklenemedi.");
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeOrderStockLocationId, stockBalancesByLocation]);
+
+  const stockLocationOptions = React.useMemo(
+    () =>
+      stockLocations.map((item) => ({
+        value: item.id,
+        label: item.isDefaultMain ? `${item.name} (Merkez)` : item.name,
+      })),
+    [stockLocations],
+  );
+
+  const currentStockBalanceMap = React.useMemo(
+    () =>
+      new Map(
+        (stockBalancesByLocation[activeOrderStockLocationId] || []).map((item) => [item.productId, Number(item.quantity || 0)]),
+      ),
+    [activeOrderStockLocationId, stockBalancesByLocation],
+  );
+
+  const catalogWithAvailability = React.useMemo(
+    () =>
+      catalog.map((product) => ({
+        ...product,
+        quantityAvailable: activeOrderStockLocationId
+          ? Number(currentStockBalanceMap.get(product.id) || 0)
+          : 0,
+      })),
+    [activeOrderStockLocationId, catalog, currentStockBalanceMap],
+  );
+
+  const filteredCatalog = catalogWithAvailability.filter((product) => {
     const matchesSearch =
       !search.trim() ||
       [product.name, product.code, product.barcode]
@@ -548,8 +611,19 @@ export function PosScreenPage() {
   };
 
   const addProductToCart = (product) => {
+    if (!activeOrder?.stockLocationId) {
+      message.warning("Once satisin dusulecegi stok yerini secin.");
+      return;
+    }
+
     if (!product || product.quantityAvailable <= 0) {
       message.warning("Seçilen ürün için stok bulunmuyor.");
+      return;
+    }
+
+    const existingQuantity = Number(activeOrder.lines.find((item) => item.productId === product.id)?.quantity || 0);
+    if (existingQuantity >= Number(product.quantityAvailable || 0)) {
+      message.warning("Secilen stok yerindeki mevcut adet asiliyor.");
       return;
     }
 
@@ -588,12 +662,13 @@ export function PosScreenPage() {
   };
 
   const handleBarcodeSubmit = () => {
-    const product = findProductByBarcode(barcodeValue);
-    if (!product) {
+    const foundProduct = findProductByBarcode(barcodeValue);
+    if (!foundProduct) {
       message.warning("Barkoda ait ürün bulunamadı.");
       return;
     }
 
+    const product = catalogWithAvailability.find((item) => item.id === foundProduct.id) || foundProduct;
     addProductToCart(product);
     setBarcodeValue("");
   };
@@ -610,6 +685,11 @@ export function PosScreenPage() {
           const nextQuantity = item.quantity + delta;
           if (nextQuantity <= 0) {
             return null;
+          }
+          const availableQuantity = Number(currentStockBalanceMap.get(productId) || 0);
+          if (nextQuantity > availableQuantity) {
+            message.warning("Secilen stok yerindeki mevcut adet asiliyor.");
+            return item;
           }
 
           return {
@@ -643,6 +723,11 @@ export function PosScreenPage() {
           const quantity = Number(nextValue || 0);
           if (quantity <= 0) {
             return null;
+          }
+          const availableQuantity = Number(currentStockBalanceMap.get(productId) || 0);
+          if (quantity > availableQuantity) {
+            message.warning("Secilen stok yerindeki mevcut adet asiliyor.");
+            return item;
           }
 
           return {
@@ -744,6 +829,7 @@ export function PosScreenPage() {
       const values = await paymentForm.validateFields();
       createPosSale({
         sessionId: activeSessionId,
+        stockLocationId: values.stockLocationId,
         customerName: values.customerName || activeOrder.customerName,
         paymentMethod: values.paymentMethod,
         note: values.note || activeOrder.note,
@@ -784,6 +870,7 @@ export function PosScreenPage() {
     }
 
     paymentForm.setFieldsValue({
+      stockLocationId: activeOrder.stockLocationId || undefined,
       customerName: activeOrder.customerName || "Magaza Musterisi",
       paymentMethod: "Nakit",
       note: activeOrder.note || "",
@@ -878,6 +965,14 @@ export function PosScreenPage() {
                     <Text type="secondary">{activeOrder.note || "Siparis acik, urun eklemeye hazir."}</Text>
                   </div>
                   <Space wrap>
+                    <Select
+                      value={activeOrder.stockLocationId || undefined}
+                      onChange={(value) => updateActiveOrder((order) => ({ ...order, stockLocationId: value || null }))}
+                      options={stockLocationOptions}
+                      placeholder="Stok yeri secin"
+                      style={{ minWidth: 220 }}
+                      allowClear
+                    />
                     <Button onClick={() => {
                       discountForm.setFieldsValue({
                         discountType: activeOrder.discountType || "amount",
@@ -1025,21 +1120,27 @@ export function PosScreenPage() {
             ))}
           </div>
 
-          <div className="erp-pos-product-grid">
-            {filteredCatalog.map((product) => (
-              <button key={product.id} type="button" className="erp-pos-product-card" onClick={() => addProductToCart(product)}>
-                <div className="erp-pos-product-image-wrap">
-                  <img src={product.imageUrl} alt={product.name} className="erp-pos-product-image" />
-                </div>
-                <div className="erp-pos-product-name">{product.code}-{product.name}</div>
-              </button>
-            ))}
-          </div>
+            <div className="erp-pos-product-grid">
+              {filteredCatalog.map((product) => (
+                <button key={product.id} type="button" className="erp-pos-product-card" onClick={() => addProductToCart(product)}>
+                  <div className="erp-pos-product-image-wrap">
+                    <img src={product.imageUrl} alt={product.name} className="erp-pos-product-image" />
+                  </div>
+                  <div className="erp-pos-product-name">{product.code}-{product.name}</div>
+                  <div className="erp-pos-product-name" style={{ fontSize: 12, opacity: 0.75 }}>
+                    {activeOrderStockLocationId ? `Stok: ${product.quantityAvailable}` : "Stok yeri secin"}
+                  </div>
+                </button>
+              ))}
+            </div>
         </div>
       </div>
       ) : null}
       <Modal title="Satışı Tamamla" open={paymentModalOpen} onCancel={() => setPaymentModalOpen(false)} onOk={handlePayment} okText="Satışı Kaydet" cancelText="Vazgeç">
         <Form form={paymentForm} layout="vertical" initialValues={{ customerName: activeOrder?.customerName || "Magaza Musterisi", paymentMethod: "Nakit", note: activeOrder?.note || "" }}>
+          <Form.Item name="stockLocationId" label="Stok Yeri" rules={[{ required: true, message: "Stok yeri secin." }]}>
+            <Select options={stockLocationOptions} placeholder="Stok yeri secin" />
+          </Form.Item>
           <Form.Item name="customerName" label="Müşteri">
             <Input />
           </Form.Item>
@@ -1051,6 +1152,9 @@ export function PosScreenPage() {
           </Form.Item>
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label="Oturum">{activeSession?.sessionNo || "-"}</Descriptions.Item>
+            <Descriptions.Item label="Stok Yeri">
+              {stockLocations.find((item) => item.id === paymentForm.getFieldValue("stockLocationId"))?.name || "-"}
+            </Descriptions.Item>
             <Descriptions.Item label="Ara Toplam">{formatMovementMoney(orderTotals.grossTotal)}</Descriptions.Item>
             <Descriptions.Item label="Indirim">{formatMovementMoney(orderTotals.discountAmount)}</Descriptions.Item>
             <Descriptions.Item label="Vergi">{formatMovementMoney(cartTax)}</Descriptions.Item>

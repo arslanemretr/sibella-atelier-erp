@@ -1,22 +1,13 @@
-﻿import React from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, Col, Descriptions, Drawer, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography, message } from "antd";
-import { DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
-import { listMasterDataFresh } from "../masterData";
-import { listPosSalesFresh } from "../posData";
+import { Button, Card, Descriptions, Drawer, Input, Select, Space, Table, Tag, Typography, message } from "antd";
+import { DownloadOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { listProductsFresh } from "../productsData";
-import { listPurchasesFresh } from "../purchasesData";
-import { listStockEntriesFresh } from "../stockEntriesData";
-import { listSuppliersFresh } from "../suppliersData";
+import { listStockMovementsFresh } from "../stockMovementsData";
 
 const { Title, Text } = Typography;
 
-function openDetailFromRow(setSelected, setOpen, record) {
-  setSelected(record);
-  setOpen(true);
-}
-
-function formatMovementMoney(value) {
+function formatMoney(value) {
   return new Intl.NumberFormat("tr-TR", {
     style: "currency",
     currency: "TRY",
@@ -25,19 +16,17 @@ function formatMovementMoney(value) {
   }).format(Number(value || 0));
 }
 
-function parseMovementDate(value) {
+function parseDate(value) {
   if (!value) {
     return null;
   }
 
-  const rawValue = String(value).trim();
-  const normalizedValue = /^\d{4}-\d{2}-\d{2}$/.test(rawValue) ? `${rawValue}T00:00:00` : rawValue;
-  const parsed = new Date(normalizedValue);
+  const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function formatMovementDateTime(value) {
-  const parsed = parseMovementDate(value);
+function formatDateTime(value) {
+  const parsed = parseDate(value);
   if (!parsed) {
     return String(value || "-");
   }
@@ -52,156 +41,73 @@ function formatMovementDateTime(value) {
   }).format(parsed);
 }
 
-function buildStockMovements() {
-  return buildStockMovementsFromData({
-    purchases: listPurchases(),
-    stockEntries: listStockEntries(),
-  });
+function buildDetailPath(record) {
+  switch (record.sourceModule) {
+    case "purchase":
+      return `/purchasing/entry/${record.sourceId}`;
+    case "stock-entry":
+      return `/stock/entry/${record.sourceId}`;
+    case "delivery-list":
+      return `/supplier/deliveries/${record.sourceId}`;
+    case "store-shipment":
+      return `/stores/shipments/${record.sourceId}`;
+    case "pos-sale":
+      return "/pos/sessions";
+    default:
+      return "";
+  }
 }
 
-function buildStockMovementsFromData({ purchases = [], stockEntries = [], posSales = [] }) {
-  const purchaseMovements = purchases.flatMap((purchase) =>
-    (purchase.lines || []).map((line) => ({
-      id: `mov-pur-${purchase.id}-${line.id}`,
-      movementType: "SATINALMA",
-      movementTypeLabel: "Satinalma Girisi",
-      direction: "IN",
-      date: purchase.date,
-      documentNo: purchase.documentNo,
-      partyName: purchase.supplierName || "-",
-      productId: line.productId,
-      productCode: line.productCode || "-",
-      productName: line.productName || "-",
-      quantity: Number(line.quantity || 0),
-      quantitySigned: Number(line.quantity || 0),
-      quantitySignedDisplay: `+${Number(line.quantity || 0)}`,
-      unitAmount: Number(line.unitPrice || 0),
-      unitAmountDisplay: line.unitPriceDisplay || formatMovementMoney(line.unitPrice),
-      totalAmount: Number(line.lineTotal || 0),
-      totalAmountDisplay: line.lineTotalDisplay || formatMovementMoney(line.lineTotal),
-      note: line.note || purchase.description || "",
-      detailPath: "",
-      sourceModule: "purchase",
-      sourceId: purchase.id,
-    })),
-  );
+function buildSignedQuantity(record) {
+  const delta = Number(record.stockDelta || 0);
+  if (delta > 0) {
+    return `+${delta}`;
+  }
+  if (delta < 0) {
+    return String(delta);
+  }
+  return `${Number(record.quantity || 0)}`;
+}
 
-  const stockEntryMovements = stockEntries.flatMap((entry) =>
-    (entry.lines || []).map((line) => ({
-      id: `mov-stk-${entry.id}-${line.id}`,
-      movementType: entry.sourceType === "Sayim Duzeltme" ? "STOK_DUZELTME" : "STOK_GIRIS",
-      movementTypeLabel: entry.sourceType === "Sayim Duzeltme" ? "Stok Duzeltme" : "Stok Girisi",
-      direction: "IN",
-      date: entry.date,
-      documentNo: entry.documentNo,
-      partyName: entry.sourcePartyName || entry.sourceType || "-",
-      productId: line.productId,
-      productCode: line.productCode || "-",
-      productName: line.productName || "-",
-      quantity: Number(line.quantity || 0),
-      quantitySigned: Number(line.quantity || 0),
-      quantitySignedDisplay: `+${Number(line.quantity || 0)}`,
-      unitAmount: Number(line.unitCost || 0),
-      unitAmountDisplay: line.unitCostDisplay || formatMovementMoney(line.unitCost),
-      totalAmount: Number(line.lineTotal || 0),
-      totalAmountDisplay: line.lineTotalDisplay || formatMovementMoney(line.lineTotal),
-      note: line.note || entry.note || "",
-      detailPath: `/stock/entry/${entry.id}`,
-      sourceModule: "stock-entry",
-      sourceId: entry.id,
-    })),
-  );
-
-  const posSaleMovements = posSales.flatMap((sale) =>
-    (sale.lines || []).map((line) => ({
-      id: `mov-pos-${sale.id}-${line.id}`,
-      movementType: "SATIS_CIKIS",
-      movementTypeLabel: "Stok Cikisi",
-      direction: "OUT",
-      date: sale.soldAt,
-      documentNo: sale.receiptNo,
-      partyName: sale.customerName || "POS",
-      productId: line.productId,
-      productCode: line.productCode || "-",
-      productName: line.productName || "-",
-      quantity: Number(line.quantity || 0),
-      quantitySigned: -Number(line.quantity || 0),
-      quantitySignedDisplay: `-${Number(line.quantity || 0)}`,
-      unitAmount: Number(line.unitPrice || 0),
-      unitAmountDisplay: line.unitPriceDisplay || formatMovementMoney(line.unitPrice),
-      totalAmount: Number(line.lineTotal || (Number(line.quantity || 0) * Number(line.unitPrice || 0))),
-      totalAmountDisplay: line.lineTotalDisplay || formatMovementMoney(line.lineTotal || (Number(line.quantity || 0) * Number(line.unitPrice || 0))),
-      note: sale.note || "",
-      detailPath: "/pos/sessions",
-      sourceModule: "pos-sale",
-      sourceId: sale.id,
-    })),
-  );
-
-  return [...purchaseMovements, ...stockEntryMovements, ...posSaleMovements].sort((a, b) => {
-    const leftDate = parseMovementDate(a.date)?.getTime() || 0;
-    const rightDate = parseMovementDate(b.date)?.getTime() || 0;
-    if (rightDate !== leftDate) {
-      return rightDate - leftDate;
-    }
-
-    return String(b.documentNo || "").localeCompare(String(a.documentNo || ""), "tr");
-  });
+function openDetailFromRow(setSelected, setOpen, record) {
+  setSelected(record);
+  setOpen(true);
 }
 
 export function StockListPage() {
   const navigate = useNavigate();
-  const SAVED_FILTERS_KEY = "sibella.erp.stockMovementFilters.v1";
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedMovement, setSelectedMovement] = React.useState(null);
   const [movements, setMovements] = React.useState([]);
   const [tableLoading, setTableLoading] = React.useState(true);
-  const [productOptions, setProductOptions] = React.useState([{ value: "all", label: "Tumu" }]);
   const [filters, setFilters] = React.useState({
     search: "",
     movementType: undefined,
     productId: undefined,
-  });
-  const [filterModalOpen, setFilterModalOpen] = React.useState(false);
-  const [savedFilterName, setSavedFilterName] = React.useState("");
-  const [savedFilters, setSavedFilters] = React.useState(() => {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
-    try {
-      return JSON.parse(window.localStorage.getItem(SAVED_FILTERS_KEY) || "[]");
-    } catch {
-      return [];
-    }
+    stockLocationId: undefined,
   });
 
-  const movementTypeOptions = [
-    { value: "all", label: "Tumu" },
-    { value: "SATINALMA", label: "Satinalma Girisi" },
-    { value: "STOK_GIRIS", label: "Stok Girisi" },
-    { value: "SATIS_CIKIS", label: "Satis Cikisi" },
-    { value: "STOK_DUZELTME", label: "Stok Duzeltme" },
-  ];
   const refreshMovements = React.useCallback(async () => {
     setTableLoading(true);
     try {
-      const [products, suppliers, procurementTypes, paymentTerms] = await Promise.all([
+      const [movementRows, products] = await Promise.all([
+        listStockMovementsFresh(),
         listProductsFresh(),
-        listSuppliersFresh(),
-        listMasterDataFresh("procurement-types"),
-        listMasterDataFresh("payment-terms"),
       ]);
-      const [purchases, stockEntries, posSales] = await Promise.all([
-        listPurchasesFresh({ suppliers, procurementTypes, paymentTerms, products }),
-        listStockEntriesFresh({ suppliers, products }),
-        listPosSalesFresh(products),
-      ]);
-      setMovements(buildStockMovementsFromData({ purchases, stockEntries, posSales }));
-      setProductOptions([{ value: "all", label: "Tumu" }, ...products.map((item) => ({
-        value: item.id,
-        label: `${item.code} - ${item.name}`,
-      }))]);
+
+      const productMap = new Map(products.map((item) => [item.id, item]));
+      setMovements(
+        movementRows.map((item) => ({
+          ...item,
+          key: item.id,
+          detailPath: buildDetailPath(item),
+          productCode: item.productCode || productMap.get(item.productId)?.code || "-",
+          productName: item.productName || productMap.get(item.productId)?.name || "-",
+          unitAmountDisplay: formatMoney(item.unitAmount),
+          totalAmountDisplay: formatMoney(item.totalAmount),
+          quantitySignedDisplay: buildSignedQuantity(item),
+        })),
+      );
     } catch (error) {
       message.error(error?.message || "Stok hareketleri yuklenemedi.");
     } finally {
@@ -212,20 +118,76 @@ export function StockListPage() {
   React.useEffect(() => {
     void refreshMovements();
   }, [refreshMovements]);
-  const openDetailPath = (detailPath) => {
-    if (!detailPath) {
-      message.info("Bu hareket tipi icin detay ekrani bulunmuyor.");
-      return;
-    }
-    navigate(detailPath);
-  };
 
-  const persistSavedFilters = (nextSavedFilters) => {
-    setSavedFilters(nextSavedFilters);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(nextSavedFilters));
-    }
-  };
+  const movementTypeOptions = React.useMemo(
+    () => [
+      { value: "all", label: "Tumu" },
+      ...Array.from(
+        new Map(
+          movements.map((item) => [item.movementType, item.movementTypeLabel || item.movementType]),
+        ).entries(),
+      ).map(([value, label]) => ({ value, label })),
+    ],
+    [movements],
+  );
+
+  const productOptions = React.useMemo(
+    () => [
+      { value: "all", label: "Tumu" },
+      ...Array.from(
+        new Map(
+          movements
+            .filter((item) => item.productId)
+            .map((item) => [item.productId, `${item.productCode} - ${item.productName}`]),
+        ).entries(),
+      ).map(([value, label]) => ({ value, label })),
+    ],
+    [movements],
+  );
+
+  const stockLocationOptions = React.useMemo(
+    () => [
+      { value: "all", label: "Tumu" },
+      ...Array.from(
+        new Map(
+          movements
+            .filter((item) => item.stockLocationId)
+            .map((item) => [item.stockLocationId, item.stockLocationName || "-"]),
+        ).entries(),
+      ).map(([value, label]) => ({ value, label })),
+    ],
+    [movements],
+  );
+
+  const filteredMovements = React.useMemo(
+    () =>
+      movements.filter((item) => {
+        const normalizedSearch = String(filters.search || "").trim().toLowerCase();
+        const matchesSearch =
+          !normalizedSearch ||
+          [
+            item.documentNo,
+            item.productCode,
+            item.productName,
+            item.partyName,
+            item.note,
+            item.movementTypeLabel,
+            item.stockLocationName,
+          ]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+        const matchesMovementType =
+          !filters.movementType || filters.movementType === "all" || item.movementType === filters.movementType;
+        const matchesProduct =
+          !filters.productId || filters.productId === "all" || item.productId === filters.productId;
+        const matchesStockLocation =
+          !filters.stockLocationId ||
+          filters.stockLocationId === "all" ||
+          item.stockLocationId === filters.stockLocationId;
+        return matchesSearch && matchesMovementType && matchesProduct && matchesStockLocation;
+      }),
+    [filters, movements],
+  );
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -236,56 +198,40 @@ export function StockListPage() {
       search: "",
       movementType: undefined,
       productId: undefined,
+      stockLocationId: undefined,
     });
   };
-
-  const handleSaveFilterPreset = () => {
-    if (!savedFilterName.trim()) {
-      message.warning("Filtre adini girin.");
-      return;
-    }
-
-    const nextSavedFilters = [
-      { name: savedFilterName.trim(), filters },
-      ...savedFilters.filter((item) => item.name !== savedFilterName.trim()),
-    ];
-    persistSavedFilters(nextSavedFilters);
-    setSavedFilterName("");
-    message.success("Filtre kaydedildi.");
-  };
-
-  const applySavedFilter = (savedFilter) => {
-    setFilters(savedFilter.filters);
-    setFilterModalOpen(false);
-    message.success(`${savedFilter.name} filtresi uygulandi.`);
-  };
-
-  const filteredMovements = movements.filter((item) => {
-      const normalizedSearch = filters.search.trim().toLowerCase();
-      const matchesSearch =
-        !normalizedSearch ||
-        [item.documentNo, item.partyName, item.productCode, item.productName, item.note, item.movementTypeLabel]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(normalizedSearch));
-      const matchesMovementType = !filters.movementType || filters.movementType === "all" || item.movementType === filters.movementType;
-      const matchesProduct = !filters.productId || filters.productId === "all" || item.productId === filters.productId;
-      return matchesSearch && matchesMovementType && matchesProduct;
-    });
 
   const handleExport = () => {
-    const header = ["Tarih", "Hareket Tipi", "Belge No", "Kaynak", "Urun", "Miktar", "Birim Fiyat", "Toplam", "Not"];
+    const header = [
+      "Tarih",
+      "Hareket Tipi",
+      "Etki",
+      "Belge No",
+      "Stok Yeri",
+      "Kaynak",
+      "Urun",
+      "Miktar",
+      "Birim Tutar",
+      "Toplam Tutar",
+      "Not",
+    ];
     const rows = filteredMovements.map((item) => [
-      formatMovementDateTime(item.date),
-      item.movementTypeLabel,
-      item.documentNo,
-      item.partyName,
+      formatDateTime(item.documentDate || item.createdAt),
+      item.movementTypeLabel || item.movementType,
+      item.affectsStock ? "Stok Etkiler" : "Bilgi",
+      item.documentNo || "-",
+      item.stockLocationName || "-",
+      item.partyName || item.sourceModule || "-",
       `${item.productCode} - ${item.productName}`,
       item.quantitySignedDisplay,
       item.unitAmountDisplay,
       item.totalAmountDisplay,
-      item.note,
+      item.note || "",
     ]);
-    const csvContent = [header, ...rows].map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csvContent = [header, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, "\"\"")}"`).join(","))
+      .join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -295,79 +241,110 @@ export function StockListPage() {
     URL.revokeObjectURL(url);
   };
 
+  const openDetailPath = (record) => {
+    if (!record.detailPath) {
+      message.info("Bu hareket tipi icin detay ekrani bulunmuyor.");
+      return;
+    }
+    navigate(record.detailPath);
+  };
+
   const columns = [
     {
       title: "Tarih",
-      dataIndex: "date",
-      key: "date",
-      sorter: (a, b) => (parseMovementDate(a.date)?.getTime() || 0) - (parseMovementDate(b.date)?.getTime() || 0),
-      render: (value) => formatMovementDateTime(value),
+      dataIndex: "documentDate",
+      key: "documentDate",
+      sorter: (a, b) =>
+        (parseDate(a.documentDate || a.createdAt)?.getTime() || 0) -
+        (parseDate(b.documentDate || b.createdAt)?.getTime() || 0),
+      render: (_, record) => formatDateTime(record.documentDate || record.createdAt),
     },
     {
       title: "Hareket Tipi",
       dataIndex: "movementTypeLabel",
       key: "movementTypeLabel",
-      sorter: (a, b) => a.movementTypeLabel.localeCompare(b.movementTypeLabel, "tr"),
-      render: (value, record) => {
-        const color = record.direction === "IN" ? "green" : "red";
-        return <Tag color={color}>{value}</Tag>;
-      },
+      render: (_, record) => (
+        <Tag color={record.affectsStock ? (record.direction === "OUT" ? "volcano" : "green") : "gold"}>
+          {record.movementTypeLabel || record.movementType}
+        </Tag>
+      ),
     },
     {
       title: "Belge No",
       dataIndex: "documentNo",
       key: "documentNo",
-      sorter: (a, b) => a.documentNo.localeCompare(b.documentNo, "tr"),
       render: (value, record) => (
         <button
           type="button"
           className="erp-link-button"
           onClick={(event) => {
             event.stopPropagation();
-            openDetailPath(record.detailPath);
+            openDetailPath(record);
           }}
         >
-          {value}
+          {value || "-"}
         </button>
       ),
     },
-    { title: "Kaynak", dataIndex: "partyName", key: "partyName", sorter: (a, b) => a.partyName.localeCompare(b.partyName, "tr") },
+    {
+      title: "Stok Yeri",
+      dataIndex: "stockLocationName",
+      key: "stockLocationName",
+      render: (value, record) => (
+        <Space size={6}>
+          <span>{value || "-"}</span>
+          {record.isDefaultMain ? <Tag color="blue">Merkez</Tag> : null}
+        </Space>
+      ),
+    },
     {
       title: "Urun",
       dataIndex: "productName",
       key: "productName",
-      sorter: (a, b) => a.productName.localeCompare(b.productName, "tr"),
-      render: (value, record) => `${record.productCode} - ${value}`,
+      render: (_, record) => `${record.productCode} - ${record.productName}`,
     },
     {
       title: "Miktar",
-      dataIndex: "quantitySigned",
-      key: "quantitySigned",
-      sorter: (a, b) => a.quantitySigned - b.quantitySigned,
-      render: (_, record) => <Tag color={record.direction === "IN" ? "blue" : "volcano"}>{record.quantitySignedDisplay}</Tag>,
+      dataIndex: "quantitySignedDisplay",
+      key: "quantitySignedDisplay",
+      align: "right",
+      render: (_, record) => (
+        <Tag color={!record.affectsStock ? "default" : record.direction === "OUT" ? "volcano" : "blue"}>
+          {record.affectsStock ? record.quantitySignedDisplay : String(Number(record.quantity || 0))}
+        </Tag>
+      ),
     },
-    { title: "Birim Fiyat", dataIndex: "unitAmountDisplay", key: "unitAmountDisplay", sorter: (a, b) => a.unitAmount - b.unitAmount },
+    {
+      title: "Etki",
+      dataIndex: "affectsStock",
+      key: "affectsStock",
+      render: (value) => <Tag color={value ? "green" : "default"}>{value ? "Stok Etkiler" : "Bilgi"}</Tag>,
+    },
+    {
+      title: "Kaynak",
+      dataIndex: "partyName",
+      key: "partyName",
+      render: (value, record) => value || record.sourceModule || "-",
+    },
     {
       title: "Toplam",
       dataIndex: "totalAmountDisplay",
       key: "totalAmountDisplay",
-      sorter: (a, b) => a.totalAmount - b.totalAmount,
+      align: "right",
     },
     {
       title: "Islemler",
       key: "actions",
       render: (_, record) => (
-        <Space size={8}>
-          <Button
-            type="text"
-            className="erp-icon-btn erp-icon-btn-edit"
-            icon={<EditOutlined />}
-            onClick={(event) => {
-              event.stopPropagation();
-              openDetailPath(record.detailPath);
-            }}
-          />
-        </Space>
+        <Button
+          type="text"
+          className="erp-icon-btn erp-icon-btn-edit"
+          icon={<EditOutlined />}
+          onClick={(event) => {
+            event.stopPropagation();
+            openDetailPath(record);
+          }}
+        />
       ),
     },
   ];
@@ -377,117 +354,95 @@ export function StockListPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Stok Hareketleri</Title>
-          <Text type="secondary">Satinalma girisleri, stok girisleri, satis cikislari ve duzeltme hareketleri tarih bazli listelenir.</Text>
+          <Text type="secondary">Tum fiili stok giris ve cikislari veritabanindaki hareket kayitlarindan listelenir.</Text>
         </div>
         <Space>
           <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/stock/entry")}>Stok Giris</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/stock/entry")}>Stok Girisi</Button>
         </Space>
       </div>
 
       <Card bordered={false} className="erp-list-toolbar-card">
-        <div className="erp-list-toolbar erp-product-toolbar-single">
-          <Space wrap className="erp-product-toolbar-actions">
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/stock/entry")}>Yeni Stok Girisi</Button>
-            <Button icon={<SearchOutlined />} onClick={() => message.info(`${filteredMovements.length} hareket listeleniyor.`)}>Ara</Button>
-            <Button icon={<DeleteOutlined />} onClick={handleResetFilters}>Temizle</Button>
-            <Button icon={<ReloadOutlined />} onClick={() => { void refreshMovements(); message.success("Stok hareketleri yenilendi."); }}>Yenile</Button>
-            <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-          </Space>
-          <div className="erp-product-toolbar-search">
+        <Space wrap size={12} style={{ width: "100%", justifyContent: "space-between" }}>
+          <Space wrap>
             <Input
               prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
-              placeholder="Belge No"
+              placeholder="Belge no, urun, kaynak ya da not ara"
               value={filters.search}
               onChange={(event) => handleFilterChange("search", event.target.value)}
               allowClear
+              style={{ width: 320 }}
             />
-            <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
-          </div>
-        </div>
+            <Select
+              value={filters.movementType}
+              onChange={(value) => handleFilterChange("movementType", value)}
+              options={movementTypeOptions}
+              allowClear
+              placeholder="Hareket tipi"
+              style={{ width: 220 }}
+            />
+            <Select
+              value={filters.productId}
+              onChange={(value) => handleFilterChange("productId", value)}
+              options={productOptions}
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              placeholder="Urun"
+              style={{ width: 260 }}
+            />
+            <Select
+              value={filters.stockLocationId}
+              onChange={(value) => handleFilterChange("stockLocationId", value)}
+              options={stockLocationOptions}
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              placeholder="Stok yeri"
+              style={{ width: 220 }}
+            />
+          </Space>
+          <Space>
+            <Button onClick={handleResetFilters}>Temizle</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => void refreshMovements()}>Yenile</Button>
+          </Space>
+        </Space>
       </Card>
 
       <Card title="Tum Stok Hareketleri" className="erp-list-table-card">
         <Table
           loading={tableLoading}
           columns={columns}
-          dataSource={filteredMovements.map((item) => ({ key: item.id, ...item }))}
-          pagination={false}
+          dataSource={filteredMovements}
+          pagination={{
+            showSizeChanger: true,
+            pageSizeOptions: ["25", "50", "100"],
+            defaultPageSize: 25,
+          }}
           onRow={(record) => ({
             onClick: () => openDetailFromRow(setSelectedMovement, setDetailOpen, record),
           })}
           rowClassName={() => "erp-clickable-row"}
         />
-        <div className="erp-table-footer">
-          <Space>
-            <span>Sayfa Boyutu:</span>
-            <Select defaultValue="100" size="small" style={{ width: 84 }} options={["25", "50", "100"].map((value) => ({ value, label: value }))} />
-          </Space>
-          <Space size={18}>
-            <span>1 - {filteredMovements.length} / {filteredMovements.length}</span>
-            <span>Sayfa 1 / 1</span>
-          </Space>
-        </div>
       </Card>
 
-      <Drawer title="Stok Hareket Detayi" placement="right" width={460} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Stok Hareket Detayi" placement="right" width={500} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedMovement ? (
           <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="Tarih">{formatMovementDateTime(selectedMovement.date)}</Descriptions.Item>
-            <Descriptions.Item label="Hareket Tipi">{selectedMovement.movementTypeLabel}</Descriptions.Item>
-            <Descriptions.Item label="Belge No">{selectedMovement.documentNo}</Descriptions.Item>
-            <Descriptions.Item label="Kaynak">{selectedMovement.partyName}</Descriptions.Item>
+            <Descriptions.Item label="Tarih">{formatDateTime(selectedMovement.documentDate || selectedMovement.createdAt)}</Descriptions.Item>
+            <Descriptions.Item label="Hareket Tipi">{selectedMovement.movementTypeLabel || selectedMovement.movementType}</Descriptions.Item>
+            <Descriptions.Item label="Belge No">{selectedMovement.documentNo || "-"}</Descriptions.Item>
+            <Descriptions.Item label="Stok Yeri">{selectedMovement.stockLocationName || "-"}</Descriptions.Item>
             <Descriptions.Item label="Urun">{selectedMovement.productCode} - {selectedMovement.productName}</Descriptions.Item>
-            <Descriptions.Item label="Miktar">{selectedMovement.quantitySignedDisplay}</Descriptions.Item>
-            <Descriptions.Item label="Birim Fiyat">{selectedMovement.unitAmountDisplay}</Descriptions.Item>
-            <Descriptions.Item label="Toplam">{selectedMovement.totalAmountDisplay}</Descriptions.Item>
+            <Descriptions.Item label="Miktar">{selectedMovement.affectsStock ? selectedMovement.quantitySignedDisplay : String(Number(selectedMovement.quantity || 0))}</Descriptions.Item>
+            <Descriptions.Item label="Stok Etkisi">{selectedMovement.affectsStock ? "Evet" : "Hayir"}</Descriptions.Item>
+            <Descriptions.Item label="Kaynak">{selectedMovement.partyName || selectedMovement.sourceModule || "-"}</Descriptions.Item>
+            <Descriptions.Item label="Birim Tutar">{selectedMovement.unitAmountDisplay}</Descriptions.Item>
+            <Descriptions.Item label="Toplam Tutar">{selectedMovement.totalAmountDisplay}</Descriptions.Item>
             <Descriptions.Item label="Not">{selectedMovement.note || "-"}</Descriptions.Item>
           </Descriptions>
         ) : null}
       </Drawer>
-
-      <Modal title="Gelismis Filtreler" open={filterModalOpen} onCancel={() => setFilterModalOpen(false)} footer={null}>
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
-          <Row gutter={[12, 12]}>
-            <Col span={24}>
-              <Form.Item label="Hareket Tipi">
-                <Select value={filters.movementType} onChange={(value) => handleFilterChange("movementType", value)} options={movementTypeOptions} allowClear />
-              </Form.Item>
-            </Col>
-            <Col span={24}>
-              <Form.Item label="Urun">
-                <Select
-                  value={filters.productId}
-                  onChange={(value) => handleFilterChange("productId", value)}
-                  options={productOptions}
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Card size="small" title="Filtreyi Kaydet">
-            <Space.Compact style={{ width: "100%" }}>
-              <Input placeholder="Filtre adi" value={savedFilterName} onChange={(event) => setSavedFilterName(event.target.value)} />
-              <Button type="primary" onClick={handleSaveFilterPreset}>Kaydet</Button>
-            </Space.Compact>
-          </Card>
-
-          <Card size="small" title="Kayitli Filtreler">
-            <Space direction="vertical" size={8} style={{ width: "100%" }}>
-              {savedFilters.length === 0 ? <Text type="secondary">Kayitli filtre bulunmuyor.</Text> : null}
-              {savedFilters.map((item) => (
-                <Button key={item.name} block onClick={() => applySavedFilter(item)}>
-                  {item.name}
-                </Button>
-              ))}
-            </Space>
-          </Card>
-        </Space>
-      </Modal>
     </Space>
   );
 }
-

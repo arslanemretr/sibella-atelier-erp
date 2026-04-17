@@ -216,6 +216,7 @@ CREATE TABLE IF NOT EXISTS pos_sessions (
 CREATE TABLE IF NOT EXISTS pos_sales (
   id TEXT PRIMARY KEY,
   session_id TEXT REFERENCES pos_sessions(id),
+  stock_location_id TEXT REFERENCES stock_locations(id),
   receipt_no TEXT,
   sold_at TIMESTAMPTZ,
   customer_name TEXT,
@@ -230,6 +231,8 @@ CREATE TABLE IF NOT EXISTS pos_sales (
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 );
+
+ALTER TABLE pos_sales ADD COLUMN IF NOT EXISTS stock_location_id TEXT REFERENCES stock_locations(id);
 
 CREATE TABLE IF NOT EXISTS pos_sale_lines (
   id TEXT PRIMARY KEY,
@@ -299,6 +302,39 @@ CREATE TABLE IF NOT EXISTS stock_location_balances (
   updated_at TIMESTAMPTZ,
   PRIMARY KEY (stock_location_id, product_id)
 );
+
+CREATE TABLE IF NOT EXISTS stock_movements (
+  id TEXT PRIMARY KEY,
+  movement_type TEXT NOT NULL,
+  direction TEXT NOT NULL,
+  affects_stock BOOLEAN NOT NULL DEFAULT FALSE,
+  quantity DOUBLE PRECISION NOT NULL DEFAULT 0,
+  stock_delta DOUBLE PRECISION NOT NULL DEFAULT 0,
+  product_id TEXT REFERENCES products(id),
+  stock_location_id TEXT REFERENCES stock_locations(id),
+  document_no TEXT,
+  document_date TIMESTAMPTZ,
+  source_module TEXT,
+  source_id TEXT,
+  source_line_id TEXT,
+  party_id TEXT,
+  party_name TEXT,
+  unit_amount DOUBLE PRECISION,
+  total_amount DOUBLE PRECISION,
+  note TEXT,
+  created_by TEXT REFERENCES users(id),
+  created_at TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS stock_movements_source_line_unique_idx
+  ON stock_movements (source_module, source_id, source_line_id, movement_type)
+  WHERE source_module IS NOT NULL AND source_id IS NOT NULL AND source_line_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS stock_movements_document_date_idx
+  ON stock_movements (document_date DESC, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS stock_movements_product_location_idx
+  ON stock_movements (product_id, stock_location_id);
 
 CREATE TABLE IF NOT EXISTS stores (
   id TEXT PRIMARY KEY,

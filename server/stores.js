@@ -1,6 +1,10 @@
 import crypto from "node:crypto";
 import { sqlExec, sqlMany, sqlOne } from "./db.js";
-import { incrementStockLocationBalance, withInventoryTransaction } from "./inventory.js";
+import {
+  rebuildStockBalancesFromMovements,
+  replaceStockMovementsForSource,
+  withInventoryTransaction,
+} from "./inventory.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -511,9 +515,31 @@ async function sendStoreShipment(shipmentId) {
       throw new Error("Magaza stok yeri bulunamadi.");
     }
 
-    for (const line of shipment.lines || []) {
-      await incrementStockLocationBalance(store.stock_location_id, line.productId, Number(line.quantity || 0), tx);
-    }
+    await replaceStockMovementsForSource(
+      "store-shipment",
+      shipment.id,
+      (shipment.lines || []).map((line) => ({
+        movementType: "GONDERI_GIRISI",
+        direction: "IN",
+        affectsStock: true,
+        quantity: Number(line.quantity || 0),
+        stockDelta: Number(line.quantity || 0),
+        productId: line.productId,
+        stockLocationId: store.stock_location_id,
+        documentNo: shipment.shipmentNo,
+        documentDate: shipment.date || shipment.createdAt || nowIso(),
+        sourceLineId: line.id,
+        partyId: shipment.storeId,
+        partyName: shipment.storeName || "",
+        unitAmount: Number(line.salePrice || 0),
+        totalAmount: Number(line.quantity || 0) * Number(line.salePrice || 0),
+        note: line.description || shipment.note || "",
+        createdBy: shipment.createdBy || null,
+        createdAt: shipment.createdAt || nowIso(),
+      })),
+      tx,
+    );
+    await rebuildStockBalancesFromMovements(tx);
 
     const sentAt = nowIso();
     await tx.exec(

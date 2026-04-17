@@ -1,6 +1,12 @@
 import crypto from "node:crypto";
 import { sqlExec, sqlMany, sqlOne } from "./db.js";
-import { applyProductStockDelta, assertProductStockAvailable, withInventoryTransaction } from "./inventory.js";
+import {
+  assertStockLocationStockAvailable,
+  getMainStockLocation,
+  rebuildStockBalancesFromMovements,
+  replaceStockMovementsForSource,
+  withInventoryTransaction,
+} from "./inventory.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -140,6 +146,7 @@ async function listPosSalesRows() {
   return saleRows.map((row) => ({
     id: row.id,
     sessionId: row.session_id || null,
+    stockLocationId: row.stock_location_id || null,
     receiptNo: row.receipt_no || "",
     soldAt: row.sold_at || null,
     customerName: row.customer_name || "",
@@ -225,6 +232,7 @@ function normalizePosSale(values) {
   return {
     id: saleId,
     sessionId: values.sessionId || null,
+    stockLocationId: values.stockLocationId || null,
     receiptNo: values.receiptNo || `FIS-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
     soldAt: values.soldAt || nowIso(),
     customerName: values.customerName || "Magaza Musterisi",
@@ -508,20 +516,45 @@ export async function handlePosSalesCreate(req, res) {
   }
   try {
     const item = normalizePosSale(req.body || {});
+    if (!item.stockLocationId) {
+      return httpError(res, 400, "Stok yeri secimi zorunludur.");
+    }
     await withInventoryTransaction(async (tx) => {
-      await assertProductStockAvailable(item.lines, tx);
+      await assertStockLocationStockAvailable(item.stockLocationId, item.lines, tx);
       await tx.exec(`
-        INSERT INTO pos_sales (id, session_id, receipt_no, sold_at, customer_name, payment_method, note, discount_type, discount_value, discount_amount, subtotal, tax_total, grand_total, created_at, updated_at)
-        VALUES ($1,$2,$3,$4::timestamptz,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::timestamptz,$15::timestamptz)
-      `, [item.id, item.sessionId, item.receiptNo, item.soldAt, item.customerName, item.paymentMethod, item.note, item.discountType, item.discountValue, item.discountAmount, item.subtotal, item.taxTotal, item.grandTotal, item.createdAt, item.updatedAt]);
+        INSERT INTO pos_sales (id, session_id, stock_location_id, receipt_no, sold_at, customer_name, payment_method, note, discount_type, discount_value, discount_amount, subtotal, tax_total, grand_total, created_at, updated_at)
+        VALUES ($1,$2,$3,$4,$5::timestamptz,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::timestamptz,$16::timestamptz)
+      `, [item.id, item.sessionId, item.stockLocationId, item.receiptNo, item.soldAt, item.customerName, item.paymentMethod, item.note, item.discountType, item.discountValue, item.discountAmount, item.subtotal, item.taxTotal, item.grandTotal, item.createdAt, item.updatedAt]);
       for (let index = 0; index < item.lines.length; index += 1) {
         const line = item.lines[index];
         await tx.exec(`
           INSERT INTO pos_sale_lines (id, sale_id, product_id, quantity, unit_price, line_total, sort_order)
           VALUES ($1,$2,$3,$4,$5,$6,$7)
         `, [line.id, item.id, line.productId, line.quantity, line.unitPrice, line.lineTotal, index + 1]);
-        await applyProductStockDelta(line.productId, -Number(line.quantity || 0), tx);
       }
+      await replaceStockMovementsForSource(
+        "pos-sale",
+        item.id,
+        item.lines.map((line) => ({
+          movementType: "SATIS_CIKISI",
+          direction: "OUT",
+          affectsStock: true,
+          quantity: Number(line.quantity || 0),
+          stockDelta: -Number(line.quantity || 0),
+          productId: line.productId,
+          stockLocationId: item.stockLocationId,
+          documentNo: item.receiptNo,
+          documentDate: item.soldAt,
+          sourceLineId: line.id,
+          partyName: item.customerName || "POS",
+          unitAmount: Number(line.unitPrice || 0),
+          totalAmount: Number(line.lineTotal || 0),
+          note: item.note || "",
+          createdAt: item.createdAt,
+        })),
+        tx,
+      );
+      await rebuildStockBalancesFromMovements(tx);
     });
     return res.status(201).json({ ok: true, item });
   } catch (error) {
@@ -580,28 +613,41 @@ export async function handleDeliveryListsComplete(req, res) {
     return httpError(res, 400, "Bazi satirlar urun kartina bagli degil.");
   }
   try {
-    const stockEntryId = createId("stk");
     const timestamp = nowIso();
     await withInventoryTransaction(async (tx) => {
-      await tx.exec(`
-        INSERT INTO stock_entries (id, document_no, source_party_id, date, stock_type, source_type, status, note, created_at, updated_at)
-        VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8,$9::timestamptz,$10::timestamptz)
-      `, [stockEntryId, `STK-${existing.deliveryNo || existing.id}`, existing.supplierId, existing.date || null, "Urun", "Tedarikci Teslimati", "Tamamlandi", existing.note || "", timestamp, timestamp]);
-      for (let index = 0; index < existing.lines.length; index += 1) {
-        const line = existing.lines[index];
-        await tx.exec(`
-          INSERT INTO stock_lines (id, stock_entry_id, product_id, quantity, unit_cost, note, sort_order)
-          VALUES ($1,$2,$3,$4,$5,$6,$7)
-        `, [`${stockEntryId}-line-${index + 1}`, stockEntryId, line.productId, line.quantity, 0, line.description || "", index + 1]);
-        await applyProductStockDelta(line.productId, Number(line.quantity || 0), tx);
-      }
+      const mainLocation = await getMainStockLocation(tx);
+      await replaceStockMovementsForSource(
+        "delivery-list",
+        existing.id,
+        existing.lines.map((line, index) => ({
+          movementType: "MAGAZA_STOK_GIRISI",
+          direction: "IN",
+          affectsStock: true,
+          quantity: Number(line.quantity || 0),
+          stockDelta: Number(line.quantity || 0),
+          productId: line.productId,
+          stockLocationId: mainLocation?.id || null,
+          documentNo: existing.deliveryNo || existing.id,
+          documentDate: existing.date || timestamp,
+          sourceLineId: line.id || `${existing.id}-line-${index + 1}`,
+          partyId: existing.supplierId,
+          partyName: existing.supplierName || "",
+          unitAmount: 0,
+          totalAmount: 0,
+          note: line.description || existing.note || "",
+          createdBy: existing.createdBy || null,
+          createdAt: existing.createdAt || timestamp,
+        })),
+        tx,
+      );
+      await rebuildStockBalancesFromMovements(tx);
       await tx.exec(`
         UPDATE delivery_lists
         SET status=$2, updated_at=$3::timestamptz
         WHERE id=$1
       `, [existing.id, "Tamamlandi", timestamp]);
     });
-    return res.json({ ok: true, item: await getDeliveryRow(existing.id), stockEntryId });
+    return res.json({ ok: true, item: await getDeliveryRow(existing.id) });
   } catch (error) {
     return httpError(res, 400, error?.message || "Teslimat stoğa aktarilamadi.");
   }
