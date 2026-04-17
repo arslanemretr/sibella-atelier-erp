@@ -84,6 +84,8 @@ export function ProductListPage() {
   const [stockBreakdownItems, setStockBreakdownItems] = React.useState([]);
   const [products, setProducts] = React.useState([]);
   const [tableLoading, setTableLoading] = React.useState(true);
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
   const [categoryOptions, setCategoryOptions] = React.useState([{ value: "all", label: "Tumu" }]);
   const [collectionOptions, setCollectionOptions] = React.useState([{ value: "all", label: "Tumu" }]);
   const [filters, setFilters] = React.useState({
@@ -400,6 +402,13 @@ export function ProductListPage() {
     return matchesSearch && matchesCategory && matchesCollection && matchesStatus;
   });
 
+  React.useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [currentPage, filteredProducts.length, pageSize]);
+
   const columns = [
     {
       title: "Urun Kodu",
@@ -426,9 +435,9 @@ export function ProductListPage() {
     { title: "Koleksiyon", dataIndex: "collectionLabel", key: "collectionLabel", sorter: (a, b) => a.collectionLabel.localeCompare(b.collectionLabel, "tr") },
     {
       title: "Stok",
-      dataIndex: "stock",
+      dataIndex: "totalStock",
       key: "stock",
-      sorter: (a, b) => a.stock - b.stock,
+      sorter: (a, b) => Number(a.totalStock || 0) - Number(b.totalStock || 0),
       render: (value, record) => (
         <Button
           type="link"
@@ -531,7 +540,22 @@ export function ProductListPage() {
             loading={tableLoading}
             columns={columns}
             dataSource={filteredProducts.map((product) => ({ key: product.id, ...product }))}
-            pagination={false}
+            pagination={{
+              current: currentPage,
+              pageSize,
+              total: filteredProducts.length,
+              showSizeChanger: true,
+              pageSizeOptions: ["25", "50", "100"],
+              onChange: (page, nextPageSize) => {
+                setCurrentPage(page);
+                setPageSize(nextPageSize);
+              },
+              onShowSizeChange: (page, nextPageSize) => {
+                setCurrentPage(page);
+                setPageSize(nextPageSize);
+              },
+              showTotal: (total, range) => `${range[0]} - ${range[1]} / ${total}`,
+            }}
             onRow={(record) => ({
               onClick: () => {
                 openDetailFromRow(setSelectedProduct, setDetailOpen, record);
@@ -539,21 +563,6 @@ export function ProductListPage() {
             })}
             rowClassName={() => "erp-clickable-row"}
           />
-          <div className="erp-table-footer">
-            <Space>
-              <span>Sayfa Boyutu:</span>
-              <Select
-                defaultValue="100"
-                size="small"
-                style={{ width: 84 }}
-                options={["25", "50", "100"].map((value) => ({ value, label: value }))}
-              />
-            </Space>
-            <Space size={18}>
-              <span>1 - {filteredProducts.length} / {filteredProducts.length}</span>
-              <span>Sayfa 1 / 1</span>
-            </Space>
-          </div>
         </Card>
       ) : (
         <Card title="Kanban Gorunumu">

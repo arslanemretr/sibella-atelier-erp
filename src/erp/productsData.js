@@ -225,17 +225,19 @@ function enrichProduct(product) {
   const posCategoryMap = mapLookup("pos-categories", "id", "name");
   const supplierMap = Object.fromEntries(listSuppliers().map((item) => [item.id, item.company]));
   const liveStock = Number(product?.stock || 0);
+  const totalStock = Number(product?.totalStock ?? liveStock);
 
   return {
     ...product,
     stock: liveStock,
+    totalStock,
     categoryLabel: categoryMap[product.categoryId] || "-",
     collectionLabel: collectionMap[product.collectionId] || "-",
     posCategoryLabel: posCategoryMap[product.posCategoryId] || "-",
     supplierLabel: supplierMap[product.supplierId] || "-",
     priceDisplay: formatMoney(product.salePrice, product.saleCurrency),
     costDisplay: formatMoney(product.cost, product.costCurrency),
-    stockDisplay: String(liveStock),
+    stockDisplay: String(totalStock),
     soldQuantity: 0,
   };
 }
@@ -256,16 +258,18 @@ function enrichProductsWithLookups(products, lookups) {
 
   return products.map((product) => {
     const liveStock = Number(product?.stock || 0);
+    const totalStock = Number(product?.totalStock ?? liveStock);
     return {
       ...product,
       stock: liveStock,
+      totalStock,
       categoryLabel: categoryMap[product.categoryId] || "-",
       collectionLabel: collectionMap[product.collectionId] || "-",
       posCategoryLabel: posCategoryMap[product.posCategoryId] || "-",
       supplierLabel: supplierMap[product.supplierId] || "-",
       priceDisplay: formatMoney(product.salePrice, product.saleCurrency),
       costDisplay: formatMoney(product.cost, product.costCurrency),
-      stockDisplay: String(liveStock),
+      stockDisplay: String(totalStock),
       soldQuantity: Number(salesByProductId.get(product.id) || 0),
     };
   });

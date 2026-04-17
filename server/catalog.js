@@ -346,7 +346,20 @@ async function getSupplierRow(supplierId) {
 }
 
 async function listProductsRows() {
-  const productRows = await sqlMany("SELECT * FROM products ORDER BY created_at DESC, code ASC");
+  const productRows = await sqlMany(`
+    SELECT
+      p.*,
+      COALESCE(stock_totals.total_stock, 0) AS total_stock
+    FROM products p
+    LEFT JOIN (
+      SELECT
+        product_id,
+        SUM(quantity) AS total_stock
+      FROM stock_location_balances
+      GROUP BY product_id
+    ) stock_totals ON stock_totals.product_id = p.id
+    ORDER BY p.created_at DESC, p.code ASC
+  `);
   const featureRows = await sqlMany("SELECT * FROM product_features ORDER BY product_id ASC, sort_order ASC, id ASC");
   const featuresByProductId = new Map();
   featureRows.forEach((row) => {
@@ -376,6 +389,7 @@ async function listProductsRows() {
     minStock: Number(row.min_stock || 0),
     supplierLeadTime: Number(row.supplier_lead_time || 0),
     stock: Number(row.stock || 0),
+    totalStock: Number((row.total_stock ?? row.stock) || 0),
     productType: row.product_type || "kendi",
     salesTax: row.sales_tax || "%20",
     image: row.image || "/products/baroque-necklace.svg",
