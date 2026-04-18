@@ -707,6 +707,24 @@ function isCurrentPeriodKey(periodKey) {
   return periodKey === getMonthKeyAdmin(new Date());
 }
 
+function getThirdFridayAfterPeriodEnd(periodKey) {
+  const [year, month] = periodKey.split("-").map(Number);
+  const current = new Date(year, month, 1);
+  let fridayCount = 0;
+  while (true) {
+    if (current.getDay() === 5) {
+      fridayCount++;
+      if (fridayCount === 3) return new Date(current);
+    }
+    current.setDate(current.getDate() + 1);
+  }
+}
+
+function formatDateAdmin(value) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(value);
+}
+
 function resolveAdminEarningsStatus(periodKey, earningsTotal, earningsRecord) {
   if (isCurrentPeriodKey(periodKey)) {
     return "Dönem Tamamlanmadı";
@@ -822,6 +840,7 @@ export function SupplierEarningsManagementPage() {
   const [saving, setSaving] = React.useState(false);
   const [supplierFilter, setSupplierFilter] = React.useState(undefined);
   const [statusFilter, setStatusFilter] = React.useState(undefined);
+  const [periodFilter, setPeriodFilter] = React.useState(null);
   const [supplierOptions, setSupplierOptions] = React.useState([{ value: "all", label: "Tüm Tedarikçiler" }]);
   const [form] = Form.useForm();
 
@@ -854,16 +873,19 @@ export function SupplierEarningsManagementPage() {
   const filteredRows = React.useMemo(
     () =>
       rows.filter((row) => {
-        if (supplierFilter && supplierFilter !== "all" && row.supplierId !== supplierFilter) {
-          return false;
-        }
-        if (statusFilter && statusFilter !== "all" && row.status !== statusFilter) {
-          return false;
-        }
+        if (supplierFilter && supplierFilter !== "all" && row.supplierId !== supplierFilter) return false;
+        if (statusFilter && statusFilter !== "all" && row.status !== statusFilter) return false;
+        if (periodFilter && row.periodKey !== periodFilter.format("YYYY-MM")) return false;
         return true;
       }),
-    [rows, supplierFilter, statusFilter],
+    [rows, supplierFilter, statusFilter, periodFilter],
   );
+
+  const totals = React.useMemo(() => ({
+    grossTotal: filteredRows.reduce((sum, r) => sum + Number(r.grossTotal || 0), 0),
+    commissionTotal: filteredRows.reduce((sum, r) => sum + Number(r.grossTotal || 0) - Number(r.earningsTotal || 0), 0),
+    earningsTotal: filteredRows.reduce((sum, r) => sum + Number(r.earningsTotal || 0), 0),
+  }), [filteredRows]);
 
   const openDrawer = (row) => {
     setSelectedRow(row);
@@ -933,11 +955,44 @@ export function SupplierEarningsManagementPage() {
             options={statusOptions}
             onChange={(val) => setStatusFilter(val === "all" ? undefined : val)}
           />
+          <DatePicker
+            picker="month"
+            value={periodFilter}
+            onChange={(val) => setPeriodFilter(val)}
+            placeholder="Dönem seç"
+            format="MMMM YYYY"
+            allowClear
+            style={{ width: 180 }}
+          />
           <Button icon={<SearchOutlined />} loading={pageLoading} onClick={() => void refresh()}>
             Yenile
           </Button>
         </div>
       </Card>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={8}>
+          <Card bordered={false} style={{ background: "#f0f5ff", border: "1px solid #adc6ff" }}>
+            <Text type="secondary" style={{ fontSize: 13 }}>Toplam Satış</Text>
+            <div style={{ fontSize: 24, fontWeight: 700, marginTop: 6 }}>{formatMoneyAdmin(totals.grossTotal)}</div>
+            <Text type="secondary" style={{ fontSize: 12 }}>Dönem brüt satış tutarı</Text>
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card bordered={false} style={{ background: "#fff7e6", border: "1px solid #ffd591" }}>
+            <Text type="secondary" style={{ fontSize: 13 }}>Toplam Komisyon</Text>
+            <div style={{ fontSize: 24, fontWeight: 700, marginTop: 6 }}>{formatMoneyAdmin(totals.commissionTotal)}</div>
+            <Text type="secondary" style={{ fontSize: 12 }}>Kesilen komisyon tutarı</Text>
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card bordered={false} style={{ background: "#f6ffed", border: "1px solid #b7eb8f" }}>
+            <Text type="secondary" style={{ fontSize: 13 }}>Toplam Hakediş</Text>
+            <div style={{ fontSize: 24, fontWeight: 700, marginTop: 6 }}>{formatMoneyAdmin(totals.earningsTotal)}</div>
+            <Text type="secondary" style={{ fontSize: 12 }}>Tedarikçiye ödenecek tutar</Text>
+          </Card>
+        </Col>
+      </Row>
 
       <Card bordered={false} className="erp-list-table-card">
         <Table
@@ -953,7 +1008,17 @@ export function SupplierEarningsManagementPage() {
             { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 180 },
             { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130 },
             { title: "Toplam Satış", dataIndex: "grossTotal", key: "grossTotal", width: 150, render: (v) => formatMoneyAdmin(v) },
+            { title: "Komisyon", key: "commissionAmount", width: 140, render: (_, r) => formatMoneyAdmin(Number(r.grossTotal || 0) - Number(r.earningsTotal || 0)) },
             { title: "Hakediş Tutarı", dataIndex: "earningsTotal", key: "earningsTotal", width: 150, render: (v) => formatMoneyAdmin(v) },
+            {
+              title: "Son Ödeme Tarihi (Otomatik)",
+              key: "paymentDeadline",
+              width: 200,
+              render: (_, r) => {
+                const d = getThirdFridayAfterPeriodEnd(r.periodKey);
+                return <Text type="secondary">{formatDateAdmin(d)}</Text>;
+              },
+            },
             {
               title: "Ödeme Durumu",
               dataIndex: "status",

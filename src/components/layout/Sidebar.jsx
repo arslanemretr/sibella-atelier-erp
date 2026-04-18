@@ -58,6 +58,7 @@ const iconMap = {
   "supplier-portal": menuIcon(ShieldUser),
   "supplier-portal-group": menuIcon(ShieldUser),
   "/supplier-portal/delivery-lists": menuIcon(Truck),
+  "/supplier-portal/earnings": menuIcon(HandCoins),
   settings: menuIcon(Settings2),
   "settings-group": menuIcon(Settings2),
   "/settings/users": menuIcon(Users),
