@@ -754,12 +754,23 @@ export function ProductListPage() {
           </Card>
 
           <Card size="small" title="Kayitli Filtreler">
-            <Space wrap>
-              {savedFilters.length === 0 ? <Text type="secondary">Henuz kayitli filtre yok.</Text> : null}
-              {savedFilters.map((item) => (
-                <Button key={item.name} onClick={() => applySavedFilter(item)}>{item.name}</Button>
-              ))}
-            </Space>
+            {savedFilters.length === 0 ? <Text type="secondary">Henuz kayitli filtre yok.</Text> : (
+              <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                {savedFilters.map((item) => (
+                  <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Button style={{ flex: 1, textAlign: "left" }} onClick={() => applySavedFilter(item)}>{item.name}</Button>
+                    <Popconfirm
+                      title="Bu filtre silinsin mi?"
+                      okText="Sil"
+                      cancelText="Vazgec"
+                      onConfirm={() => persistSavedFilters(savedFilters.filter((f) => f.name !== item.name))}
+                    >
+                      <Button type="text" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                  </div>
+                ))}
+              </Space>
+            )}
           </Card>
 
           <Space style={{ justifyContent: "space-between", width: "100%" }}>
@@ -837,6 +848,7 @@ export function ProductEditorPage() {
   const productIndex = productList.findIndex((item) => item.id === productId);
   const previousProduct = productIndex > 0 ? productList[productIndex - 1] : null;
   const nextProduct = productIndex >= 0 && productIndex < productList.length - 1 ? productList[productIndex + 1] : null;
+  const currentProductData = productList.find((item) => item.id === productId) || null;
   const imagePath = Form.useWatch("image", form) || "/products/baroque-necklace.svg";
   const currentStock = Form.useWatch("stock", form) ?? 0;
   const watchedSupplierId = Form.useWatch("supplierId", form);
@@ -1118,6 +1130,33 @@ export function ProductEditorPage() {
                 </Form.Item>
               </Card>
 
+              {isEditMode ? (
+                <Row gutter={[12, 12]}>
+                  <Col xs={8}>
+                    <Card size="small" style={{ textAlign: "center" }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>Giriş Adet</Text>
+                      <div><Text strong style={{ fontSize: 22 }}>{Number(currentProductData?.stock ?? currentStock)}</Text></div>
+                    </Card>
+                  </Col>
+                  <Col xs={8}>
+                    <Card size="small" style={{ textAlign: "center" }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>Satış Adet</Text>
+                      <div><Text strong style={{ fontSize: 22, color: Number(currentProductData?.soldQuantity || 0) > 0 ? "#1677ff" : undefined }}>{Number(currentProductData?.soldQuantity || 0)}</Text></div>
+                    </Card>
+                  </Col>
+                  <Col xs={8}>
+                    <Card size="small" style={{ textAlign: "center" }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>Elde Adet</Text>
+                      <div>
+                        <Button type="link" style={{ padding: 0, height: "auto" }} onClick={() => void openStockDrawer()}>
+                          <Text strong style={{ fontSize: 22, color: Number(currentProductData?.totalStock || 0) === 0 ? "#ff4d4f" : "#52c41a" }}>{Number(currentProductData?.totalStock || 0)}</Text>
+                        </Button>
+                      </div>
+                    </Card>
+                  </Col>
+                </Row>
+              ) : null}
+
               <Card title="Fiyat Bilgileri" loading={pageLoading}>
                 <Row gutter={[16, 16]}>
                   <Col xs={24}>
@@ -1147,6 +1186,15 @@ export function ProductEditorPage() {
                   </Col>
                 </Row>
               </Card>
+
+              <Card title="Moduller ve Stok" loading={pageLoading}>
+                <Row gutter={[16, 16]}>
+                  <Col xs={12}><Form.Item name="isForSale" label="Satisa Acik" valuePropName="checked"><Switch /></Form.Item></Col>
+                  <Col xs={12}><Form.Item name="isForPurchase" label="Satinalmaya Acik" valuePropName="checked"><Switch /></Form.Item></Col>
+                  <Col xs={12}><Form.Item name="useInPos" label="POS'ta Kullan" valuePropName="checked"><Switch /></Form.Item></Col>
+                  <Col xs={12}><Form.Item name="trackInventory" label="Stok Takibi" valuePropName="checked"><Switch /></Form.Item></Col>
+                </Row>
+              </Card>
             </Space>
           </Col>
 
@@ -1174,7 +1222,7 @@ export function ProductEditorPage() {
                         <Col xs={24} md={12}><Form.Item name="name" label="Urun Adi" rules={[{ required: true, message: "Urun adi zorunludur." }]}><Input placeholder="Mercan Damla Kolye" /></Form.Item></Col>
                         <Col xs={24} md={12}><Form.Item name="code" label="Urun Kodu" rules={[{ required: true, message: "Urun kodu zorunludur." }]}><Input placeholder="SOLE0004" readOnly={systemParameters.productCodeControlEnabled} /></Form.Item></Col>
                         <Col xs={24} md={12}><Form.Item name="categoryId" label="Kategori" rules={[{ required: true, message: "Kategori seciniz." }]}><Select options={categoryOptions} placeholder="Kategori seciniz" /></Form.Item></Col>
-                        <Col xs={24} md={12}><Form.Item name="collectionId" label="Koleksiyon" rules={[{ required: true, message: "Koleksiyon seciniz." }]}><Select options={collectionOptions} placeholder="Koleksiyon seciniz" /></Form.Item></Col>
+                        <Col xs={24} md={12}><Form.Item name="collectionId" label="Koleksiyon"><Select options={collectionOptions} placeholder="Koleksiyon seciniz" allowClear /></Form.Item></Col>
                         <Col xs={24} md={12}><Form.Item name="posCategoryId" label="POS Kategorisi"><Select options={posCategoryOptions} placeholder="POS kategorisi seciniz" /></Form.Item></Col>
                         <Col xs={24} md={12}><Form.Item name="barcode" label="Barkod"><Input placeholder="868..." /></Form.Item></Col>
                         <Col xs={24} md={12}><Form.Item name="status" label="Durum"><Select options={["Aktif", "Pasif"].map((value) => ({ value, label: value }))} /></Form.Item></Col>
@@ -1237,42 +1285,26 @@ export function ProductEditorPage() {
                       </Row>
                     ),
                   },
-                  {
-                    key: "stock",
-                    label: "Stok",
-                    children: (
-                      <Row gutter={[16, 16]}>
-                        <Col xs={24} md={12}><Form.Item name="minStock" label="Minimum Stok"><InputNumber style={{ width: "100%" }} min={0} placeholder="0" /></Form.Item></Col>
-                        <Col xs={24} md={12}><Form.Item name="supplierLeadTime" label="Tedarik Suresi (Gun)"><InputNumber style={{ width: "100%" }} min={0} placeholder="0" /></Form.Item></Col>
-                        <Col xs={24} md={12}><Form.Item name="trackInventory" label="Stok Takibi" valuePropName="checked"><Switch /></Form.Item></Col>
-                        <Col xs={24} md={12}>
-                          <Card size="small" className="erp-readonly-card">
-                            <Text type="secondary">Mevcut Stok</Text>
-                            <Button type="link" style={{ padding: 0, height: "auto" }} onClick={() => void openStockDrawer()}>
-                              <Title level={4} style={{ margin: "8px 0 0" }}>{currentStock}</Title>
-                            </Button>
-                            <Text type="secondary">Stok giris ve satis hareketlerinden otomatik gelir.</Text>
-                          </Card>
-                        </Col>
-                      </Row>
-                    ),
-                  },
-                  {
-                    key: "modules",
-                    label: "Moduller",
-                    children: (
-                      <Row gutter={[16, 16]}>
-                        <Col xs={24} md={8}><Form.Item name="isForSale" label="Satisa Acik" valuePropName="checked"><Switch /></Form.Item></Col>
-                        <Col xs={24} md={8}><Form.Item name="isForPurchase" label="Satinalmaya Acik" valuePropName="checked"><Switch /></Form.Item></Col>
-                        <Col xs={24} md={8}><Form.Item name="useInPos" label="POS'ta Kullan" valuePropName="checked"><Switch /></Form.Item></Col>
-                      </Row>
-                    ),
-                  },
-                ].filter((item) => item.key !== "purchase" && item.key !== "pricing")}
+                ].filter((item) => item.key !== "purchase" && item.key !== "pricing" && item.key !== "stock" && item.key !== "modules")}
               />
             </Card>
 
             <Space direction="vertical" size={20} style={{ width: "100%", marginTop: 20 }}>
+              <Card title="Stok ve Tedarik" loading={pageLoading}>
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} md={12}>
+                    <Form.Item name="minStock" label="Minimum Stok">
+                      <InputNumber style={{ width: "100%" }} min={0} placeholder="0" />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} md={12}>
+                    <Form.Item name="supplierLeadTime" label="Tedarik Suresi (Gun)">
+                      <InputNumber style={{ width: "100%" }} min={0} placeholder="0" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </Card>
+
               <Form.List name="features">
                 {(fields, { add, remove }) => (
                   <Card title="Ozellikler" extra={<Button icon={<PlusOutlined />} onClick={() => add({ name: "", value: "" })}>Ozellik Ekle</Button>}>
