@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AutoComplete, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Row, Select, Space, Table, Tag, Typography, Upload, message } from "antd";
+import { AutoComplete, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Row, Select, Space, Table, Tag, Tooltip, Typography, Upload, message } from "antd";
 import { CheckOutlined, DeleteOutlined, EditOutlined, FilePdfOutlined, PlusCircleOutlined, PlusOutlined, SendOutlined, UploadOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
 import { listMasterData } from "../masterData";
@@ -562,27 +562,30 @@ export function StoreShipmentEditorPage() {
             <Card size="small" title="Satir Ekle" style={{ marginBottom: 16 }}>
               <Row gutter={[12, 12]} align="bottom">
                 <Col xs={24} xl={7}>
-                  <Text strong>Urun Adi</Text>
-                  <AutoComplete
-                    value={lineDraft.name}
-                    options={productOptions}
-                    placeholder="Mevcut urun secin veya manuel girin"
-                    filterOption={(inputValue, option) => (option?.label || "").toLowerCase().includes(inputValue.toLowerCase())}
-                    onSelect={(_, option) => {
-                      if (option?.productId) {
-                        handleDraftProductSelect(option.productId);
-                      }
-                    }}
-                    onChange={(value) => {
-                      setLineDraft((current) => ({
-                        ...current,
-                        productId: undefined,
-                        isManualProduct: true,
-                        name: value,
-                        image: "",
-                      }));
-                    }}
-                  />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <Text strong>Urun Adi</Text>
+                    <AutoComplete
+                      value={lineDraft.name}
+                      options={productOptions}
+                      placeholder="Mevcut urun secin veya manuel girin"
+                      style={{ minWidth: 240, width: "100%" }}
+                      filterOption={(inputValue, option) => (option?.label || "").toLowerCase().includes(inputValue.toLowerCase())}
+                      onSelect={(_, option) => {
+                        if (option?.productId) {
+                          handleDraftProductSelect(option.productId);
+                        }
+                      }}
+                      onChange={(value) => {
+                        setLineDraft((current) => ({
+                          ...current,
+                          productId: undefined,
+                          isManualProduct: true,
+                          name: value,
+                          image: "",
+                        }));
+                      }}
+                    />
+                  </div>
                 </Col>
                 <Col xs={24} xl={4}>
                   <Text strong>Urun Kodu</Text>
@@ -662,19 +665,19 @@ export function StoreShipmentEditorPage() {
               },
               { title: "Urun Kodu", dataIndex: "code", key: "code", width: 130 },
               { title: "Urun Adi", dataIndex: "name", key: "name" },
-              {
-                title: "Tip",
-                dataIndex: "isManualProduct",
-                key: "isManualProduct",
-                width: 100,
-                render: (value) => <Tag color={value ? "gold" : "blue"}>{value ? "Manuel" : "Urun"}</Tag>,
-              },
               { title: "Adet", dataIndex: "quantity", key: "quantity", width: 80 },
               {
-                title: "Satis Fiyati",
+                title: "Birim Fiyat",
                 dataIndex: "salePrice",
                 key: "salePrice",
+                width: 120,
                 render: (value, record) => formatMoney(value, record.saleCurrency),
+              },
+              {
+                title: "Toplam Fiyat",
+                key: "totalPrice",
+                width: 130,
+                render: (_, record) => formatMoney(Number(record.salePrice || 0) * Number(record.quantity || 0), record.saleCurrency),
               },
               {
                 title: "Islemler",
@@ -682,15 +685,13 @@ export function StoreShipmentEditorPage() {
                 width: 100,
                 render: (_, record) => (
                   <Space size={4}>
-                    <Button type="text" className="erp-icon-btn erp-icon-btn-edit" icon={<EditOutlined />} onClick={() => openEditDrawer(record._rowIndex)} />
+                    <Tooltip title="Düzenle">
+                      <Button size="small" className="erp-icon-btn erp-icon-btn-view" icon={<EditOutlined />} onClick={() => openEditDrawer(record._rowIndex)} />
+                    </Tooltip>
                     {!isLocked ? (
-                      <Button
-                        type="text"
-                        danger
-                        className="erp-icon-btn erp-icon-btn-delete"
-                        icon={<DeleteOutlined />}
-                        onClick={() => setShipmentLines((current) => current.filter((_, index) => index !== record._rowIndex))}
-                      />
+                      <Tooltip title="Sil">
+                        <Button size="small" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} onClick={() => setShipmentLines((current) => current.filter((_, index) => index !== record._rowIndex))} />
+                      </Tooltip>
                     ) : null}
                   </Space>
                 ),

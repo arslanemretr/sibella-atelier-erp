@@ -1,6 +1,7 @@
 ﻿import React from "react";
+import dayjs from "dayjs";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { AutoComplete, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Modal, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { AutoComplete, Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { AppstoreOutlined, BarsOutlined, CheckOutlined, DeleteOutlined, DownloadOutlined, DownOutlined, EditOutlined, EyeOutlined, FilterOutlined, InboxOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { getAuthUser } from "../../auth";
@@ -811,7 +812,7 @@ export function SupplierPortalProductListPage() {
       key: "actions",
       width: 100,
       render: (_, record) => (
-        <Button type="text" className="erp-icon-btn erp-icon-btn-edit" icon={<EditOutlined />} onClick={() => navigate(`/supplier/products/${record.id}`)} />
+        <Tooltip title="Düzenle"><Button size="small" className="erp-icon-btn erp-icon-btn-view" icon={<EditOutlined />} onClick={() => navigate(`/supplier/products/${record.id}`)} /></Tooltip>
       ),
     },
   ];
@@ -1164,30 +1165,45 @@ export function SupplierPortalProductEditorPage() {
   );
 }
 
+const DELIVERY_FILTERS_KEY = "sibella.erp.deliveryFilters.v1";
+
+function formatDateTR(dateStr) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+}
+
 export function SupplierDeliveryListsPage() {
   const navigate = useNavigate();
   const [filters, setFilters] = React.useState({
     search: "",
     supplierId: undefined,
     status: undefined,
+    dateFrom: null,
+    dateTo: null,
   });
-  const [supplierOptions, setSupplierOptions] = React.useState([{ value: "all", label: "Tumu" }]);
-  const statusOptions = ["Tumu", "Taslak", "Onay Bekleniyor", "Onaylandi", "Tamamlandi", "Revizyon Istendi"].map((value) => ({
-    value,
-    label: value,
-  }));
+  const [filterModalOpen, setFilterModalOpen] = React.useState(false);
+  const [savedFilterName, setSavedFilterName] = React.useState("");
+  const [savedFilters, setSavedFilters] = React.useState(() => {
+    try { return JSON.parse(window.localStorage.getItem(DELIVERY_FILTERS_KEY) || "[]"); } catch { return []; }
+  });
+  const [supplierOptions, setSupplierOptions] = React.useState([]);
+  const statusOptions = ["Taslak", "Onay Bekleniyor", "Onaylandi", "Tamamlandi", "Revizyon Istendi"].map((value) => ({ value, label: value }));
   const [records, setRecords] = React.useState([]);
   const [tableLoading, setTableLoading] = React.useState(false);
+
+  const persistSavedFilters = (next) => {
+    setSavedFilters(next);
+    window.localStorage.setItem(DELIVERY_FILTERS_KEY, JSON.stringify(next));
+  };
 
   const refreshRecords = React.useCallback(async () => {
     try {
       setTableLoading(true);
-      const [deliveries, suppliers] = await Promise.all([
-        listDeliveryListsFresh(),
-        listSuppliersFresh(),
-      ]);
+      const [deliveries, suppliers] = await Promise.all([listDeliveryListsFresh(), listSuppliersFresh()]);
       setRecords(deliveries);
-      setSupplierOptions([{ value: "all", label: "Tumu" }, ...suppliers.map((item) => ({ value: item.id, label: item.company }))]);
+      setSupplierOptions(suppliers.map((item) => ({ value: item.id, label: item.company })));
     } catch (error) {
       message.error(error?.message || "Teslimat listesi yuklenemedi.");
     } finally {
@@ -1195,9 +1211,7 @@ export function SupplierDeliveryListsPage() {
     }
   }, []);
 
-  React.useEffect(() => {
-    void refreshRecords();
-  }, [refreshRecords]);
+  React.useEffect(() => { void refreshRecords(); }, [refreshRecords]);
 
   const filteredRecords = React.useMemo(() => {
     const normalizedSearch = filters.search.trim().toLowerCase();
@@ -1207,53 +1221,39 @@ export function SupplierDeliveryListsPage() {
         [record.deliveryNo, record.supplierName, record.contactName, record.trackingNo, record.note]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(normalizedSearch));
-      const matchesSupplier =
-        !filters.supplierId || filters.supplierId === "all" || record.supplierId === filters.supplierId;
-      const matchesStatus =
-        !filters.status ||
-        filters.status === "Tumu" ||
-        (record.status || "Taslak") === filters.status;
-
-      return matchesSearch && matchesSupplier && matchesStatus;
+      const matchesSupplier = !filters.supplierId || record.supplierId === filters.supplierId;
+      const matchesStatus = !filters.status || (record.status || "Taslak") === filters.status;
+      const recordDate = record.date ? new Date(record.date).getTime() : null;
+      const matchesDateFrom = !filters.dateFrom || (recordDate && recordDate >= new Date(filters.dateFrom).getTime());
+      const matchesDateTo = !filters.dateTo || (recordDate && recordDate <= new Date(filters.dateTo).setHours(23, 59, 59, 999));
+      return matchesSearch && matchesSupplier && matchesStatus && matchesDateFrom && matchesDateTo;
     });
   }, [filters, records]);
 
   const handleStatusUpdate = async (recordId, status) => {
     const record = getDeliveryListById(recordId);
-    if (!record) {
-      return;
-    }
-
+    if (!record) return;
     let updatedRecord = null;
     if (status === "Tamamlandi") {
       if ((record.status || "Taslak") !== "Onaylandi") {
         message.warning("Teslim alma islemi sadece onayli kayitlar icin yapilabilir.");
         return;
       }
-
       try {
         updatedRecord = completeDeliveryReceipt(recordId);
       } catch (error) {
-        message.error(error?.message || "Teslimat stoÄŸa aktarilirken hata olustu.");
+        message.error(error?.message || "Teslimat stoga aktarilirken hata olustu.");
         return;
       }
     } else {
-      updatedRecord = updateDeliveryList(recordId, {
-        ...record,
-        status,
-      });
-      if (status === "Onaylandi") {
-        await createDeliveryPdf(updatedRecord);
-      }
+      updatedRecord = updateDeliveryList(recordId, { ...record, status });
+      if (status === "Onaylandi") await createDeliveryPdf(updatedRecord);
     }
-
     refreshRecords();
-    message.success(
-      status === "Tamamlandi"
-        ? "Teslimat tamamlandi ve stok hareketlerine aktarildi."
-        : `Teslimat durumu "${status}" olarak guncellendi.`,
-    );
+    message.success(status === "Tamamlandi" ? "Teslimat tamamlandi ve stok hareketlerine aktarildi." : `Teslimat durumu "${status}" olarak guncellendi.`);
   };
+
+  const activeFilterCount = [filters.supplierId, filters.status, filters.dateFrom, filters.dateTo].filter(Boolean).length;
 
   const columns = [
     {
@@ -1263,88 +1263,54 @@ export function SupplierDeliveryListsPage() {
       width: 170,
       sorter: (a, b) => a.deliveryNo.localeCompare(b.deliveryNo, "tr"),
       render: (value, record) => (
-        <button
-          type="button"
-          className="erp-link-button"
-          onClick={(event) => {
-            event.stopPropagation();
-            navigate(`/supplier-portal/delivery-lists/${record.id}`);
-          }}
-        >
+        <button type="button" className="erp-link-button" onClick={(event) => { event.stopPropagation(); navigate(`/supplier-portal/delivery-lists/${record.id}`); }}>
           {value}
         </button>
       ),
     },
-    {
-      title: "Tedarikci",
-      dataIndex: "supplierName",
-      key: "supplierName",
-      sorter: (a, b) => a.supplierName.localeCompare(b.supplierName, "tr"),
-    },
-    {
-      title: "Yetkili",
-      dataIndex: "contactName",
-      key: "contactName",
-      sorter: (a, b) => a.contactName.localeCompare(b.contactName, "tr"),
-    },
+    { title: "Tedarikci", dataIndex: "supplierName", key: "supplierName", sorter: (a, b) => a.supplierName.localeCompare(b.supplierName, "tr") },
+    { title: "Yetkili", dataIndex: "contactName", key: "contactName", sorter: (a, b) => a.contactName.localeCompare(b.contactName, "tr") },
     {
       title: "Tarih",
       dataIndex: "date",
       key: "date",
-      sorter: (a, b) => a.date.localeCompare(b.date, "tr"),
+      sorter: (a, b) => (a.date || "").localeCompare(b.date || "", "tr"),
+      render: (value) => formatDateTR(value),
     },
-    {
-      title: "Kalem",
-      dataIndex: "lineCount",
-      key: "lineCount",
-      sorter: (a, b) => a.lineCount - b.lineCount,
-    },
-    {
-      title: "Toplam",
-      dataIndex: "totalAmountDisplay",
-      key: "totalAmountDisplay",
-      sorter: (a, b) => a.totalAmount - b.totalAmount,
-    },
+    { title: "Kalem", dataIndex: "lineCount", key: "lineCount", sorter: (a, b) => a.lineCount - b.lineCount },
+    { title: "Toplam", dataIndex: "totalAmountDisplay", key: "totalAmountDisplay", sorter: (a, b) => a.totalAmount - b.totalAmount },
     {
       title: "Teslimat Durumu",
       dataIndex: "status",
       key: "status",
       render: (value) => {
-        const colorMap = {
-          Taslak: "default",
-          "Onay Bekleniyor": "gold",
-          Onaylandi: "green",
-          Tamamlandi: "blue",
-          "Revizyon Istendi": "red",
-        };
+        const colorMap = { Taslak: "default", "Onay Bekleniyor": "gold", Onaylandi: "green", Tamamlandi: "blue", "Revizyon Istendi": "red" };
         return <Tag color={colorMap[value || "Taslak"] || "blue"}>{value || "Taslak"}</Tag>;
       },
     },
     {
       title: "Islemler",
       key: "actions",
-      render: (_, record) => (
-        <Space size={8}>
-          <Tooltip title="Teslimat Formu">
-            <Button type="text" className="erp-icon-btn" icon={<EyeOutlined />} onClick={(event) => { event.stopPropagation(); navigate(`/supplier-portal/delivery-lists/${record.id}`); }} />
-          </Tooltip>
-          <Tooltip title="Revizyon">
-            <Button type="text" className="erp-icon-btn" icon={<EditOutlined />} onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Revizyon Istendi"); }} />
-          </Tooltip>
-          <Tooltip title="Onayla">
-            <Button type="text" className="erp-icon-btn erp-icon-btn-edit" icon={<CheckOutlined />} onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Onaylandi"); }} />
-          </Tooltip>
-          <Tooltip title="Teslim Alindi">
-            <Button
-              type="text"
-              className="erp-icon-btn"
-              icon={<InboxOutlined />}
-              disabled={(record.status || "Taslak") !== "Onaylandi" || Boolean(record.stockEntryId || record.inventoryPostedAt)}
-              onClick={(event) => { event.stopPropagation(); handleStatusUpdate(record.id, "Tamamlandi"); }}
-            />
-          </Tooltip>
-        </Space>
-      ),
+      render: (_, record) => {
+        const isCompleted = Boolean(record.stockEntryId || record.inventoryPostedAt);
+        const isApproved = (record.status || "Taslak") === "Onaylandi";
+        return (
+          <Space size={4}>
+            <Tooltip title="Teslimat Formu">
+              <Button size="small" className="erp-icon-btn erp-icon-btn-view" icon={<EyeOutlined />} onClick={(e) => { e.stopPropagation(); navigate(`/supplier-portal/delivery-lists/${record.id}`); }} />
+            </Tooltip>
+            <Tooltip title="Revizyon Iste">
+              <Button size="small" className="erp-icon-btn erp-icon-btn-edit" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); handleStatusUpdate(record.id, "Revizyon Istendi"); }} />
+            </Tooltip>
+            <Tooltip title="Onayla">
+              <Button size="small" className="erp-icon-btn erp-icon-btn-approve" icon={<CheckOutlined />} onClick={(e) => { e.stopPropagation(); handleStatusUpdate(record.id, "Onaylandi"); }} />
+            </Tooltip>
+            <Tooltip title="Teslim Alindi">
+              <Button size="small" className={`erp-icon-btn${isApproved && !isCompleted ? " erp-icon-btn-receive" : ""}`} icon={<InboxOutlined />} disabled={!isApproved || isCompleted} onClick={(e) => { e.stopPropagation(); handleStatusUpdate(record.id, "Tamamlandi"); }} />
+            </Tooltip>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -1360,34 +1326,23 @@ export function SupplierDeliveryListsPage() {
           <Space wrap>
             <Button icon={<ReloadOutlined />} onClick={() => void refreshRecords()}>Yenile</Button>
           </Space>
-
-          <div className="erp-list-toolbar-filters">
-            <Form.Item label="Teslimat / Tedarikci" style={{ marginBottom: 0 }}>
-              <Input
-                prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
-                placeholder="Ara"
-                value={filters.search}
-                onChange={(event) => setFilters((prev) => ({ ...prev, search: event.target.value }))}
-                allowClear
-              />
-            </Form.Item>
-            <Form.Item label="Tedarikci" style={{ marginBottom: 0 }}>
-              <Select
-                value={filters.supplierId}
-                onChange={(value) => setFilters((prev) => ({ ...prev, supplierId: value }))}
-                options={supplierOptions}
-                allowClear
-              />
-            </Form.Item>
-            <Form.Item label="Durum" style={{ marginBottom: 0 }}>
-              <Select
-                value={filters.status}
-                onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
-                options={statusOptions}
-                allowClear
-              />
-            </Form.Item>
-          </div>
+          <Space wrap>
+            <Input
+              prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
+              placeholder="Teslimat no veya tedarikci ara"
+              value={filters.search}
+              onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+              allowClear
+              style={{ width: 260 }}
+            />
+            <Button
+              icon={<FilterOutlined />}
+              onClick={() => setFilterModalOpen(true)}
+              type={activeFilterCount > 0 ? "primary" : "default"}
+            >
+              {activeFilterCount > 0 ? `Filtreler (${activeFilterCount})` : "Gelismis Filtreler"}
+            </Button>
+          </Space>
         </div>
       </Card>
 
@@ -1397,11 +1352,9 @@ export function SupplierDeliveryListsPage() {
           loading={tableLoading}
           columns={columns}
           dataSource={filteredRecords}
-          pagination={false}
+          pagination={{ pageSize: 25, showSizeChanger: true, pageSizeOptions: ["25", "50", "100"], showTotal: (total, range) => `${range[0]} - ${range[1]} / ${total}` }}
           locale={{ emptyText: "Tedarikci portalindan gelen kayit bulunmuyor." }}
-          onRow={(record) => ({
-            onClick: () => navigate(`/supplier-portal/delivery-lists/${record.id}`),
-          })}
+          onRow={(record) => ({ onClick: () => navigate(`/supplier-portal/delivery-lists/${record.id}`) })}
           rowClassName={() => "erp-clickable-row"}
         />
         <div className="erp-table-footer">
@@ -1409,6 +1362,102 @@ export function SupplierDeliveryListsPage() {
           <span>Satira tiklayarak teslimat formunu acabilirsiniz.</span>
         </div>
       </Card>
+
+      <Modal title="Gelismis Filtreler" open={filterModalOpen} onCancel={() => setFilterModalOpen(false)} footer={null}>
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Row gutter={[12, 12]}>
+            <Col span={24}>
+              <Form.Item label="Teslimat No">
+                <Input
+                  placeholder="Teslimat no ara"
+                  value={filters.search}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+                  allowClear
+                />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item label="Tedarikci">
+                <Select
+                  placeholder="Tumu"
+                  value={filters.supplierId}
+                  onChange={(value) => setFilters((prev) => ({ ...prev, supplierId: value }))}
+                  options={supplierOptions}
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item label="Teslimat Durumu">
+                <Select
+                  placeholder="Tumu"
+                  value={filters.status}
+                  onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
+                  options={statusOptions}
+                  allowClear
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Baslangic Tarihi">
+                <DatePicker
+                  style={{ width: "100%" }}
+                  format="DD.MM.YYYY"
+                  value={filters.dateFrom ? dayjs(filters.dateFrom) : null}
+                  onChange={(dayjsVal) => setFilters((prev) => ({ ...prev, dateFrom: dayjsVal ? dayjsVal.toISOString() : null }))}
+                  placeholder="gg.aa.yyyy"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Bitis Tarihi">
+                <DatePicker
+                  style={{ width: "100%" }}
+                  format="DD.MM.YYYY"
+                  value={filters.dateTo ? dayjs(filters.dateTo) : null}
+                  onChange={(dayjsVal) => setFilters((prev) => ({ ...prev, dateTo: dayjsVal ? dayjsVal.toISOString() : null }))}
+                  placeholder="gg.aa.yyyy"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Card size="small" title="Filtreyi Kaydet">
+            <Space.Compact style={{ width: "100%" }}>
+              <Input value={savedFilterName} onChange={(e) => setSavedFilterName(e.target.value)} placeholder="Filtre adi" />
+              <Button type="primary" onClick={() => {
+                if (!savedFilterName.trim()) { message.warning("Filtre adi girin."); return; }
+                const next = [{ name: savedFilterName.trim(), filters }, ...savedFilters.filter((f) => f.name !== savedFilterName.trim())];
+                persistSavedFilters(next);
+                setSavedFilterName("");
+                message.success("Filtre kaydedildi.");
+              }}>Kaydet</Button>
+            </Space.Compact>
+          </Card>
+
+          <Card size="small" title="Kayitli Filtreler">
+            {savedFilters.length === 0 ? <Text type="secondary">Henuz kayitli filtre yok.</Text> : (
+              <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                {savedFilters.map((item) => (
+                  <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Button style={{ flex: 1, textAlign: "left" }} onClick={() => { setFilters(item.filters); setFilterModalOpen(false); message.success(`${item.name} filtresi uygulandi.`); }}>{item.name}</Button>
+                    <Popconfirm title="Bu filtre silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => persistSavedFilters(savedFilters.filter((f) => f.name !== item.name))}>
+                      <Button type="text" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                  </div>
+                ))}
+              </Space>
+            )}
+          </Card>
+
+          <Space style={{ justifyContent: "space-between", width: "100%" }}>
+            <Button onClick={() => setFilters({ search: "", supplierId: undefined, status: undefined, dateFrom: null, dateTo: null })}>Filtreleri Temizle</Button>
+            <Button type="primary" onClick={() => setFilterModalOpen(false)}>Uygula</Button>
+          </Space>
+        </Space>
+      </Modal>
     </Space>
   );
 }
@@ -2169,26 +2218,29 @@ export function SupplierPortalDeliveryEditorPage() {
           <Card size="small" title="Urun Ekleme" style={{ marginBottom: 12 }}>
             <Row gutter={[12, 12]} align="bottom" className="erp-delivery-draft-grid">
               <Col xs={24} xl={6} className="erp-delivery-draft-name">
-                <div style={{ marginBottom: 8, fontWeight: 500 }}>Urun Adi</div>
-                <AutoComplete
-                  value={lineDraft.name}
-                  options={productOptions.map((item) => ({ value: item.label, label: item.label, productId: item.value }))}
-                  placeholder="Liste secin veya manuel urun adi yazin"
-                  disabled={isDeliveryLocked}
-                  filterOption={(inputValue, option) => (option?.value || "").toLowerCase().includes(inputValue.toLowerCase())}
-                  onSelect={(_, option) => {
-                    if (option?.productId) {
-                      handleDraftProductSelect(option.productId);
-                    }
-                  }}
-                  onChange={(value) => {
-                    setLineDraft((current) => ({
-                      ...current,
-                      productId: undefined,
-                      name: value,
-                    }));
-                  }}
-                />
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div style={{ fontWeight: 500 }}>Urun Adi</div>
+                  <AutoComplete
+                    value={lineDraft.name}
+                    options={productOptions.map((item) => ({ value: item.label, label: item.label, productId: item.value }))}
+                    placeholder="Liste secin veya manuel urun adi yazin"
+                    style={{ minWidth: 240, width: "100%" }}
+                    disabled={isDeliveryLocked}
+                    filterOption={(inputValue, option) => (option?.value || "").toLowerCase().includes(inputValue.toLowerCase())}
+                    onSelect={(_, option) => {
+                      if (option?.productId) {
+                        handleDraftProductSelect(option.productId);
+                      }
+                    }}
+                    onChange={(value) => {
+                      setLineDraft((current) => ({
+                        ...current,
+                        productId: undefined,
+                        name: value,
+                      }));
+                    }}
+                  />
+                </div>
               </Col>
               <Col xs={24} xl={4} className="erp-delivery-draft-code">
                 <div style={{ marginBottom: 8, fontWeight: 500 }}>Urun Kodu</div>
@@ -2285,16 +2337,16 @@ export function SupplierPortalDeliveryEditorPage() {
                 render: (_, record) => (
                   <Space size={4}>
                     <Tooltip title="Duzenle">
-                      <Button type="text" className="erp-icon-btn erp-icon-btn-edit" icon={<EditOutlined />} onClick={() => openEditDrawer(record._rowIndex)} disabled={isDeliveryLocked && !isAdminView} />
+                      <Button size="small" className="erp-icon-btn erp-icon-btn-view" icon={<EditOutlined />} onClick={() => openEditDrawer(record._rowIndex)} disabled={isDeliveryLocked && !isAdminView} />
                     </Tooltip>
                     {isAdminView && record.isNewProduct && !record.productId ? (
                       <Tooltip title="Urun Olarak Ekle">
-                        <Button type="text" className="erp-icon-btn" icon={<PlusCircleOutlined />} onClick={() => openPromoteDrawer(record._rowIndex)} />
+                        <Button size="small" className="erp-icon-btn erp-icon-btn-approve" icon={<PlusCircleOutlined />} onClick={() => openPromoteDrawer(record._rowIndex)} />
                       </Tooltip>
                     ) : null}
                     {!isDeliveryLocked ? (
                       <Tooltip title="Sil">
-                        <Button danger type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} onClick={() => handleDeleteLine(record._rowIndex, record.id)} disabled={isDeliveryLocked} />
+                        <Button size="small" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} onClick={() => handleDeleteLine(record._rowIndex, record.id)} disabled={isDeliveryLocked} />
                       </Tooltip>
                     ) : null}
                   </Space>

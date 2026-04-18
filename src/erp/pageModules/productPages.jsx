@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Segmented, Select, Space, Switch, Table, Tabs, Tag, Typography, message } from "antd";
+import { Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Segmented, Select, Space, Switch, Table, Tabs, Tag, Tooltip, Typography, message } from "antd";
 import { AppstoreOutlined, BarsOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, LeftOutlined, PlusOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { listMasterDataFresh } from "../masterData";
@@ -493,24 +493,15 @@ export function ProductListPage() {
       title: "Islemler",
       key: "actions",
       render: (_, record) => (
-        <Space size={8}>
-          <Button
-            type="text"
-            className="erp-icon-btn erp-icon-btn-edit"
-            icon={<EditOutlined />}
-            onClick={(event) => {
-              event.stopPropagation();
-              navigate(`/products/${record.id}`);
-            }}
-          />
-          <Popconfirm
-            title="Urun silinsin mi?"
-            okText="Sil"
-            cancelText="Vazgec"
-            onConfirm={() => handleDelete(record.id)}
-          >
+        <Space size={4}>
+          <Tooltip title="Düzenle">
+            <Button size="small" className="erp-icon-btn erp-icon-btn-view" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); navigate(`/products/${record.id}`); }} />
+          </Tooltip>
+          <Popconfirm title="Urun silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => handleDelete(record.id)}>
             <span onClick={preventRowClick}>
-              <Button type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} />
+              <Tooltip title="Sil">
+                <Button size="small" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} />
+              </Tooltip>
             </span>
           </Popconfirm>
         </Space>

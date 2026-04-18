@@ -462,19 +462,39 @@ html, body {
 }
 
 .erp-icon-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 8px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.erp-icon-btn-view {
+  border-color: #1677ff !important;
+  color: #1677ff !important;
 }
 
 .erp-icon-btn-edit {
-  color: #fff !important;
-  background: #f4b400 !important;
+  border-color: #fa8c16 !important;
+  color: #fa8c16 !important;
 }
 
 .erp-icon-btn-delete {
-  color: #fff !important;
-  background: #ff5c57 !important;
+  border-color: #ff4d4f !important;
+  color: #ff4d4f !important;
+}
+
+.erp-icon-btn-approve {
+  border-color: #52c41a !important;
+  color: #52c41a !important;
+}
+
+.erp-icon-btn-receive {
+  border-color: #722ed1 !important;
+  color: #722ed1 !important;
 }
 
 .erp-table-footer {

@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Avatar, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Select, Space, Table, Tag, Typography, message } from "antd";
+import { Avatar, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { BarcodeOutlined, CloseCircleOutlined, EditOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { requestJson } from "../apiClient";
@@ -156,19 +156,15 @@ export function PosSessionsPage() {
       title: "İşlemler",
       key: "actions",
       render: (_, record) => (
-        <Space size={8}>
-          <Button
-            type="text"
-            className="erp-icon-btn erp-icon-btn-edit"
-            icon={<EditOutlined />}
-            onClick={(event) => {
-              event.stopPropagation();
-              navigate(`/pos/store?session=${record.id}`);
-            }}
-          />
+        <Space size={4}>
+          <Tooltip title="Oturuma Gir">
+            <Button size="small" className="erp-icon-btn erp-icon-btn-view" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); navigate(`/pos/store?session=${record.id}`); }} />
+          </Tooltip>
           {record.status === "Açık" ? (
             <Popconfirm title="Oturum kapatılsın mı?" okText="Kapat" cancelText="Vazgeç" onConfirm={() => handleCloseSession(record.id)} onClick={preventRowClick}>
-              <Button type="text" icon={<CloseCircleOutlined />}>Kapat</Button>
+              <Tooltip title="Kapat">
+                <Button size="small" className="erp-icon-btn erp-icon-btn-edit" icon={<CloseCircleOutlined />} />
+              </Tooltip>
             </Popconfirm>
           ) : null}
         </Space>

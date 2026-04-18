@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm, Row, Space, Table, Tag, Typography, message } from "antd";
+import { Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm, Row, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import { createStore, deleteStore, listStoresFresh, updateStore } from "../storesData";
 
@@ -86,23 +86,14 @@ export function StoreListPage() {
               title: "Islemler",
               key: "actions",
               render: (_, record) => (
-                <Space size={8}>
-                  <Button
-                    type="text"
-                    className="erp-icon-btn erp-icon-btn-edit"
-                    icon={<EditOutlined />}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      navigate(`/stores/${record.id}`);
-                    }}
-                  />
+                <Space size={4}>
+                  <Tooltip title="Düzenle">
+                    <Button size="small" className="erp-icon-btn erp-icon-btn-view" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); navigate(`/stores/${record.id}`); }} />
+                  </Tooltip>
                   <Popconfirm title="Magaza silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => void handleDelete(record.id)}>
-                    <Button
-                      type="text"
-                      className="erp-icon-btn erp-icon-btn-delete"
-                      icon={<DeleteOutlined />}
-                      onClick={(event) => event.stopPropagation()}
-                    />
+                    <Tooltip title="Sil">
+                      <Button size="small" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()} />
+                    </Tooltip>
                   </Popconfirm>
                 </Space>
               ),

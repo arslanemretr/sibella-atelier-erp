@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, Descriptions, Drawer, Input, Select, Space, Table, Tag, Typography, message } from "antd";
+import { Button, Card, Descriptions, Drawer, Input, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DownloadOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { listProductsFresh } from "../productsData";
 import { listStockMovementsFresh } from "../stockMovementsData";
@@ -336,15 +336,9 @@ export function StockListPage() {
       title: "Islemler",
       key: "actions",
       render: (_, record) => (
-        <Button
-          type="text"
-          className="erp-icon-btn erp-icon-btn-edit"
-          icon={<EditOutlined />}
-          onClick={(event) => {
-            event.stopPropagation();
-            openDetailPath(record);
-          }}
-        />
+        <Tooltip title="Düzenle">
+          <Button size="small" className="erp-icon-btn erp-icon-btn-view" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); openDetailPath(record); }} />
+        </Tooltip>
       ),
     },
   ];

@@ -2,7 +2,7 @@
 import dayjs from "dayjs";
 import { DatePicker } from "antd";
 import { DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined, FilterOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Card, Col, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Typography, message } from "antd";
+import { Button, Card, Col, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tooltip, Typography, message } from "antd";
 import { createContract, deleteContract, listContractsFresh, updateContract } from "../contractsData";
 import { listSuppliersFresh } from "../suppliersData";
 
@@ -259,19 +259,15 @@ export function ContractsPage() {
       title: "Islemler",
       key: "actions",
       render: (_, record) => (
-        <Space size={8}>
-          <Button
-            type="text"
-            className="erp-icon-btn erp-icon-btn-edit"
-            icon={<EditOutlined />}
-            onClick={(event) => {
-              event.stopPropagation();
-              openEditModal(record);
-            }}
-          />
+        <Space size={4}>
+          <Tooltip title="Düzenle">
+            <Button size="small" className="erp-icon-btn erp-icon-btn-view" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); openEditModal(record); }} />
+          </Tooltip>
           <Popconfirm title="Sozlesme silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => handleDelete(record.id)}>
             <span onClick={preventRowClick}>
-              <Button type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} />
+              <Tooltip title="Sil">
+                <Button size="small" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} />
+              </Tooltip>
             </span>
           </Popconfirm>
         </Space>

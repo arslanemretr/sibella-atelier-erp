@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppstoreOutlined, BarsOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Typography, message } from "antd";
+import { Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import dayjs from "dayjs";
 import { listContractsFresh } from "../contractsData";
 import { listEarningsRecordsFresh, upsertEarningsRecord } from "../earningsData";
@@ -196,19 +196,15 @@ export function SupplierListPage() {
       title: "Islemler",
       key: "actions",
       render: (_, record) => (
-        <Space size={8}>
-          <Button
-            type="text"
-            className="erp-icon-btn erp-icon-btn-edit"
-            icon={<EditOutlined />}
-            onClick={(event) => {
-              event.stopPropagation();
-              navigate(`/purchasing/suppliers/${record.id}`);
-            }}
-          />
+        <Space size={4}>
+          <Tooltip title="Düzenle">
+            <Button size="small" className="erp-icon-btn erp-icon-btn-view" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); navigate(`/purchasing/suppliers/${record.id}`); }} />
+          </Tooltip>
           <Popconfirm title="Tedarikci silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => handleDelete(record.id)}>
             <span onClick={preventRowClick}>
-              <Button type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} />
+              <Tooltip title="Sil">
+                <Button size="small" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} />
+              </Tooltip>
             </span>
           </Popconfirm>
         </Space>

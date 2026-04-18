@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Row, Select, Space, Table, Tag, Typography, message } from "antd";
+import { Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { createStockEntry, listStockEntriesFresh, updateStockEntry } from "../stockEntriesData";
@@ -306,7 +306,7 @@ export function StockEntryEditorPage() {
                       key: "actions",
                       width: 110,
                       render: (_, record) => (
-                        <Button type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} onClick={() => remove(record.field.name)} />
+                        <Tooltip title="Sil"><Button size="small" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} onClick={() => remove(record.field.name)} /></Tooltip>
                       ),
                     },
                   ]}
@@ -446,16 +446,10 @@ export function StockEntryListPage() {
       title: "Islemler",
       key: "actions",
       render: (_, record) => (
-        <Space size={8}>
-          <Button
-            type="text"
-            className="erp-icon-btn erp-icon-btn-edit"
-            icon={<EditOutlined />}
-            onClick={(event) => {
-              event.stopPropagation();
-              navigate(`/stock/entry/${record.id}`);
-            }}
-          />
+        <Space size={4}>
+          <Tooltip title="Düzenle">
+            <Button size="small" className="erp-icon-btn erp-icon-btn-view" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); navigate(`/stock/entry/${record.id}`); }} />
+          </Tooltip>
         </Space>
       ),
     },
