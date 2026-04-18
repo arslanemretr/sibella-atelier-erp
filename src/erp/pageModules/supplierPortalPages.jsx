@@ -1198,6 +1198,16 @@ export function SupplierDeliveryListsPage() {
     window.localStorage.setItem(DELIVERY_FILTERS_KEY, JSON.stringify(next));
   };
 
+  const handleAdminDeleteRecord = async (record) => {
+    try {
+      deleteDeliveryList(record.id);
+      message.success("Teslimat silindi.");
+      await refreshRecords();
+    } catch (error) {
+      message.error(error?.message || "Teslimat silinemedi.");
+    }
+  };
+
   const refreshRecords = React.useCallback(async () => {
     try {
       setTableLoading(true);
@@ -1308,6 +1318,13 @@ export function SupplierDeliveryListsPage() {
             <Tooltip title="Teslim Alindi">
               <Button size="small" className={`erp-icon-btn${isApproved && !isCompleted ? " erp-icon-btn-receive" : ""}`} icon={<InboxOutlined />} disabled={!isApproved || isCompleted} onClick={(e) => { e.stopPropagation(); handleStatusUpdate(record.id, "Tamamlandi"); }} />
             </Tooltip>
+            {(record.status || "Taslak") === "Taslak" ? (
+              <Popconfirm title="Bu teslimat silinsin mi?" okText="Sil" cancelText="Vazgeç" onConfirm={() => void handleAdminDeleteRecord(record)}>
+                <Tooltip title="Sil">
+                  <Button size="small" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()} />
+                </Tooltip>
+              </Popconfirm>
+            ) : null}
           </Space>
         );
       },
