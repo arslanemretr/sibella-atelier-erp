@@ -88,11 +88,15 @@ export function ProductListPage() {
   const [pageSize, setPageSize] = React.useState(25);
   const [categoryOptions, setCategoryOptions] = React.useState([{ value: "all", label: "Tumu" }]);
   const [collectionOptions, setCollectionOptions] = React.useState([{ value: "all", label: "Tumu" }]);
+  const [supplierOptions, setSupplierOptions] = React.useState([]);
   const [filters, setFilters] = React.useState({
     search: "",
     categoryId: undefined,
-    collectionId: undefined,
-    status: undefined,
+    supplierId: undefined,
+    stockOp: undefined,
+    stockVal: undefined,
+    salesOp: undefined,
+    salesVal: undefined,
   });
   const [filterModalOpen, setFilterModalOpen] = React.useState(false);
   const [importModalOpen, setImportModalOpen] = React.useState(false);
@@ -111,15 +115,20 @@ export function ProductListPage() {
   const [selectedImportFile, setSelectedImportFile] = React.useState(null);
   const [importing, setImporting] = React.useState(false);
   const [importTestResult, setImportTestResult] = React.useState(null);
-  const statusOptions = ["Tumu", "Aktif", "Pasif"].map((value) => ({ value, label: value }));
+  const operatorOptions = [
+    { value: ">", label: "Büyüktür (>)" },
+    { value: "<", label: "Küçüktür (<)" },
+    { value: "=", label: "Eşittir (=)" },
+  ];
 
   const refreshProducts = React.useCallback(async () => {
     setTableLoading(true);
     try {
-      const [productRows, categoryRows, collectionRows] = await Promise.all([
+      const [productRows, categoryRows, collectionRows, supplierRows] = await Promise.all([
         listProductsFresh(),
         listMasterDataFresh("categories"),
         listMasterDataFresh("collections"),
+        listSuppliersFresh(),
       ]);
 
       setProducts(productRows);
@@ -131,6 +140,7 @@ export function ProductListPage() {
         { value: "all", label: "Tumu" },
         ...collectionRows.map((item) => ({ value: item.id, label: item.name })),
       ]);
+      setSupplierOptions(supplierRows.map((item) => ({ value: item.id, label: item.company || item.id })));
     } catch (error) {
       message.error(error?.message || "Urun listesi yuklenemedi.");
     } finally {
@@ -173,8 +183,11 @@ export function ProductListPage() {
     setFilters({
       search: "",
       categoryId: undefined,
-      collectionId: undefined,
-      status: undefined,
+      supplierId: undefined,
+      stockOp: undefined,
+      stockVal: undefined,
+      salesOp: undefined,
+      salesVal: undefined,
     });
   };
 
@@ -388,18 +401,29 @@ export function ProductListPage() {
     }
   };
 
+  const applyNumericFilter = (value, op, threshold) => {
+    if (!op || threshold === undefined || threshold === null || threshold === "") return true;
+    const n = Number(value || 0);
+    const t = Number(threshold);
+    if (op === ">") return n > t;
+    if (op === "<") return n < t;
+    if (op === "=") return n === t;
+    return true;
+  };
+
   const filteredProducts = products.filter((product) => {
     const normalizedSearch = filters.search.trim().toLowerCase();
     const matchesSearch =
       !normalizedSearch ||
-      [product.code, product.name, product.barcode, product.categoryLabel, product.collectionLabel]
+      [product.code, product.name, product.barcode, product.categoryLabel, product.supplierLabel]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalizedSearch));
     const matchesCategory = !filters.categoryId || filters.categoryId === "all" || product.categoryId === filters.categoryId;
-    const matchesCollection = !filters.collectionId || filters.collectionId === "all" || product.collectionId === filters.collectionId;
-    const matchesStatus = !filters.status || filters.status === "Tumu" || product.status === filters.status;
+    const matchesSupplier = !filters.supplierId || product.supplierId === filters.supplierId;
+    const matchesStock = applyNumericFilter(product.totalStock, filters.stockOp, filters.stockVal);
+    const matchesSales = applyNumericFilter(product.soldQuantity, filters.salesOp, filters.salesVal);
 
-    return matchesSearch && matchesCategory && matchesCollection && matchesStatus;
+    return matchesSearch && matchesCategory && matchesSupplier && matchesStock && matchesSales;
   });
 
   React.useEffect(() => {
@@ -430,11 +454,9 @@ export function ProductListPage() {
     },
     { title: "Urun Adi", dataIndex: "name", key: "name", sorter: (a, b) => a.name.localeCompare(b.name, "tr") },
     { title: "Satis Fiyati", dataIndex: "priceDisplay", key: "priceDisplay", sorter: (a, b) => a.salePrice - b.salePrice },
-    { title: "Maliyet", dataIndex: "costDisplay", key: "costDisplay", sorter: (a, b) => a.cost - b.cost },
     { title: "Kategori", dataIndex: "categoryLabel", key: "categoryLabel", sorter: (a, b) => a.categoryLabel.localeCompare(b.categoryLabel, "tr") },
-    { title: "Koleksiyon", dataIndex: "collectionLabel", key: "collectionLabel", sorter: (a, b) => a.collectionLabel.localeCompare(b.collectionLabel, "tr") },
     {
-      title: "Stok",
+      title: "Elde Miktar",
       dataIndex: "totalStock",
       key: "stock",
       sorter: (a, b) => Number(a.totalStock || 0) - Number(b.totalStock || 0),
@@ -447,11 +469,26 @@ export function ProductListPage() {
             void openStockDrawer(record);
           }}
         >
-          <Tag color="blue">{value}</Tag>
+          <Tag color={Number(value || 0) === 0 ? "red" : "green"}>{value}</Tag>
         </Button>
       ),
     },
-    { title: "Durum", dataIndex: "status", key: "status", sorter: (a, b) => a.status.localeCompare(b.status, "tr"), render: (value) => <Tag color={value === "Aktif" ? "green" : "default"}>{value}</Tag> },
+    {
+      title: "Satış Adet",
+      dataIndex: "soldQuantity",
+      key: "soldQuantity",
+      sorter: (a, b) => Number(a.soldQuantity || 0) - Number(b.soldQuantity || 0),
+      render: (value) => <Tag color={Number(value || 0) === 0 ? "red" : "blue"}>{value ?? 0}</Tag>,
+    },
+    {
+      title: "Toplam Tutar",
+      key: "totalValue",
+      sorter: (a, b) => (Number(a.totalStock || 0) * Number(a.salePrice || 0)) - (Number(b.totalStock || 0) * Number(b.salePrice || 0)),
+      render: (_, record) => {
+        const total = Number(record.totalStock || 0) * Number(record.salePrice || 0);
+        return new Intl.NumberFormat("tr-TR", { style: "currency", currency: record.saleCurrency || "TRY", maximumFractionDigits: 0 }).format(total);
+      },
+    },
     {
       title: "Islemler",
       key: "actions",
@@ -653,25 +690,58 @@ export function ProductListPage() {
               </Form.Item>
             </Col>
             <Col span={24}>
-              <Form.Item label="Koleksiyon">
+              <Form.Item label="Tedarik Edilen Firma">
                 <Select
                   placeholder="Tumu"
-                  value={filters.collectionId}
-                  onChange={(value) => handleFilterChange("collectionId", value)}
-                  options={collectionOptions}
+                  value={filters.supplierId}
+                  onChange={(value) => handleFilterChange("supplierId", value)}
+                  options={supplierOptions}
                   allowClear
+                  showSearch
+                  optionFilterProp="label"
                 />
               </Form.Item>
             </Col>
             <Col span={24}>
-              <Form.Item label="Durum">
-                <Select
-                  placeholder="Tumu"
-                  value={filters.status}
-                  onChange={(value) => handleFilterChange("status", value)}
-                  options={statusOptions}
-                  allowClear
-                />
+              <Form.Item label="Elde Miktar">
+                <Space.Compact style={{ width: "100%" }}>
+                  <Select
+                    placeholder="Karşılaştırma"
+                    value={filters.stockOp}
+                    onChange={(value) => handleFilterChange("stockOp", value)}
+                    options={operatorOptions}
+                    allowClear
+                    style={{ width: 160 }}
+                  />
+                  <InputNumber
+                    placeholder="Değer"
+                    value={filters.stockVal}
+                    onChange={(value) => handleFilterChange("stockVal", value)}
+                    style={{ flex: 1 }}
+                    min={0}
+                  />
+                </Space.Compact>
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item label="Satış Adet">
+                <Space.Compact style={{ width: "100%" }}>
+                  <Select
+                    placeholder="Karşılaştırma"
+                    value={filters.salesOp}
+                    onChange={(value) => handleFilterChange("salesOp", value)}
+                    options={operatorOptions}
+                    allowClear
+                    style={{ width: 160 }}
+                  />
+                  <InputNumber
+                    placeholder="Değer"
+                    value={filters.salesVal}
+                    onChange={(value) => handleFilterChange("salesVal", value)}
+                    style={{ flex: 1 }}
+                    min={0}
+                  />
+                </Space.Compact>
               </Form.Item>
             </Col>
           </Row>
