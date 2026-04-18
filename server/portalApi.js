@@ -629,6 +629,7 @@ export async function handleDeliveryListsCreate(req, res) {
     await replaceDeliveryLines(item);
     return res.status(201).json({ ok: true, item: await getDeliveryRow(item.id) });
   } catch (error) {
+    console.error("handleDeliveryListsCreate hatasi:", error?.message, error?.stack);
     return httpError(res, 400, error?.message || "Teslimat kaydi olusturulamadi.");
   }
 }
@@ -649,6 +650,7 @@ export async function handleDeliveryListsUpdate(req, res) {
     await replaceDeliveryLines(item);
     return res.json({ ok: true, item: await getDeliveryRow(item.id) });
   } catch (error) {
+    console.error("handleDeliveryListsUpdate hatasi:", error?.message, error?.stack);
     return httpError(res, 400, error?.message || "Teslimat kaydi guncellenemedi.");
   }
 }

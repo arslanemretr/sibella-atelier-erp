@@ -2023,6 +2023,10 @@ export function SupplierPortalDeliveryEditorPage() {
         supplierEmail: supplier?.email || authUser?.email || "",
         status,
         createdBy: authUser?.id || null,
+        lines: (values.lines || []).map((line) => ({
+          ...line,
+          image: String(line.image || "").startsWith("data:") ? "" : (line.image || ""),
+        })),
       };
 
       const savedRecord = isEditMode ? updateDeliveryList(deliveryId, payload) : createDeliveryList(payload);
