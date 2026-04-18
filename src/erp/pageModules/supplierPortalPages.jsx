@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import { getAuthUser } from "../../auth";
 import { listContractsFresh } from "../contractsData";
 import { completeDeliveryReceipt, createDeliveryList, createDeliveryPdf, getDeliveryListById, getNextDeliveryNoPreviewFresh, listDeliveryListsBySupplierFresh, listDeliveryListsFresh, updateDeliveryList } from "../deliveryListsData";
+import { listEarningsRecordsFresh } from "../earningsData";
 import { listMasterDataFresh } from "../masterData";
 import { listPosSalesFresh } from "../posData";
 import { createProduct, listProductsFresh } from "../productsData";
@@ -146,6 +147,13 @@ function getPeriodContract(contracts, supplierId, periodDate) {
 }
 
 const earningsStatusMetaMap = {
+  "Dönem Tamamlanmadı": {
+    color: "default",
+    cardBg: "#f5f5f5",
+    cardBorder: "#d9d9d9",
+    icon: "🕐",
+    bandBg: "#f5f5f5",
+  },
   "Fatura Bekleniyor": {
     color: "gold",
     cardBg: "#fff7e6",
@@ -153,28 +161,21 @@ const earningsStatusMetaMap = {
     icon: "ℹ️",
     bandBg: "#fff7e6",
   },
-  "Odeme Bekliyor": {
+  "Ödeme Bekleniyor": {
     color: "orange",
     cardBg: "#fff2e8",
     cardBorder: "#ffbb96",
     icon: "⏳",
     bandBg: "#fff2e8",
   },
-  Gecikmis: {
-    color: "red",
-    cardBg: "#fff1f0",
-    cardBorder: "#ffa39e",
-    icon: "⚠️",
-    bandBg: "#fff1f0",
-  },
-  Odendi: {
+  Tamamlandı: {
     color: "green",
     cardBg: "#f6ffed",
     cardBorder: "#b7eb8f",
     icon: "✅",
     bandBg: "#f6ffed",
   },
-  "Satis Yok": {
+  "Satış Yok": {
     color: "default",
     cardBg: "#fafafa",
     cardBorder: "#d9d9d9",
@@ -183,14 +184,23 @@ const earningsStatusMetaMap = {
   },
 };
 
-function resolveEarningsStatus(summary) {
-  if (!Number(summary?.earningsTotal || 0)) {
-    return "Satis Yok";
+function resolveEarningsStatus(periodDate, earningsTotal, earningsRecord) {
+  if (isCurrentPeriod(periodDate)) {
+    return "Dönem Tamamlanmadı";
   }
-  return "Fatura Bekleniyor";
+  if (!Number(earningsTotal || 0)) {
+    return "Satış Yok";
+  }
+  if (!earningsRecord?.invoiceNo) {
+    return "Fatura Bekleniyor";
+  }
+  if (!earningsRecord?.paymentDate) {
+    return "Ödeme Bekleniyor";
+  }
+  return "Tamamlandı";
 }
 
-function buildEarningsSummary({ periodDate, products = [], sales = [], contracts = [], supplierId }) {
+function buildEarningsSummary({ periodDate, products = [], sales = [], contracts = [], supplierId, earningsRecord = null }) {
   const relevantProducts = (products || []).filter((item) => item.supplierId === supplierId && item.productType === "konsinye");
   const productMap = new Map(relevantProducts.map((item) => [item.id, item]));
   const contract = getPeriodContract(contracts, supplierId, periodDate);
@@ -243,7 +253,7 @@ function buildEarningsSummary({ periodDate, products = [], sales = [], contracts
   const grossTotal = detailRows.reduce((sum, item) => sum + item.grossAmount, 0);
   const commissionTotal = detailRows.reduce((sum, item) => sum + item.commissionAmount, 0);
   const earningsTotal = detailRows.reduce((sum, item) => sum + item.netAmount, 0);
-  const status = resolveEarningsStatus({ earningsTotal });
+  const status = resolveEarningsStatus(periodDate, earningsTotal, earningsRecord);
 
   return {
     periodKey: getMonthKey(periodDate),
@@ -255,9 +265,10 @@ function buildEarningsSummary({ periodDate, products = [], sales = [], contracts
     grossTotal,
     commissionTotal,
     earningsTotal,
-    invoiceNo: null,
-    invoiceDate: null,
-    paymentDueDate: null,
+    invoiceNo: earningsRecord?.invoiceNo || null,
+    invoiceDate: earningsRecord?.invoiceDate || null,
+    paymentDueDate: earningsRecord?.paymentDueDate || null,
+    paymentDate: earningsRecord?.paymentDate || null,
     status,
   };
 }
@@ -271,17 +282,19 @@ export function SupplierPortalEarningsPage() {
   const [products, setProducts] = React.useState([]);
   const [sales, setSales] = React.useState([]);
   const [contracts, setContracts] = React.useState([]);
+  const [earningsRecords, setEarningsRecords] = React.useState([]);
 
   React.useEffect(() => {
     let cancelled = false;
     const loadEarnings = async () => {
       try {
         setPageLoading(true);
-        const [suppliers, nextProducts, nextSales, nextContracts] = await Promise.all([
+        const [suppliers, nextProducts, nextSales, nextContracts, nextRecords] = await Promise.all([
           listSuppliersFresh(),
           listProductsFresh(),
           listPosSalesFresh(),
           listContractsFresh(),
+          listEarningsRecordsFresh(),
         ]);
 
         if (cancelled) {
@@ -301,12 +314,14 @@ export function SupplierPortalEarningsPage() {
         setProducts(supplierId ? nextProducts.filter((item) => item.supplierId === supplierId) : []);
         setSales(nextSales || []);
         setContracts(nextContracts || []);
+        setEarningsRecords(nextRecords || []);
       } catch (error) {
         if (!cancelled) {
           setResolvedSupplierId(null);
           setProducts([]);
           setSales([]);
           setContracts([]);
+          setEarningsRecords([]);
           message.error(error?.message || "Hakediş verileri yüklenemedi.");
         }
       } finally {
@@ -322,6 +337,11 @@ export function SupplierPortalEarningsPage() {
     };
   }, [authUser?.email, authUser?.fullName, authUser?.supplierId]);
 
+  const earningsRecordMap = React.useMemo(
+    () => new Map((earningsRecords || []).filter((r) => r.supplierId === resolvedSupplierId).map((r) => [r.periodKey, r])),
+    [earningsRecords, resolvedSupplierId],
+  );
+
   const currentSummary = React.useMemo(
     () => buildEarningsSummary({
       periodDate,
@@ -329,8 +349,9 @@ export function SupplierPortalEarningsPage() {
       sales,
       contracts,
       supplierId: resolvedSupplierId,
+      earningsRecord: earningsRecordMap.get(getMonthKey(periodDate)) || null,
     }),
-    [contracts, periodDate, products, resolvedSupplierId, sales],
+    [contracts, earningsRecordMap, periodDate, products, resolvedSupplierId, sales],
   );
 
   const historySummaries = React.useMemo(() => {
@@ -357,43 +378,50 @@ export function SupplierPortalEarningsPage() {
         sales,
         contracts,
         supplierId: resolvedSupplierId,
+        earningsRecord: earningsRecordMap.get(getMonthKey(item)) || null,
       }));
-  }, [contracts, periodDate, products, resolvedSupplierId, sales]);
+  }, [contracts, earningsRecordMap, periodDate, products, resolvedSupplierId, sales]);
 
   const statusMeta = earningsStatusMetaMap[currentSummary.status] || earningsStatusMetaMap["Satis Yok"];
 
-  const handleExport = () => {
+  const handleExportDetail = () => {
     const rows = [
       ["Dönem", currentSummary.periodLabel],
       ["Toplam Satış", formatDisplayMoney(currentSummary.grossTotal)],
-      ["Komisyon Tutarı", formatDisplayMoney(currentSummary.commissionTotal)],
       ["Hakediş Tutarı", formatDisplayMoney(currentSummary.earningsTotal)],
       ["Ödeme Durumu", currentSummary.status],
       [],
-      ["Ürün Kodu", "Ürün Adı", "Satış Adedi", "Birim Fiyat", "Brüt Tutar", "Komisyon %", "Komisyon Tutarı", "Net Tutar"],
+      ["Ürün Kodu", "Ürün Adı", "Satış Adedi", "Birim Fiyat", "Komisyon %", "Hakediş Tutar"],
       ...currentSummary.detailRows.map((item) => [
         item.productCode,
         item.productName,
         item.salesQuantity,
         formatDisplayMoney(item.unitPrice),
-        formatDisplayMoney(item.grossAmount),
         `${Number(item.commissionRate || 0).toFixed(2)}%`,
-        formatDisplayMoney(item.commissionAmount),
         formatDisplayMoney(item.netAmount),
       ]),
       [],
-      ["Dönem", "Brüt Satış", "Komisyon", "Hakediş", "Fatura", "Ödeme Durumu"],
+      ["Toplam", "", "", "", "", formatDisplayMoney(currentSummary.earningsTotal)],
+    ];
+    downloadWorkbook(rows, "SatisDetayi", `satis-detayi-${currentSummary.periodKey}.xlsx`);
+    message.success("Excel dosyası indirildi.");
+  };
+
+  const handleExportHistory = () => {
+    const rows = [
+      ["Dönem", "Toplam Satış Tutar", "Komisyon Oranı", "Toplam Hakediş Tutar", "Fatura Hizmet Tutar", "Fatura KDV Tutar (%20)", "Ödeme Durumu"],
       ...historySummaries.map((item) => [
         item.periodLabel,
         formatDisplayMoney(item.grossTotal),
-        formatDisplayMoney(item.commissionTotal),
+        `${Number(item.commissionRate || 0).toFixed(2)}%`,
+        formatDisplayMoney(Number(item.earningsTotal || 0) * 1.2),
         formatDisplayMoney(item.earningsTotal),
-        item.invoiceNo || "—",
+        formatDisplayMoney(Number(item.earningsTotal || 0) * 0.2),
         item.status,
       ]),
     ];
-    downloadWorkbook(rows, "HakedisOzeti", `hakedis-ozeti-${currentSummary.periodKey}.xlsx`);
-    message.success("Excel dosyasi indirildi.");
+    downloadWorkbook(rows, "DonemGecmisi", `donem-gecmisi-${currentSummary.periodKey}.xlsx`);
+    message.success("Excel dosyası indirildi.");
   };
 
   const summaryCards = [
@@ -410,7 +438,7 @@ export function SupplierPortalEarningsPage() {
     {
       title: "Hakediş Tutarı",
       value: formatDisplayMoney(currentSummary.earningsTotal),
-      description: "Brüt − Komisyon",
+      description: "Toplam Satış − Komisyon",
     },
     {
       title: "Ödeme Durumu",
@@ -428,7 +456,7 @@ export function SupplierPortalEarningsPage() {
           <Text type="secondary">Konsinye stok satışlarına göre dönem bazlı hakediş tutarlarınızı buradan takip edebilirsiniz.</Text>
         </div>
         <Space wrap className="erp-page-intro-actions">
-          <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+          <Button icon={<DownloadOutlined />} onClick={handleExportHistory}>Geçmiş Excel</Button>
         </Space>
       </div>
 
@@ -449,7 +477,7 @@ export function SupplierPortalEarningsPage() {
             <Card
               bordered={false}
               loading={pageLoading}
-              style={card.isStatus ? { background: statusMeta.cardBg, border: `1px solid ${statusMeta.cardBorder}` } : undefined}
+              style={{ background: statusMeta.cardBg, border: `1px solid ${statusMeta.cardBorder}` }}
             >
               <Text type="secondary">{card.title}</Text>
               <div style={{ fontSize: 28, fontWeight: 700, marginTop: 8, marginBottom: 6 }}>
@@ -462,46 +490,49 @@ export function SupplierPortalEarningsPage() {
       </Row>
 
       <Card bordered={false} loading={pageLoading} style={{ background: statusMeta.bandBg, border: `1px solid ${statusMeta.cardBorder}` }}>
-        {currentSummary.invoiceNo ? (
-          <Text>{statusMeta.icon} Fatura alındı: {currentSummary.invoiceNo} | Fatura Tarihi: {formatDateDisplayShort(currentSummary.invoiceDate)} | Son Ödeme: {formatDateDisplayShort(currentSummary.paymentDueDate)}</Text>
-        ) : Number(currentSummary.earningsTotal || 0) > 0 ? (
+        {currentSummary.status === "Dönem Tamamlanmadı" ? (
+          <Text>{statusMeta.icon} Dönem henüz tamamlanmadı. Dönem kapandığında hakediş hesabınız kesinleşecektir.</Text>
+        ) : currentSummary.status === "Satış Yok" ? (
+          <Text>{statusMeta.icon} Bu dönem için hakediş oluşturan konsinye satış bulunmamaktadır.</Text>
+        ) : currentSummary.status === "Fatura Bekleniyor" ? (
           <Text>{statusMeta.icon} Fatura bilgisi: Hakediş tutarı olan {formatDisplayMoney(currentSummary.earningsTotal)} için fatura kesilmesi beklenmektedir. Son ödeme tarihi, fatura tarihinden itibaren 15 gün içinde gerçekleştirilecektir.</Text>
+        ) : currentSummary.status === "Ödeme Bekleniyor" ? (
+          <Text>{statusMeta.icon} Fatura alındı: {currentSummary.invoiceNo} | Fatura Tarihi: {formatDateDisplayShort(currentSummary.invoiceDate)} | Son Ödeme: {formatDateDisplayShort(currentSummary.paymentDueDate)}</Text>
+        ) : currentSummary.status === "Tamamlandı" ? (
+          <Text>{statusMeta.icon} Ödeme {formatDateDisplayShort(currentSummary.paymentDate)} tarihinde tamamlandı. Fatura: {currentSummary.invoiceNo}</Text>
         ) : (
           <Text>{statusMeta.icon} Bu dönem için hakediş oluşturan konsinye satış bulunmamaktadır.</Text>
         )}
       </Card>
 
-      <Card title="Satış Detayı" bordered={false} loading={pageLoading} className="erp-card-logo-divider">
+      <Card
+        title="Satış Detayı"
+        bordered={false}
+        loading={pageLoading}
+        className="erp-card-logo-divider"
+        extra={<Button icon={<DownloadOutlined />} onClick={handleExportDetail}>Excel'e Aktar</Button>}
+      >
         <Table
           rowKey="key"
           pagination={false}
           dataSource={currentSummary.detailRows}
           locale={{ emptyText: "Bu dönemde satış bulunmamaktadır." }}
-          scroll={{ x: 1080 }}
+          scroll={{ x: 860 }}
           columns={[
             { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 140 },
             { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 220 },
             { title: "Satış Adedi", dataIndex: "salesQuantity", key: "salesQuantity", width: 110 },
             { title: "Birim Fiyat", dataIndex: "unitPrice", key: "unitPrice", width: 140, render: (value) => formatDisplayMoney(value) },
-            { title: "Brüt Tutar", dataIndex: "grossAmount", key: "grossAmount", width: 140, render: (value) => formatDisplayMoney(value) },
             { title: "Komisyon %", dataIndex: "commissionRate", key: "commissionRate", width: 120, render: (value) => `%${Number(value || 0).toFixed(2)}` },
-            { title: "Komisyon Tutarı", dataIndex: "commissionAmount", key: "commissionAmount", width: 150, render: (value) => formatDisplayMoney(value) },
-            { title: "Net Tutar", dataIndex: "netAmount", key: "netAmount", width: 150, render: (value) => <Text strong>{formatDisplayMoney(value)}</Text> },
+            { title: "Hakediş Tutar", dataIndex: "netAmount", key: "netAmount", width: 150, render: (value) => <Text strong>{formatDisplayMoney(value)}</Text> },
           ]}
           summary={() => (
             <Table.Summary>
-              <Table.Summary.Row style={{ background: "#1f2937" }}>
-                <Table.Summary.Cell index={0} colSpan={4}>
+              <Table.Summary.Row style={{ background: "#d86d5b" }}>
+                <Table.Summary.Cell index={0} colSpan={5}>
                   <Text strong style={{ color: "#fff" }}>Toplam</Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={1}>
-                  <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(currentSummary.grossTotal)}</Text>
-                </Table.Summary.Cell>
-                <Table.Summary.Cell index={2} />
-                <Table.Summary.Cell index={3}>
-                  <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(currentSummary.commissionTotal)}</Text>
-                </Table.Summary.Cell>
-                <Table.Summary.Cell index={4}>
                   <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(currentSummary.earningsTotal)}</Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
@@ -515,7 +546,7 @@ export function SupplierPortalEarningsPage() {
         bordered={false}
         loading={pageLoading}
         className="erp-card-logo-divider"
-        extra={<Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>}
+        extra={<Button icon={<DownloadOutlined />} onClick={handleExportHistory}>Excel'e Aktar</Button>}
       >
         <Table
           rowKey="periodKey"
@@ -525,22 +556,53 @@ export function SupplierPortalEarningsPage() {
             onClick: () => setPeriodDate(record.periodDate),
           })}
           rowClassName={(record) => (record.periodKey === currentSummary.periodKey ? "erp-clickable-row ant-table-row-selected" : "erp-clickable-row")}
+          scroll={{ x: 900 }}
           columns={[
-            { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel" },
-            { title: "Brüt Satış", dataIndex: "grossTotal", key: "grossTotal", render: (value) => formatDisplayMoney(value) },
-            { title: "Komisyon", dataIndex: "commissionTotal", key: "commissionTotal", render: (value) => formatDisplayMoney(value) },
-            { title: "Hakediş", dataIndex: "earningsTotal", key: "earningsTotal", render: (value) => formatDisplayMoney(value) },
-            { title: "Fatura", dataIndex: "invoiceNo", key: "invoiceNo", render: (value) => value || "—" },
+            { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130 },
+            { title: "Toplam Satış Tutar", dataIndex: "grossTotal", key: "grossTotal", width: 160, render: (value) => formatDisplayMoney(value) },
+            { title: "Komisyon Oranı", dataIndex: "commissionRate", key: "commissionRate", width: 130, render: (value) => `%${Number(value || 0).toFixed(2)}` },
+            { title: "Toplam Hakediş Tutar", dataIndex: "earningsTotal", key: "earningsTotal", width: 170, render: (value) => formatDisplayMoney(Number(value || 0) * 1.2) },
+            { title: "Fatura Hizmet Tutar", dataIndex: "earningsTotal", key: "invoiceServiceAmount", width: 160, render: (value) => formatDisplayMoney(value) },
+            { title: "Fatura KDV Tutar", key: "invoiceKdv", width: 140, render: (_, record) => formatDisplayMoney(Number(record.earningsTotal || 0) * 0.2) },
             {
               title: "Ödeme Durumu",
               dataIndex: "status",
               key: "status",
+              width: 150,
               render: (value) => {
-                const meta = earningsStatusMetaMap[value] || earningsStatusMetaMap["Satis Yok"];
+                const meta = earningsStatusMetaMap[value] || earningsStatusMetaMap["Satış Yok"];
                 return <Tag color={meta.color}>{value}</Tag>;
               },
             },
           ]}
+          summary={() => {
+            const totalGross = historySummaries.reduce((sum, item) => sum + Number(item.grossTotal || 0), 0);
+            const totalEarnings = historySummaries.reduce((sum, item) => sum + Number(item.earningsTotal || 0), 0);
+            const totalKdv = totalEarnings * 0.2;
+            return (
+              <Table.Summary>
+                <Table.Summary.Row style={{ background: "#d86d5b" }}>
+                  <Table.Summary.Cell index={0}>
+                    <Text strong style={{ color: "#fff" }}>Toplam</Text>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={1}>
+                    <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalGross)}</Text>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={2} />
+                  <Table.Summary.Cell index={3}>
+                    <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings * 1.2)}</Text>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={4}>
+                    <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings)}</Text>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={5}>
+                    <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalKdv)}</Text>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={6} />
+                </Table.Summary.Row>
+              </Table.Summary>
+            );
+          }}
         />
       </Card>
     </Space>

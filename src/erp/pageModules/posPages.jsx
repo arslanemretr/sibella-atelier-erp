@@ -1,7 +1,9 @@
 ﻿import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Avatar, Button, Card, Col, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Select, Space, Table, Tag, Typography, message } from "antd";
-import { BarcodeOutlined, DeleteOutlined, EditOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { Avatar, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Select, Space, Table, Tag, Typography, message } from "antd";
+import { BarcodeOutlined, CloseCircleOutlined, EditOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
+import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
 import { buildPosProductCatalogFresh, closePosSession, createPosSale, createPosSession, findProductByBarcode, getOpenPosSessionsFresh, listPosSalesFresh, listPosSessionsFresh } from "../posData";
 import { listStockLocationBalancesFresh, listStockLocationsFresh } from "../stockLocationsData";
@@ -31,6 +33,8 @@ export function PosSessionsPage() {
   const [selectedSession, setSelectedSession] = React.useState(null);
   const [sessions, setSessions] = React.useState([]);
   const [sales, setSales] = React.useState([]);
+  const [salesLoading, setSalesLoading] = React.useState(false);
+  const [stockLocations, setStockLocations] = React.useState([]);
   const [tableLoading, setTableLoading] = React.useState(false);
   const [createModalOpen, setCreateModalOpen] = React.useState(false);
   const [form] = Form.useForm();
@@ -38,12 +42,12 @@ export function PosSessionsPage() {
   const refreshSessions = React.useCallback(async () => {
     try {
       setTableLoading(true);
-      const [nextSessions, nextSales] = await Promise.all([
+      const [nextSessions, nextLocations] = await Promise.all([
         listPosSessionsFresh(),
-        listPosSalesFresh(),
+        listStockLocationsFresh(),
       ]);
       setSessions(nextSessions);
-      setSales(nextSales);
+      setStockLocations(nextLocations);
     } catch (error) {
       message.error(error?.message || "POS oturumlari yuklenemedi.");
     } finally {
@@ -51,27 +55,69 @@ export function PosSessionsPage() {
     }
   }, []);
 
+  const openSessionDetail = React.useCallback(async (record) => {
+    setSelectedSession(record);
+    setDetailOpen(true);
+    setSalesLoading(true);
+    try {
+      const sessionSales = await listPosSalesFresh();
+      setSales(sessionSales.filter((s) => s.sessionId === record.id));
+    } catch {
+      setSales([]);
+    } finally {
+      setSalesLoading(false);
+    }
+  }, []);
+
   React.useEffect(() => {
     void refreshSessions();
   }, [refreshSessions]);
 
+  const stockLocationMap = React.useMemo(
+    () => new Map(stockLocations.map((item) => [item.id, item.name])),
+    [stockLocations],
+  );
+
+  const stockLocationOptions = React.useMemo(
+    () => stockLocations.map((item) => ({ value: item.id, label: item.isDefaultMain ? `${item.name} (Merkez)` : item.name })),
+    [stockLocations],
+  );
+
+  const openCreateModal = () => {
+    const lastSession = sessions[0];
+    const devirBalance = lastSession ? Number(lastSession.openingBalance || 0) + Number(lastSession.totalSales || 0) : 0;
+    form.setFieldsValue({
+      openingBalance: devirBalance,
+      openedAt: dayjs(),
+    });
+    setCreateModalOpen(true);
+  };
+
   const handleCreateSession = async () => {
     try {
       const values = await form.validateFields();
-      createPosSession(values);
+      await requestJson("POST", "/api/pos-sessions", {
+        ...values,
+        openedAt: values.openedAt ? values.openedAt.toISOString() : new Date().toISOString(),
+      });
       form.resetFields();
       setCreateModalOpen(false);
       await refreshSessions();
       message.success("POS oturumu açıldı.");
-    } catch {
-      // validation handled by form
+    } catch (error) {
+      if (error?.errorFields) return;
+      message.error(error?.message || "Oturum açılamadı.");
     }
   };
 
-  const handleCloseSession = (sessionId) => {
-    closePosSession(sessionId);
-    void refreshSessions();
-    message.success("POS oturumu kapatıldı.");
+  const handleCloseSession = async (sessionId) => {
+    try {
+      await requestJson("POST", `/api/pos-sessions/${encodeURIComponent(sessionId)}/close`, {});
+      await refreshSessions();
+      message.success("POS oturumu kapatıldı.");
+    } catch (error) {
+      message.error(error?.message || "Oturum kapatılamadı.");
+    }
   };
 
   const columns = [
@@ -93,13 +139,19 @@ export function PosSessionsPage() {
         </button>
       ),
     },
-    { title: "Kasa", dataIndex: "registerName", key: "registerName", sorter: (a, b) => a.registerName.localeCompare(b.registerName, "tr") },
-    { title: "Kasiyer", dataIndex: "cashierName", key: "cashierName", sorter: (a, b) => a.cashierName.localeCompare(b.cashierName, "tr") },
-    { title: "Açılış", dataIndex: "openedAt", key: "openedAt", sorter: (a, b) => a.openedAt.localeCompare(b.openedAt, "tr"), render: (value) => new Date(value).toLocaleString("tr-TR") },
+    {
+      title: "Depo Yeri",
+      dataIndex: "stockLocationId",
+      key: "stockLocationId",
+      render: (value) => stockLocationMap.get(value) || "-",
+    },
+    { title: "Kasiyer", dataIndex: "cashierName", key: "cashierName", sorter: (a, b) => (a.cashierName || "").localeCompare(b.cashierName || "", "tr") },
+    { title: "Açılış Tarihi", dataIndex: "openedAt", key: "openedAt", sorter: (a, b) => (a.openedAt || "").localeCompare(b.openedAt || "", "tr"), render: (value) => value ? new Date(value).toLocaleString("tr-TR") : "-" },
+    { title: "Kapanış Tarihi", dataIndex: "closedAt", key: "closedAt", render: (value) => value ? new Date(value).toLocaleString("tr-TR") : "-" },
     { title: "Açılış Bakiye", dataIndex: "openingBalanceDisplay", key: "openingBalanceDisplay", sorter: (a, b) => a.openingBalance - b.openingBalance },
     { title: "Satış", dataIndex: "totalSalesDisplay", key: "totalSalesDisplay", sorter: (a, b) => a.totalSales - b.totalSales },
     { title: "Fiş", dataIndex: "salesCount", key: "salesCount", sorter: (a, b) => a.salesCount - b.salesCount },
-    { title: "Durum", dataIndex: "status", key: "status", sorter: (a, b) => a.status.localeCompare(b.status, "tr"), render: (value) => <Tag color={value === "Açık" ? "green" : "default"}>{value}</Tag> },
+    { title: "Durum", dataIndex: "status", key: "status", sorter: (a, b) => (a.status || "").localeCompare(b.status || "", "tr"), render: (value) => <Tag color={value === "Açık" ? "green" : "default"}>{value}</Tag> },
     {
       title: "İşlemler",
       key: "actions",
@@ -115,10 +167,8 @@ export function PosSessionsPage() {
             }}
           />
           {record.status === "Açık" ? (
-            <Popconfirm title="Oturum kapatılsın mı?" okText="Kapat" cancelText="Vazgeç" onConfirm={() => handleCloseSession(record.id)}>
-              <span onClick={preventRowClick}>
-                <Button type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} />
-              </span>
+            <Popconfirm title="Oturum kapatılsın mı?" okText="Kapat" cancelText="Vazgeç" onConfirm={() => handleCloseSession(record.id)} onClick={preventRowClick}>
+              <Button type="text" icon={<CloseCircleOutlined />}>Kapat</Button>
             </Popconfirm>
           ) : null}
         </Space>
@@ -135,7 +185,7 @@ export function PosSessionsPage() {
         </div>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={() => { void refreshSessions(); message.success("Oturumlar yenilendi."); }}>Yenile</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>Oturum Aç</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>Oturum Aç</Button>
         </Space>
       </div>
 
@@ -146,7 +196,7 @@ export function PosSessionsPage() {
           dataSource={sessions.map((item) => ({ key: item.id, ...item }))}
           pagination={false}
           onRow={(record) => ({
-            onClick: () => openDetailFromRow(setSelectedSession, setDetailOpen, record),
+            onClick: () => openSessionDetail(record),
           })}
           rowClassName={() => "erp-clickable-row"}
         />
@@ -183,7 +233,8 @@ export function PosSessionsPage() {
                 rowKey="id"
                 pagination={false}
                 size="small"
-                dataSource={sales.filter((sale) => sale.sessionId === selectedSession.id)}
+                loading={salesLoading}
+                dataSource={sales}
                 columns={[
                   { title: "Fiş", dataIndex: "receiptNo", key: "receiptNo" },
                   { title: "Müşteri", dataIndex: "customerName", key: "customerName" },
@@ -197,16 +248,21 @@ export function PosSessionsPage() {
       </Drawer>
 
       <Modal title="Yeni POS Oturumu" open={createModalOpen} onCancel={() => setCreateModalOpen(false)} onOk={handleCreateSession} okText="Aç" cancelText="Vazgeç">
-        <Form form={form} layout="vertical" initialValues={{ registerName: "Magaza Ana Kasa", cashierName: "Sibel Ersoy Arslan", openingBalance: 0 }}>
+        <Form form={form} layout="vertical" initialValues={{ cashierName: "Sibel Ersoy Arslan", openingBalance: 0 }}>
           <Row gutter={[12, 12]}>
             <Col span={24}>
-              <Form.Item name="registerName" label="Kasa" rules={[{ required: true, message: "Kasa adı zorunludur." }]}>
-                <Input placeholder="Magaza Ana Kasa" />
+              <Form.Item name="stockLocationId" label="Depo Yeri" rules={[{ required: true, message: "Depo yeri zorunludur." }]}>
+                <Select options={stockLocationOptions} placeholder="Depo yeri seçin" />
               </Form.Item>
             </Col>
             <Col span={24}>
               <Form.Item name="cashierName" label="Kasiyer" rules={[{ required: true, message: "Kasiyer adı zorunludur." }]}>
                 <Input placeholder="Kasiyer adı" />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item name="openedAt" label="Açılış Tarihi">
+                <DatePicker showTime style={{ width: "100%" }} />
               </Form.Item>
             </Col>
             <Col span={24}>
@@ -275,12 +331,11 @@ export function PosScreenPage() {
     }
   }, []);
 
-  const buildEmptyOrder = React.useCallback((sessionId, index = 1) => ({
+  const buildEmptyOrder = React.useCallback((sessionId, index = 1, sessionNo = null) => ({
     id: `draft-${sessionId}-${Date.now()}-${index}`,
-    title: `${1000 + index}`,
+    title: sessionNo ? `${sessionNo}-${1000 + index}` : `${1000 + index}`,
     customerName: "",
     note: "",
-    stockLocationId: null,
     discountType: "amount",
     discountValue: 0,
     lines: [],
@@ -306,9 +361,16 @@ export function PosScreenPage() {
       return;
     }
 
+    const sessionNo = sessions.find((s) => s.id === activeSessionId)?.sessionNo || null;
     const existingOrders = orderDraftsBySession[activeSessionId];
+    if (sessionNo && existingOrders?.length > 0) {
+      const fixed = existingOrders.map((o) => /^\d{4}$/.test(o.title) ? { ...o, title: `${sessionNo}-${o.title}` } : o);
+      if (fixed.some((o, i) => o.title !== existingOrders[i].title)) {
+        persistDraftOrders({ ...orderDraftsBySession, [activeSessionId]: fixed });
+      }
+    }
     if (!existingOrders || existingOrders.length === 0) {
-      const firstOrder = buildEmptyOrder(activeSessionId);
+      const firstOrder = buildEmptyOrder(activeSessionId, 1, sessionNo);
       persistDraftOrders({
         ...orderDraftsBySession,
         [activeSessionId]: [firstOrder],
@@ -330,7 +392,7 @@ export function PosScreenPage() {
         [activeSessionId]: currentStillOpen ? currentActiveId : firstOpenOrder?.id,
       };
     });
-  }, [activeSessionId, buildEmptyOrder, orderDraftsBySession, persistDraftOrders]);
+  }, [activeSessionId, buildEmptyOrder, orderDraftsBySession, persistDraftOrders, sessions]);
 
   const refreshPosContext = React.useCallback(async () => {
     try {
@@ -375,7 +437,7 @@ export function PosScreenPage() {
   const closedDraftOrders = draftOrders.filter((item) => item.status === "closed");
   const activeOrderId = activeOrderIdBySession[activeSessionId];
   const activeOrder = openDraftOrders.find((item) => item.id === activeOrderId) || openDraftOrders[0];
-  const activeOrderStockLocationId = activeOrder?.stockLocationId || null;
+  const activeOrderStockLocationId = activeSession?.stockLocationId || null;
   const activeOrderLines = activeOrder?.lines;
   const cart = activeOrderLines || [];
   const sessionOrders = posSales.filter((sale) => sale.sessionId === activeSessionId);
@@ -522,7 +584,8 @@ export function PosScreenPage() {
       return;
     }
 
-    const nextOrder = buildEmptyOrder(targetSessionId, targetOrders.length + 1);
+    const targetSession = sessions.find((s) => s.id === targetSessionId);
+    const nextOrder = buildEmptyOrder(targetSessionId, targetOrders.length + 1, targetSession?.sessionNo || null);
     const nextOrders = [...targetOrders, nextOrder];
     persistDraftOrders({
       ...orderDraftsBySession,
@@ -541,8 +604,13 @@ export function PosScreenPage() {
       return;
     }
 
+    if (orderId === openDraftOrders[0]?.id) {
+      message.warning("İlk sipariş silinemez.");
+      return;
+    }
+
     const remainingOrders = draftOrders.filter((item) => item.id !== orderId);
-    const nextOrders = remainingOrders.length > 0 ? remainingOrders : [buildEmptyOrder(activeSessionId)];
+    const nextOrders = remainingOrders.length > 0 ? remainingOrders : [buildEmptyOrder(activeSessionId, 1, activeSession?.sessionNo)];
     persistDraftOrders({
       ...orderDraftsBySession,
       [activeSessionId]: nextOrders,
@@ -572,6 +640,24 @@ export function PosScreenPage() {
       [activeSessionId]: nextOpenOrder?.id,
     }));
     message.success("Siparis kapatildi.");
+  };
+
+  const handleCloseOrderButton = () => {
+    if (!activeOrder) return;
+    const isBase = activeOrder.id === openDraftOrders[0]?.id;
+    if (isBase) return;
+    if ((activeOrder.lines || []).length > 0) {
+      Modal.confirm({
+        title: "Siparişi Kapat",
+        content: "Bu siparişi kapatmak istediğinize emin misiniz? Ürünler silinecektir.",
+        okText: "Kapat",
+        cancelText: "Vazgeç",
+        okType: "danger",
+        onOk: closeActiveOrder,
+      });
+    } else {
+      closeActiveOrder();
+    }
   };
 
   const reopenDraftOrder = (orderId) => {
@@ -611,8 +697,8 @@ export function PosScreenPage() {
   };
 
   const addProductToCart = (product) => {
-    if (!activeOrder?.stockLocationId) {
-      message.warning("Once satisin dusulecegi stok yerini secin.");
+    if (!activeSession?.stockLocationId) {
+      message.warning("Oturumun depo yeri tanımlı değil.");
       return;
     }
 
@@ -802,12 +888,20 @@ export function PosScreenPage() {
   const handleCreateSession = async () => {
     try {
       const values = await sessionForm.validateFields();
-      const created = createPosSession(values);
+      const created = createPosSession({
+        ...values,
+        openedAt: values.openedAt ? values.openedAt.toISOString() : new Date().toISOString(),
+      });
       setOpenSessionModalOpen(false);
       sessionForm.resetFields();
-      void refreshPosContext();
+      await refreshPosContext();
       setActiveSessionId(created.id);
-      createDraftOrder(created.id);
+      const firstOrder = buildEmptyOrder(created.id, 1, created.sessionNo);
+      persistDraftOrders({
+        ...orderDraftsBySession,
+        [created.id]: [firstOrder],
+      });
+      setActiveOrderIdBySession((prev) => ({ ...prev, [created.id]: firstOrder.id }));
       message.success("Yeni POS oturumu açıldı.");
     } catch {
       // validation handled by form
@@ -827,9 +921,11 @@ export function PosScreenPage() {
 
     try {
       const values = await paymentForm.validateFields();
-      createPosSale({
+      await requestJson("POST", "/api/pos-sales", {
         sessionId: activeSessionId,
-        stockLocationId: values.stockLocationId,
+        stockLocationId: activeSession?.stockLocationId,
+        receiptNo: activeOrder?.title || undefined,
+        soldAt: new Date().toISOString(),
         customerName: values.customerName || activeOrder.customerName,
         paymentMethod: values.paymentMethod,
         note: values.note || activeOrder.note,
@@ -844,19 +940,20 @@ export function PosScreenPage() {
       setPaymentModalOpen(false);
       paymentForm.resetFields();
       const remainingOrders = draftOrders.filter((item) => item.id !== activeOrder.id);
-      const fallbackOrder = buildEmptyOrder(activeSessionId, remainingOrders.length + 1);
-      const nextOrders = remainingOrders.length > 0 ? remainingOrders : [fallbackOrder];
+      const newOrder = buildEmptyOrder(activeSessionId, remainingOrders.length + 1, activeSession?.sessionNo || null);
+      const nextOrders = [...remainingOrders, newOrder];
       persistDraftOrders({
         ...orderDraftsBySession,
         [activeSessionId]: nextOrders,
       });
       setActiveOrderIdBySession((prev) => ({
         ...prev,
-        [activeSessionId]: nextOrders[0].id,
+        [activeSessionId]: newOrder.id,
       }));
       void refreshPosContext();
       message.success("Satış tamamlandı.");
     } catch (error) {
+      if (error?.errorFields) return;
       if (error?.message) {
         message.error(error.message);
       }
@@ -869,8 +966,12 @@ export function PosScreenPage() {
       return;
     }
 
+    if (!activeSession?.stockLocationId) {
+      message.warning("Oturumun depo yeri tanımlı değil.");
+      return;
+    }
+
     paymentForm.setFieldsValue({
-      stockLocationId: activeOrder.stockLocationId || undefined,
       customerName: activeOrder.customerName || "Magaza Musterisi",
       paymentMethod: "Nakit",
       note: activeOrder.note || "",
@@ -878,12 +979,35 @@ export function PosScreenPage() {
     setPaymentModalOpen(true);
   };
 
+  const handleCloseSessionFromStore = () => {
+    const hasOpenOrders = openDraftOrders.some((o) => o.lines.length > 0);
+    Modal.confirm({
+      title: "Oturumu Kapat",
+      content: hasOpenOrders
+        ? "Kaydedilmemiş siparişler iptal edilecektir. Oturumu kapatmak istediğinize emin misiniz?"
+        : "Oturumu kapatmak istediğinize emin misiniz?",
+      okText: "Kapat",
+      cancelText: "Vazgeç",
+      okType: "danger",
+      onOk: async () => {
+        try {
+          await requestJson("POST", `/api/pos-sessions/${encodeURIComponent(activeSessionId)}/close`, {});
+          persistDraftOrders({ ...orderDraftsBySession, [activeSessionId]: [] });
+          navigate("/pos/sessions");
+          message.success("POS oturumu kapatıldı.");
+        } catch (error) {
+          message.error(error?.message || "Oturum kapatılamadı.");
+        }
+      },
+    });
+  };
+
   const actionMenu = {
     items: [
       { key: "sessions", label: "Oturumlara Git" },
       { key: "reload", label: "Verileri Yeniden Yükle" },
-      { key: "open", label: "Yeni Oturum Aç" },
-      { key: "products", label: "Ürün Oluştur" },
+      { key: "exit", label: "Oturumdan Çık" },
+      { key: "close", label: "Oturumu Kapat", danger: true },
     ],
     onClick: ({ key }) => {
       if (key === "sessions") {
@@ -893,11 +1017,11 @@ export function PosScreenPage() {
         void refreshPosContext();
         message.success("POS verileri yenilendi.");
       }
-      if (key === "open") {
-        setOpenSessionModalOpen(true);
+      if (key === "exit") {
+        navigate("/pos/sessions");
       }
-      if (key === "products") {
-        navigate("/products/new");
+      if (key === "close") {
+        handleCloseSessionFromStore();
       }
     },
   };
@@ -934,11 +1058,11 @@ export function PosScreenPage() {
         <div className="erp-pos-left">
           <div className="erp-pos-order-header">
             <div className="erp-pos-order-header-main">
-              <Button type="primary" className="erp-pos-session-badge">
-                {activeSession?.sessionNo?.replace("POS-", "") || "Oturum"}
-              </Button>
-              <Button type="primary" className="erp-pos-orders-title-btn">Kaydolun</Button>
-              <Button className="erp-pos-orders-title-btn" onClick={() => setOrdersDrawerOpen(true)}>Siparisler</Button>
+              <div className="erp-pos-session-info">
+                <Text strong style={{ fontSize: 13 }}>Pos Oturum Kodu: {activeSession?.sessionNo || "-"}</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>Stok Yeri: {stockLocations.find((x) => x.id === activeSession?.stockLocationId)?.name || "-"}</Text>
+              </div>
+              <Button className="erp-pos-orders-title-btn" onClick={() => setOrdersDrawerOpen(true)}>Siparişler</Button>
               <Button icon={<PlusCircleOutlined />} onClick={() => createDraftOrder()}>Yeni</Button>
             </div>
             <div className="erp-pos-session-tabs">
@@ -965,14 +1089,6 @@ export function PosScreenPage() {
                     <Text type="secondary">{activeOrder.note || "Siparis acik, urun eklemeye hazir."}</Text>
                   </div>
                   <Space wrap>
-                    <Select
-                      value={activeOrder.stockLocationId || undefined}
-                      onChange={(value) => updateActiveOrder((order) => ({ ...order, stockLocationId: value || null }))}
-                      options={stockLocationOptions}
-                      placeholder="Stok yeri secin"
-                      style={{ minWidth: 220 }}
-                      allowClear
-                    />
                     <Button onClick={() => {
                       discountForm.setFieldsValue({
                         discountType: activeOrder.discountType || "amount",
@@ -981,12 +1097,14 @@ export function PosScreenPage() {
                       setDiscountModalOpen(true);
                     }}
                     >
-                      Indirim
+                      İndirim
                     </Button>
-                    <Button onClick={closeActiveOrder}>Siparisi Kapat</Button>
-                    <Popconfirm title="Siparis silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => removeOrderDraft(activeOrder.id)}>
-                      <Button danger>Siparisi Sil</Button>
-                    </Popconfirm>
+                    <Button
+                      onClick={handleCloseOrderButton}
+                      disabled={activeOrder?.id === openDraftOrders[0]?.id}
+                    >
+                      Sipariş Kapat
+                    </Button>
                   </Space>
                 </div>
               </div>
@@ -1128,7 +1246,7 @@ export function PosScreenPage() {
                   </div>
                   <div className="erp-pos-product-name">{product.code}-{product.name}</div>
                   <div className="erp-pos-product-name" style={{ fontSize: 12, opacity: 0.75 }}>
-                    {activeOrderStockLocationId ? `Stok: ${product.quantityAvailable}` : "Stok yeri secin"}
+                    {activeOrderStockLocationId ? `Stok: ${product.quantityAvailable}` : "Depo yeri yok"}
                   </div>
                 </button>
               ))}
@@ -1138,9 +1256,11 @@ export function PosScreenPage() {
       ) : null}
       <Modal title="Satışı Tamamla" open={paymentModalOpen} onCancel={() => setPaymentModalOpen(false)} onOk={handlePayment} okText="Satışı Kaydet" cancelText="Vazgeç">
         <Form form={paymentForm} layout="vertical" initialValues={{ customerName: activeOrder?.customerName || "Magaza Musterisi", paymentMethod: "Nakit", note: activeOrder?.note || "" }}>
-          <Form.Item name="stockLocationId" label="Stok Yeri" rules={[{ required: true, message: "Stok yeri secin." }]}>
-            <Select options={stockLocationOptions} placeholder="Stok yeri secin" />
-          </Form.Item>
+          <Descriptions column={1} size="small" bordered style={{ marginBottom: 16 }}>
+            <Descriptions.Item label="Oturum">{activeSession?.sessionNo || "-"}</Descriptions.Item>
+            <Descriptions.Item label="Satış Tarihi">{activeSession?.openedAt ? new Date(activeSession.openedAt).toLocaleString("tr-TR") : "-"}</Descriptions.Item>
+            <Descriptions.Item label="Stok Yeri">{stockLocations.find((item) => item.id === activeSession?.stockLocationId)?.name || "-"}</Descriptions.Item>
+          </Descriptions>
           <Form.Item name="customerName" label="Müşteri">
             <Input />
           </Form.Item>
@@ -1151,12 +1271,8 @@ export function PosScreenPage() {
             <Input.TextArea rows={3} />
           </Form.Item>
           <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="Oturum">{activeSession?.sessionNo || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Stok Yeri">
-              {stockLocations.find((item) => item.id === paymentForm.getFieldValue("stockLocationId"))?.name || "-"}
-            </Descriptions.Item>
             <Descriptions.Item label="Ara Toplam">{formatMovementMoney(orderTotals.grossTotal)}</Descriptions.Item>
-            <Descriptions.Item label="Indirim">{formatMovementMoney(orderTotals.discountAmount)}</Descriptions.Item>
+            <Descriptions.Item label="İndirim">{formatMovementMoney(orderTotals.discountAmount)}</Descriptions.Item>
             <Descriptions.Item label="Vergi">{formatMovementMoney(cartTax)}</Descriptions.Item>
             <Descriptions.Item label="Genel Toplam">{formatMovementMoney(cartGrandTotal)}</Descriptions.Item>
           </Descriptions>
@@ -1212,12 +1328,15 @@ export function PosScreenPage() {
       </Modal>
 
       <Modal title="Yeni POS Oturumu" open={openSessionModalOpen} onCancel={() => setOpenSessionModalOpen(false)} onOk={handleCreateSession} okText="Aç" cancelText="Vazgeç">
-        <Form form={sessionForm} layout="vertical" initialValues={{ registerName: "Magaza Ana Kasa", cashierName: "Sibel Ersoy Arslan", openingBalance: 0 }}>
-          <Form.Item name="registerName" label="Kasa" rules={[{ required: true, message: "Kasa adı zorunludur." }]}>
-            <Input />
+        <Form form={sessionForm} layout="vertical" initialValues={{ cashierName: "Sibel Ersoy Arslan", openingBalance: 0 }}>
+          <Form.Item name="stockLocationId" label="Depo Yeri" rules={[{ required: true, message: "Depo yeri zorunludur." }]}>
+            <Select options={stockLocationOptions} placeholder="Depo yeri seçin" />
           </Form.Item>
           <Form.Item name="cashierName" label="Kasiyer" rules={[{ required: true, message: "Kasiyer adı zorunludur." }]}>
             <Input />
+          </Form.Item>
+          <Form.Item name="openedAt" label="Açılış Tarihi">
+            <DatePicker showTime style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item name="openingBalance" label="Açılış Bakiyesi">
             <InputNumber min={0} style={{ width: "100%" }} />
@@ -1248,9 +1367,11 @@ export function PosScreenPage() {
                   render: (_, record) => (
                     <Space size={8}>
                       <Button size="small" onClick={() => record.status === "open" ? setActiveOrderIdBySession((prev) => ({ ...prev, [activeSessionId]: record.id })) : reopenDraftOrder(record.id)}>{record.status === "open" ? "Yukle" : "Ac"}</Button>
-                      <Popconfirm title="Siparis silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => removeOrderDraft(record.id)}>
-                        <Button size="small" danger>Sil</Button>
-                      </Popconfirm>
+                      {record.id !== openDraftOrders[0]?.id && (
+                        <Popconfirm title="Siparis silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => removeOrderDraft(record.id)}>
+                          <Button size="small" danger>Sil</Button>
+                        </Popconfirm>
+                      )}
                     </Space>
                   ),
                 },
@@ -1265,7 +1386,7 @@ export function PosScreenPage() {
               size="small"
               dataSource={sessionOrders}
               columns={[
-                { title: "Fis", dataIndex: "receiptNo", key: "receiptNo" },
+                { title: "Sipariş No", dataIndex: "receiptNo", key: "receiptNo" },
                 { title: "Musteri", dataIndex: "customerName", key: "customerName" },
                 { title: "Tarih", dataIndex: "soldAt", key: "soldAt", render: (value) => new Date(value).toLocaleString("tr-TR") },
                 { title: "Indirim", dataIndex: "discountAmountDisplay", key: "discountAmountDisplay" },

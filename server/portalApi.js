@@ -19,6 +19,13 @@ function createId(prefix) {
 let ensureDeliveryLineSchemaPromise = null;
 let deliveryLineSchemaInfo = null;
 
+export async function ensureStockLocationInSessions() {
+  const hasCol = await columnExists("pos_sessions", "stock_location_id");
+  if (!hasCol) {
+    await sqlExec("ALTER TABLE pos_sessions ADD COLUMN IF NOT EXISTS stock_location_id TEXT REFERENCES stock_locations(id)");
+  }
+}
+
 async function columnExists(tableName, columnName) {
   const rows = await sqlMany(
     `SELECT 1 AS found
@@ -164,44 +171,85 @@ async function listPosSalesRows() {
   }));
 }
 
+function normalizePosStatus(status) {
+  if (!status || status === "Acik" || status === "Açık") return "Açık";
+  return "Kapalı";
+}
+
 async function listPosSessionsRows() {
-  const sessionRows = await sqlMany("SELECT * FROM pos_sessions ORDER BY created_at DESC, opened_at DESC");
-  const sales = await listPosSalesRows();
-  return sessionRows.map((row) => {
-    const relatedSales = sales.filter((sale) => sale.sessionId === row.id);
-    const totalSales = relatedSales.reduce((sum, item) => sum + Number(item.grandTotal || 0), 0);
-    return {
-      id: row.id,
-      sessionNo: row.session_no || "",
-      registerName: row.register_name || "",
-      cashierName: row.cashier_name || "",
-      openingBalance: Number(row.opening_balance || 0),
-      openedAt: row.opened_at || null,
-      closedAt: row.closed_at || null,
-      status: row.status || "Acik",
-      note: row.note || "",
-      createdAt: row.created_at || null,
-      updatedAt: row.updated_at || null,
-      salesCount: relatedSales.length,
-      totalSales,
-    };
-  });
+  const rows = await sqlMany(`
+    SELECT s.*,
+           COUNT(p.id)::int           AS sales_count,
+           COALESCE(SUM(p.grand_total), 0) AS total_sales
+    FROM pos_sessions s
+    LEFT JOIN pos_sales p ON p.session_id = s.id
+    GROUP BY s.id
+    ORDER BY s.created_at DESC, s.opened_at DESC
+  `);
+  return rows.map((row) => ({
+    id: row.id,
+    sessionNo: row.session_no || "",
+    registerName: row.register_name || "",
+    cashierName: row.cashier_name || "",
+    stockLocationId: row.stock_location_id || null,
+    openingBalance: Number(row.opening_balance || 0),
+    openedAt: row.opened_at || null,
+    closedAt: row.closed_at || null,
+    status: normalizePosStatus(row.status),
+    note: row.note || "",
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+    salesCount: Number(row.sales_count || 0),
+    totalSales: Number(row.total_sales || 0),
+  }));
 }
 
 async function getPosSessionRow(sessionId) {
   return (await listPosSessionsRows()).find((item) => item.id === sessionId) || null;
 }
 
-function normalizePosSession(values, existingSession) {
+async function getSingleSessionRow(sessionId) {
+  const row = await sqlOne("SELECT * FROM pos_sessions WHERE id = $1", [sessionId]);
+  if (!row) return null;
+  const totalsRow = await sqlOne(
+    "SELECT COUNT(*)::int AS cnt, COALESCE(SUM(grand_total), 0) AS total FROM pos_sales WHERE session_id = $1",
+    [sessionId],
+  );
+  const totalSales = Number(totalsRow?.total || 0);
+  return {
+    id: row.id,
+    sessionNo: row.session_no || "",
+    registerName: row.register_name || "",
+    cashierName: row.cashier_name || "",
+    stockLocationId: row.stock_location_id || null,
+    openingBalance: Number(row.opening_balance || 0),
+    openedAt: row.opened_at || null,
+    closedAt: row.closed_at || null,
+    status: normalizePosStatus(row.status),
+    note: row.note || "",
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+    salesCount: Number(totalsRow?.cnt || 0),
+    totalSales,
+  };
+}
+
+async function normalizePosSession(values, existingSession) {
+  let sessionNo = values.sessionNo || existingSession?.sessionNo;
+  if (!sessionNo) {
+    const countRow = await sqlOne("SELECT COUNT(*)::int AS cnt FROM pos_sessions");
+    sessionNo = `POS-${String(Number(countRow?.cnt || 0) + 1).padStart(3, "0")}`;
+  }
   return {
     id: existingSession?.id || createId("possess"),
-    sessionNo: values.sessionNo || `POS-${String(Date.now()).slice(-4)}`,
-    registerName: values.registerName || "Magaza Ana Kasa",
-    cashierName: values.cashierName || "Kasa Kullanici",
+    sessionNo,
+    registerName: values.registerName || existingSession?.registerName || "",
+    cashierName: values.cashierName || existingSession?.cashierName || "",
+    stockLocationId: values.stockLocationId || existingSession?.stockLocationId || null,
     openingBalance: Number(values.openingBalance || 0),
     openedAt: existingSession?.openedAt || values.openedAt || nowIso(),
     closedAt: values.closedAt || existingSession?.closedAt || null,
-    status: values.status || existingSession?.status || "Acik",
+    status: normalizePosStatus(values.status || existingSession?.status),
     note: values.note || "",
     createdAt: existingSession?.createdAt || nowIso(),
     updatedAt: nowIso(),
@@ -465,29 +513,30 @@ export async function handlePosSessionsList(_req, res) {
 
 export async function handlePosSessionsCreate(req, res) {
   try {
-    const item = normalizePosSession(req.body || {});
+    const item = await normalizePosSession(req.body || {});
     await sqlExec(`
-      INSERT INTO pos_sessions (id, session_no, register_name, cashier_name, opening_balance, opened_at, closed_at, status, note, created_at, updated_at)
-      VALUES ($1,$2,$3,$4,$5,$6::timestamptz,$7::timestamptz,$8,$9,$10::timestamptz,$11::timestamptz)
-    `, [item.id, item.sessionNo, item.registerName, item.cashierName, item.openingBalance, item.openedAt, item.closedAt, item.status, item.note, item.createdAt, item.updatedAt]);
-    return res.status(201).json({ ok: true, item: await getPosSessionRow(item.id) });
+      INSERT INTO pos_sessions (id, session_no, register_name, cashier_name, stock_location_id, opening_balance, opened_at, closed_at, status, note, created_at, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7::timestamptz,$8::timestamptz,$9,$10,$11::timestamptz,$12::timestamptz)
+    `, [item.id, item.sessionNo, item.registerName, item.cashierName, item.stockLocationId, item.openingBalance, item.openedAt, item.closedAt, item.status, item.note, item.createdAt, item.updatedAt]);
+    return res.status(201).json({ ok: true, item: await getSingleSessionRow(item.id) });
   } catch (error) {
     return httpError(res, 400, error?.message || "POS oturumu olusturulamadi.");
   }
 }
 
 export async function handlePosSessionsClose(req, res) {
-  const existing = await getPosSessionRow(req.params.id);
+  const existing = await getSingleSessionRow(req.params.id);
   if (!existing) {
     return httpError(res, 404, "POS oturumu bulunamadi.");
   }
-  const item = normalizePosSession({ ...existing, status: "Kapali", closedAt: nowIso() }, existing);
+  const closedAt = nowIso();
+  const updatedAt = nowIso();
   await sqlExec(`
     UPDATE pos_sessions
-    SET closed_at=$2::timestamptz, status=$3, note=$4, updated_at=$5::timestamptz
+    SET closed_at=$2::timestamptz, status=$3, updated_at=$4::timestamptz
     WHERE id=$1
-  `, [item.id, item.closedAt, item.status, item.note, item.updatedAt]);
-  return res.json({ ok: true, item: await getPosSessionRow(item.id) });
+  `, [existing.id, closedAt, "Kapalı", updatedAt]);
+  return res.json({ ok: true, item: await getSingleSessionRow(existing.id) });
 }
 
 export async function handlePosSalesList(req, res) {
@@ -511,11 +560,12 @@ export async function handlePosSalesList(req, res) {
 
 export async function handlePosSalesCreate(req, res) {
   const session = await getPosSessionRow(req.body?.sessionId);
-  if (!session || !["Acik", "Açık"].includes(session.status)) {
+  if (!session || session.status !== "Açık") {
     return httpError(res, 400, "Acik POS oturumu bulunamadi.");
   }
   try {
-    const item = normalizePosSale(req.body || {});
+    const rawItem = normalizePosSale(req.body || {});
+    const item = { ...rawItem, stockLocationId: rawItem.stockLocationId || session.stockLocationId };
     if (!item.stockLocationId) {
       return httpError(res, 400, "Stok yeri secimi zorunludur.");
     }

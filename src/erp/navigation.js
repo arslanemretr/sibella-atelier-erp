@@ -50,6 +50,7 @@ export const mainMenuItems = [
     label: "Tedarikci Portal",
     children: [
       { key: "/supplier-portal/delivery-lists", label: "Teslimat Listeleri" },
+      { key: "/supplier-portal/earnings", label: "Hakediş Yönetimi" },
     ],
   },
   {
@@ -124,6 +125,7 @@ export const sidebarGroups = [
         label: "Tedarikci Portal",
         children: [
           { key: "/supplier-portal/delivery-lists", label: "Teslimat Listeleri" },
+          { key: "/supplier-portal/earnings", label: "Hakediş Yönetimi" },
         ],
       },
       {

@@ -1,8 +1,12 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppstoreOutlined, BarsOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Card, Col, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Typography, message } from "antd";
+import { Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Typography, message } from "antd";
+import dayjs from "dayjs";
+import { listContractsFresh } from "../contractsData";
+import { listEarningsRecordsFresh, upsertEarningsRecord } from "../earningsData";
 import { createMasterData, listMasterDataFresh } from "../masterData";
+import { listPosSalesFresh } from "../posData";
 import { listProductsFresh } from "../productsData";
 import { createSupplier, deleteSupplier, listSuppliersFresh, updateSupplier } from "../suppliersData";
 
@@ -667,3 +671,371 @@ export function SupplierEditorPage() {
     </Space>
   );
 }
+
+// ── Earnings helpers ──────────────────────────────────────────────────────────
+
+const EARNINGS_STATUS_META = {
+  "Dönem Tamamlanmadı": { color: "default" },
+  "Fatura Bekleniyor": { color: "gold" },
+  "Ödeme Bekleniyor": { color: "orange" },
+  Tamamlandı: { color: "green" },
+  "Satış Yok": { color: "default" },
+};
+
+function getMonthKeyAdmin(value) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getPeriodBoundsAdmin(periodKey) {
+  const [year, month] = periodKey.split("-").map(Number);
+  const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
+  const end = new Date(year, month, 0, 23, 59, 59, 999);
+  return { start, end };
+}
+
+function formatMoneyAdmin(value) {
+  return new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency: "TRY",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+}
+
+function formatPeriodLabelAdmin(periodKey) {
+  const [year, month] = periodKey.split("-").map(Number);
+  return new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1));
+}
+
+function isCurrentPeriodKey(periodKey) {
+  return periodKey === getMonthKeyAdmin(new Date());
+}
+
+function resolveAdminEarningsStatus(periodKey, earningsTotal, earningsRecord) {
+  if (isCurrentPeriodKey(periodKey)) {
+    return "Dönem Tamamlanmadı";
+  }
+  if (!Number(earningsTotal || 0)) {
+    return "Satış Yok";
+  }
+  if (!earningsRecord?.invoiceNo) {
+    return "Fatura Bekleniyor";
+  }
+  if (!earningsRecord?.paymentDate) {
+    return "Ödeme Bekleniyor";
+  }
+  return "Tamamlandı";
+}
+
+function buildAdminEarningsList({ suppliers, products, sales, contracts, earningsRecords }) {
+  const consignmentProductsBySupplierId = new Map();
+  (products || []).filter((p) => p.productType === "konsinye").forEach((p) => {
+    if (!p.supplierId) {
+      return;
+    }
+    const list = consignmentProductsBySupplierId.get(p.supplierId) || [];
+    list.push(p);
+    consignmentProductsBySupplierId.set(p.supplierId, list);
+  });
+
+  const periodKeysBySupplier = new Map();
+  (sales || []).forEach((sale) => {
+    const soldAt = sale.soldAt ? new Date(sale.soldAt) : null;
+    if (!soldAt || Number.isNaN(soldAt.getTime())) {
+      return;
+    }
+    const periodKey = getMonthKeyAdmin(new Date(soldAt.getFullYear(), soldAt.getMonth(), 1));
+    consignmentProductsBySupplierId.forEach((supplierProducts, supplierId) => {
+      if ((sale.lines || []).some((line) => supplierProducts.some((p) => p.id === line.productId))) {
+        const keys = periodKeysBySupplier.get(supplierId) || new Set();
+        keys.add(periodKey);
+        periodKeysBySupplier.set(supplierId, keys);
+      }
+    });
+  });
+
+  const earningsRecordMap = new Map(
+    (earningsRecords || []).map((r) => [`${r.supplierId}::${r.periodKey}`, r]),
+  );
+
+  const rows = [];
+  periodKeysBySupplier.forEach((periodKeys, supplierId) => {
+    const supplier = (suppliers || []).find((s) => s.id === supplierId);
+    if (!supplier) {
+      return;
+    }
+    const supplierProducts = consignmentProductsBySupplierId.get(supplierId) || [];
+    const productIds = new Set(supplierProducts.map((p) => p.id));
+
+    const relevantContracts = (contracts || [])
+      .filter((c) => c.supplierId === supplierId)
+      .sort((a, b) => String(b.startDate || "").localeCompare(String(a.startDate || ""), "tr"));
+
+    periodKeys.forEach((periodKey) => {
+      const { start, end } = getPeriodBoundsAdmin(periodKey);
+
+      const contract = relevantContracts.find((c) => {
+        const cs = c.startDate ? new Date(c.startDate) : null;
+        const ce = c.endDate ? new Date(c.endDate) : null;
+        return (!cs || cs <= end) && (!ce || ce >= start);
+      }) || relevantContracts[0] || null;
+
+      const commissionRate = Number(contract?.commissionRate || 0);
+      let grossTotal = 0;
+
+      (sales || []).forEach((sale) => {
+        const soldAt = sale.soldAt ? new Date(sale.soldAt) : null;
+        if (!soldAt || soldAt < start || soldAt > end) {
+          return;
+        }
+        (sale.lines || []).forEach((line) => {
+          if (!productIds.has(line.productId)) {
+            return;
+          }
+          grossTotal += Number(line.lineTotal || (Number(line.quantity || 0) * Number(line.unitPrice || 0)));
+        });
+      });
+
+      const earningsTotal = grossTotal * (1 - commissionRate / 100);
+      const earningsRecord = earningsRecordMap.get(`${supplierId}::${periodKey}`) || null;
+      const status = resolveAdminEarningsStatus(periodKey, earningsTotal, earningsRecord);
+
+      rows.push({
+        key: `${supplierId}::${periodKey}`,
+        supplierId,
+        supplierName: supplier.company || "-",
+        periodKey,
+        periodLabel: formatPeriodLabelAdmin(periodKey),
+        commissionRate,
+        grossTotal,
+        earningsTotal,
+        earningsRecord,
+        status,
+      });
+    });
+  });
+
+  return rows.sort((a, b) => b.periodKey.localeCompare(a.periodKey, "tr") || a.supplierName.localeCompare(b.supplierName, "tr"));
+}
+
+export function SupplierEarningsManagementPage() {
+  const [rows, setRows] = React.useState([]);
+  const [pageLoading, setPageLoading] = React.useState(false);
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [selectedRow, setSelectedRow] = React.useState(null);
+  const [saving, setSaving] = React.useState(false);
+  const [supplierFilter, setSupplierFilter] = React.useState(undefined);
+  const [statusFilter, setStatusFilter] = React.useState(undefined);
+  const [supplierOptions, setSupplierOptions] = React.useState([{ value: "all", label: "Tüm Tedarikçiler" }]);
+  const [form] = Form.useForm();
+
+  const refresh = React.useCallback(async () => {
+    try {
+      setPageLoading(true);
+      const [suppliers, products, sales, contracts, earningsRecords] = await Promise.all([
+        listSuppliersFresh(),
+        listProductsFresh(),
+        listPosSalesFresh(),
+        listContractsFresh(),
+        listEarningsRecordsFresh(),
+      ]);
+      setSupplierOptions([
+        { value: "all", label: "Tüm Tedarikçiler" },
+        ...suppliers.map((s) => ({ value: s.id, label: s.company || s.id })),
+      ]);
+      setRows(buildAdminEarningsList({ suppliers, products, sales, contracts, earningsRecords }));
+    } catch (error) {
+      message.error(error?.message || "Hakediş verileri yüklenemedi.");
+    } finally {
+      setPageLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const filteredRows = React.useMemo(
+    () =>
+      rows.filter((row) => {
+        if (supplierFilter && supplierFilter !== "all" && row.supplierId !== supplierFilter) {
+          return false;
+        }
+        if (statusFilter && statusFilter !== "all" && row.status !== statusFilter) {
+          return false;
+        }
+        return true;
+      }),
+    [rows, supplierFilter, statusFilter],
+  );
+
+  const openDrawer = (row) => {
+    setSelectedRow(row);
+    const rec = row.earningsRecord;
+    form.setFieldsValue({
+      invoiceNo: rec?.invoiceNo || "",
+      invoiceDate: rec?.invoiceDate ? dayjs(rec.invoiceDate) : null,
+      paymentDate: rec?.paymentDate ? dayjs(rec.paymentDate) : null,
+      note: rec?.note || "",
+    });
+    setDrawerOpen(true);
+  };
+
+  const handleSave = async () => {
+    try {
+      const values = await form.validateFields();
+      setSaving(true);
+      await upsertEarningsRecord({
+        supplierId: selectedRow.supplierId,
+        periodKey: selectedRow.periodKey,
+        invoiceNo: values.invoiceNo || null,
+        invoiceDate: values.invoiceDate ? values.invoiceDate.toISOString() : null,
+        paymentDate: values.paymentDate ? values.paymentDate.toISOString() : null,
+        note: values.note || "",
+      });
+      message.success("Hakediş kaydı güncellendi.");
+      setDrawerOpen(false);
+      void refresh();
+    } catch (error) {
+      if (error?.errorFields) {
+        return;
+      }
+      message.error(error?.message || "Kayıt oluşturulamadı.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const invoiceDateValue = Form.useWatch("invoiceDate", form);
+  const paymentDueDateDisplay = invoiceDateValue
+    ? dayjs(invoiceDateValue).add(15, "day").format("DD.MM.YYYY")
+    : "—";
+
+  const statusOptions = [
+    { value: "all", label: "Tüm Durumlar" },
+    ...Object.keys(EARNINGS_STATUS_META).map((key) => ({ value: key, label: key })),
+  ];
+
+  return (
+    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+      <div>
+        <Title level={3} style={{ marginBottom: 6 }}>Hakediş Yönetimi</Title>
+        <Text type="secondary">Tedarikçi dönem hakediş takibi, fatura ve ödeme durumu girişleri.</Text>
+      </div>
+
+      <Card bordered={false} className="erp-list-toolbar-card">
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <Select
+            style={{ width: 220 }}
+            value={supplierFilter || "all"}
+            options={supplierOptions}
+            onChange={(val) => setSupplierFilter(val === "all" ? undefined : val)}
+          />
+          <Select
+            style={{ width: 200 }}
+            value={statusFilter || "all"}
+            options={statusOptions}
+            onChange={(val) => setStatusFilter(val === "all" ? undefined : val)}
+          />
+          <Button icon={<SearchOutlined />} loading={pageLoading} onClick={() => void refresh()}>
+            Yenile
+          </Button>
+        </div>
+      </Card>
+
+      <Card bordered={false} className="erp-list-table-card">
+        <Table
+          rowKey="key"
+          loading={pageLoading}
+          pagination={false}
+          dataSource={filteredRows}
+          locale={{ emptyText: "Hakediş oluşturan dönem bulunamadı." }}
+          onRow={(record) => ({ onClick: () => openDrawer(record) })}
+          rowClassName={() => "erp-clickable-row"}
+          scroll={{ x: 860 }}
+          columns={[
+            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 180 },
+            { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130 },
+            { title: "Toplam Satış", dataIndex: "grossTotal", key: "grossTotal", width: 150, render: (v) => formatMoneyAdmin(v) },
+            { title: "Hakediş Tutarı", dataIndex: "earningsTotal", key: "earningsTotal", width: 150, render: (v) => formatMoneyAdmin(v) },
+            {
+              title: "Ödeme Durumu",
+              dataIndex: "status",
+              key: "status",
+              width: 160,
+              render: (value) => {
+                const meta = EARNINGS_STATUS_META[value] || { color: "default" };
+                return <Tag color={meta.color}>{value}</Tag>;
+              },
+            },
+          ]}
+        />
+      </Card>
+
+      <Drawer
+        title={selectedRow ? `${selectedRow.supplierName} — ${selectedRow.periodLabel}` : "Hakediş Detayı"}
+        placement="right"
+        width={520}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        extra={
+          <Button type="primary" loading={saving} onClick={handleSave}>
+            Kaydet
+          </Button>
+        }
+      >
+        {selectedRow ? (
+          <Space direction="vertical" size={20} style={{ width: "100%" }}>
+            <Row gutter={[12, 12]}>
+              <Col span={12}>
+                <Card size="small" bordered style={{ background: "#fafafa" }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>Toplam Satış</Text>
+                  <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>{formatMoneyAdmin(selectedRow.grossTotal)}</div>
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card size="small" bordered style={{ background: "#fafafa" }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>Hakediş Tutarı</Text>
+                  <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>{formatMoneyAdmin(selectedRow.earningsTotal)}</div>
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card size="small" bordered style={{ background: "#fafafa" }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>Komisyon Oranı</Text>
+                  <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>%{Number(selectedRow.commissionRate || 0).toFixed(2)}</div>
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card size="small" bordered style={{ background: "#fafafa" }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>Durum</Text>
+                  <div style={{ marginTop: 4 }}>
+                    <Tag color={(EARNINGS_STATUS_META[selectedRow.status] || {}).color || "default"}>{selectedRow.status}</Tag>
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+
+            <Form form={form} layout="vertical">
+              <Form.Item name="invoiceNo" label="Fatura No">
+                <Input placeholder="Fatura numarası" allowClear />
+              </Form.Item>
+              <Form.Item name="invoiceDate" label="Fatura Tarihi">
+                <DatePicker style={{ width: "100%" }} format="DD.MM.YYYY" placeholder="Fatura tarihini seçin" />
+              </Form.Item>
+              <Form.Item label="Son Ödeme Tarihi (Otomatik)">
+                <Input value={paymentDueDateDisplay} disabled />
+              </Form.Item>
+              <Form.Item name="paymentDate" label="Ödeme Tarihi">
+                <DatePicker style={{ width: "100%" }} format="DD.MM.YYYY" placeholder="Ödeme yapıldıysa tarihini seçin" />
+              </Form.Item>
+              <Form.Item name="note" label="Not">
+                <Input.TextArea rows={3} placeholder="Dahili not" />
+              </Form.Item>
+            </Form>
+          </Space>
+        ) : null}
+      </Drawer>
+    </Space>
+  );
+}
+

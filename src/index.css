@@ -529,10 +529,12 @@ html, body {
   padding: 10px;
 }
 
-.erp-pos-session-badge.ant-btn {
-  background: #ff8b7a;
-  border-color: #ff8b7a;
-  min-width: 82px;
+.erp-pos-session-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .erp-pos-orders-title-btn.ant-btn {

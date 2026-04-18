@@ -38,15 +38,18 @@ function loadSales() {
 }
 
 function normalizeSession(values, existingSession) {
+  const rawStatus = values.status || existingSession?.status;
+  const status = (!rawStatus || rawStatus === "Acik" || rawStatus === "Açık") ? "Açık" : "Kapalı";
   return {
     id: existingSession?.id || createId("possess"),
-    sessionNo: values.sessionNo || `POS-${String(Date.now()).slice(-4)}`,
-    registerName: values.registerName || "Magaza Ana Kasa",
-    cashierName: values.cashierName || "Kasa Kullanici",
+    sessionNo: values.sessionNo || existingSession?.sessionNo || "",
+    registerName: values.registerName || existingSession?.registerName || "",
+    cashierName: values.cashierName || existingSession?.cashierName || "",
+    stockLocationId: values.stockLocationId || existingSession?.stockLocationId || null,
     openingBalance: Number(values.openingBalance || 0),
     openedAt: existingSession?.openedAt || values.openedAt || nowIso(),
     closedAt: values.closedAt || existingSession?.closedAt || null,
-    status: values.status || existingSession?.status || "Acik",
+    status,
     note: values.note || "",
     createdAt: existingSession?.createdAt || nowIso(),
     updatedAt: nowIso(),
@@ -57,7 +60,7 @@ function normalizeSale(values) {
   const lines = (values.lines || [])
     .filter((line) => line && line.productId && Number(line.quantity || 0) > 0)
     .map((line, index) => ({
-      id: line.id || `posline-${index + 1}`,
+      id: line.id || createId("posline"),
       productId: line.productId,
       quantity: Number(line.quantity || 0),
       unitPrice: Number(line.unitPrice || 0),
@@ -117,8 +120,12 @@ function enrichSale(sale) {
 function enrichSession(session) {
   const sales = listPosSales().filter((sale) => sale.sessionId === session.id);
   const totalSales = sales.reduce((sum, item) => sum + Number(item.grandTotal || 0), 0);
+  const rawStatus = session.status;
+  const status = (!rawStatus || rawStatus === "Acik" || rawStatus === "Açık") ? "Açık" : "Kapalı";
   return {
     ...session,
+    status,
+    stockLocationId: session.stockLocationId || null,
     salesCount: sales.length,
     totalSales,
     totalSalesDisplay: formatMoney(totalSales),
@@ -131,22 +138,12 @@ export function listPosSessions() {
 }
 
 export async function listPosSessionsFresh() {
-  const [sessions, sales] = await Promise.all([
-    requestCollection("/api/pos-sessions", seedSessions()),
-    requestCollection("/api/pos-sales", seedSales()),
-  ]);
-
-  return sessions.map((session) => {
-    const sessionSales = sales.filter((sale) => sale.sessionId === session.id);
-    const totalSales = sessionSales.reduce((sum, item) => sum + Number(item.grandTotal || 0), 0);
-    return {
-      ...session,
-      salesCount: sessionSales.length,
-      totalSales,
-      totalSalesDisplay: formatMoney(totalSales),
-      openingBalanceDisplay: formatMoney(session.openingBalance),
-    };
-  });
+  const sessions = await requestCollection("/api/pos-sessions", seedSessions());
+  return sessions.map((session) => ({
+    ...session,
+    totalSalesDisplay: formatMoney(session.totalSales || 0),
+    openingBalanceDisplay: formatMoney(session.openingBalance || 0),
+  }));
 }
 
 export function getPosSessionById(sessionId) {
@@ -154,7 +151,7 @@ export function getPosSessionById(sessionId) {
 }
 
 export function getOpenPosSessions() {
-  return listPosSessions().filter((item) => ["Acik", "Açık"].includes(item.status));
+  return listPosSessions().filter((item) => item.status === "Açık");
 }
 
 export function createPosSession(values) {
@@ -230,7 +227,7 @@ export async function buildPosProductCatalogFresh() {
 
 export async function getOpenPosSessionsFresh() {
   const sessions = await listPosSessionsFresh();
-  return sessions.filter((item) => ["Acik", "Açık"].includes(item.status));
+  return sessions.filter((item) => item.status === "Açık");
 }
 
 export function findProductByBarcode(barcode) {

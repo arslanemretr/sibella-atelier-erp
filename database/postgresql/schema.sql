@@ -204,6 +204,7 @@ CREATE TABLE IF NOT EXISTS pos_sessions (
   session_no TEXT,
   register_name TEXT,
   cashier_name TEXT,
+  stock_location_id TEXT REFERENCES stock_locations(id),
   opening_balance DOUBLE PRECISION,
   opened_at TIMESTAMPTZ,
   closed_at TIMESTAMPTZ,
@@ -380,6 +381,21 @@ CREATE TABLE IF NOT EXISTS store_shipment_lines (
   quantity DOUBLE PRECISION,
   description TEXT,
   sort_order INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS supplier_earnings_records (
+  id TEXT PRIMARY KEY,
+  supplier_id TEXT NOT NULL REFERENCES suppliers(id),
+  period_key TEXT NOT NULL,
+  invoice_no TEXT,
+  invoice_date TIMESTAMPTZ,
+  payment_due_date TIMESTAMPTZ,
+  payment_date TIMESTAMPTZ,
+  note TEXT,
+  created_by TEXT REFERENCES users(id),
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ,
+  UNIQUE (supplier_id, period_key)
 );
 
 CREATE TABLE IF NOT EXISTS system_parameters (

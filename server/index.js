@@ -54,7 +54,9 @@ import {
   handlePosSessionsClose,
   handlePosSessionsCreate,
   handlePosSessionsList,
+  ensureStockLocationInSessions,
 } from "./portalApi.js";
+import { ensureEarningsReady, handleEarningsRecordsList, handleEarningsRecordsUpsert } from "./earningsApi.js";
 import { handleStockMovementsList } from "./stockMovementsApi.js";
 import {
   handleStockLocationBalancesList,
@@ -90,6 +92,8 @@ app.use("/api/assets", express.static(assetStoragePath, {
 
 void ensureDatabaseReady()
   .then(() => ensureStockMovementsReady())
+  .then(() => ensureEarningsReady())
+  .then(() => ensureStockLocationInSessions())
   .then(() => migrateLegacyPasswords())
   .catch((error) => {
     console.error("Database init / auth migration hatasi:", error?.message || error);
@@ -139,6 +143,8 @@ app.get("/api/stock-entries", requireRole("Yonetici", "Muhasebe", "Tedarikci"), 
 app.post("/api/stock-entries", requireRole("Yonetici", "Muhasebe"), handleStockEntriesCreate);
 app.put("/api/stock-entries/:id", requireRole("Yonetici", "Muhasebe"), handleStockEntriesUpdate);
 app.get("/api/stock-movements", requireRole("Yonetici", "Muhasebe", "Magaza"), handleStockMovementsList);
+app.get("/api/supplier-earnings", requireRole("Yonetici", "Muhasebe", "Tedarikci"), handleEarningsRecordsList);
+app.post("/api/supplier-earnings", requireRole("Yonetici", "Muhasebe"), handleEarningsRecordsUpsert);
 app.get("/api/stock-locations", requireRole("Yonetici", "Muhasebe"), handleStockLocationsList);
 app.get("/api/stock-locations/:id/balances", requireRole("Yonetici", "Muhasebe"), handleStockLocationBalancesList);
 app.get("/api/contracts", requireRole("Yonetici", "Muhasebe", "Tedarikci"), handleContractsList);
