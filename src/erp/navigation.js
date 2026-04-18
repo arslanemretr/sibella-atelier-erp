@@ -151,7 +151,6 @@ export const supplierMainMenuItems = [
   { key: "/supplier/dashboard", label: "Dashboard" },
   { key: "/supplier/products", label: "Urunlerim" },
   { key: "/supplier/earnings", label: "Hakedis Ozeti" },
-  { key: "/supplier/deliveries/new", label: "Teslimat Olustur" },
   { key: "/supplier/deliveries", label: "Teslimat Listesi" },
 ];
 
@@ -163,7 +162,6 @@ export const supplierSidebarGroups = [
       { key: "/supplier/dashboard", label: "Dashboard" },
       { key: "/supplier/products", label: "Urunlerim" },
       { key: "/supplier/earnings", label: "Hakedis Ozeti" },
-      { key: "/supplier/deliveries/new", label: "Teslimat Olustur" },
       { key: "/supplier/deliveries", label: "Teslimat Listesi" },
     ],
   },

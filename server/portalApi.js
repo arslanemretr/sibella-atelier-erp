@@ -751,3 +751,16 @@ export async function handleDeliveryListsComplete(req, res) {
     return httpError(res, 400, error?.message || "Teslimat stoğa aktarilamadi.");
   }
 }
+
+export async function handleDeliveryListsDelete(req, res) {
+  try {
+    const existing = await sqlOne("SELECT * FROM delivery_lists WHERE id = $1", [req.params.id]);
+    if (!existing) return httpError(res, 404, "Teslimat bulunamadi.");
+    if (existing.status !== "Taslak") return httpError(res, 400, "Sadece taslak durumundaki teslimatlar silinebilir.");
+    await sqlExec("DELETE FROM delivery_lines WHERE delivery_list_id = $1", [req.params.id]);
+    await sqlExec("DELETE FROM delivery_lists WHERE id = $1", [req.params.id]);
+    return res.json({ ok: true });
+  } catch (error) {
+    return httpError(res, 400, error?.message || "Teslimat silinemedi.");
+  }
+}

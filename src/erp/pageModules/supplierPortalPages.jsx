@@ -6,7 +6,7 @@ import { AppstoreOutlined, BarsOutlined, CheckOutlined, DeleteOutlined, Download
 import * as XLSX from "xlsx";
 import { getAuthUser } from "../../auth";
 import { listContractsFresh } from "../contractsData";
-import { completeDeliveryReceipt, createDeliveryList, createDeliveryPdf, getDeliveryListById, getNextDeliveryNoPreviewFresh, listDeliveryListsBySupplierFresh, listDeliveryListsFresh, updateDeliveryList } from "../deliveryListsData";
+import { completeDeliveryReceipt, createDeliveryList, createDeliveryPdf, deleteDeliveryList, getDeliveryListById, getNextDeliveryNoPreviewFresh, listDeliveryListsBySupplierFresh, listDeliveryListsFresh, updateDeliveryList } from "../deliveryListsData";
 import { listEarningsRecordsFresh } from "../earningsData";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
@@ -1473,6 +1473,24 @@ export function SupplierPortalDeliveryListPage() {
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedRecord, setSelectedRecord] = React.useState(null);
 
+  const handleDeleteRecord = async (record) => {
+    try {
+      deleteDeliveryList(record.id);
+      message.success("Teslimat silindi.");
+      await refreshRecords();
+    } catch (error) {
+      message.error(error?.message || "Teslimat silinemedi.");
+    }
+  };
+
+  const handleDownloadPdf = async (record) => {
+    try {
+      await createDeliveryPdf(record.id);
+    } catch (error) {
+      message.error(error?.message || "PDF olusturulamadi.");
+    }
+  };
+
   const refreshRecords = React.useCallback(async () => {
     try {
       setTableLoading(true);
@@ -1553,6 +1571,48 @@ export function SupplierPortalDeliveryListPage() {
     { title: "Ürün Çeşidi", dataIndex: "lineCount", key: "lineCount", width: 120, sorter: (a, b) => a.lineCount - b.lineCount },
     { title: "Toplam Teslim Adet", dataIndex: "totalQuantity", key: "totalQuantity", width: 160, sorter: (a, b) => a.totalQuantity - b.totalQuantity },
     { title: "Toplam Tutar", dataIndex: "totalAmountDisplay", key: "totalAmountDisplay", width: 180, sorter: (a, b) => a.totalAmount - b.totalAmount },
+    {
+      title: "İşlemler",
+      key: "actions",
+      width: 120,
+      render: (_, record) => (
+        <Space size={4}>
+          <Tooltip title="Görüntüle / Düzenle">
+            <Button
+              size="small"
+              className="erp-icon-btn erp-icon-btn-view"
+              icon={<EyeOutlined />}
+              onClick={(e) => { e.stopPropagation(); navigate(`/supplier/deliveries/${record.id}`); }}
+            />
+          </Tooltip>
+          <Tooltip title="PDF İndir">
+            <Button
+              size="small"
+              className="erp-icon-btn erp-icon-btn-edit"
+              icon={<DownloadOutlined />}
+              onClick={(e) => { e.stopPropagation(); void handleDownloadPdf(record); }}
+            />
+          </Tooltip>
+          {record.status === "Taslak" ? (
+            <Popconfirm
+              title="Bu teslimat silinsin mi?"
+              okText="Sil"
+              cancelText="Vazgeç"
+              onConfirm={() => void handleDeleteRecord(record)}
+            >
+              <Tooltip title="Sil">
+                <Button
+                  size="small"
+                  className="erp-icon-btn erp-icon-btn-delete"
+                  icon={<DeleteOutlined />}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </Tooltip>
+            </Popconfirm>
+          ) : null}
+        </Space>
+      ),
+    },
   ];
 
   return (
@@ -1588,7 +1648,7 @@ export function SupplierPortalDeliveryListPage() {
           columns={columns}
           dataSource={filteredRecords}
           pagination={false}
-          scroll={{ x: 1240 }}
+          scroll={{ x: 1360 }}
           locale={{ emptyText: "Henuz teslimat kaydiniz bulunmuyor." }}
           onRow={(record) => ({
             onClick: () => openDetailFromRow(setSelectedRecord, setDetailOpen, record),

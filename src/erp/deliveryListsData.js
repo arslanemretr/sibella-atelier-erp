@@ -174,6 +174,10 @@ export function completeDeliveryReceipt(deliveryListId) {
   return enrichRecord(mutateResourceSync("POST", `/api/delivery-lists/${encodeURIComponent(deliveryListId)}/complete`, {}));
 }
 
+export function deleteDeliveryList(deliveryListId) {
+  return mutateResourceSync("DELETE", `/api/delivery-lists/${encodeURIComponent(deliveryListId)}`, null);
+}
+
 export async function createDeliveryPdf(recordOrId) {
   const deliveryRecord =
     typeof recordOrId === "string"

@@ -1288,6 +1288,31 @@ html, body {
 }
 
 @media (max-width: 992px) {
+  .erp-app-layout {
+    height: auto !important;
+    min-height: 100svh;
+    overflow: visible !important;
+  }
+
+  .erp-main-layout {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .erp-topbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    flex-shrink: 0;
+  }
+
+  .erp-app-content {
+    overflow-y: visible !important;
+    overflow-x: hidden !important;
+    flex: none !important;
+    min-height: 0 !important;
+  }
+
   .erp-list-toolbar {
     flex-direction: column;
     align-items: stretch;
