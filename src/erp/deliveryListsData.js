@@ -175,7 +175,7 @@ export function completeDeliveryReceipt(deliveryListId) {
 }
 
 export function deleteDeliveryList(deliveryListId) {
-  return mutateResourceSync("DELETE", `/api/delivery-lists/${encodeURIComponent(deliveryListId)}`, null);
+  return mutateResourceSync("DELETE", `/api/delivery-lists/${encodeURIComponent(deliveryListId)}`);
 }
 
 export async function createDeliveryPdf(recordOrId) {
