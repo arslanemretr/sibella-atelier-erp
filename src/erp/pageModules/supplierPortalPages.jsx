@@ -2025,7 +2025,7 @@ export function SupplierPortalDeliveryEditorPage() {
         createdBy: authUser?.id || null,
         lines: (values.lines || []).map((line) => ({
           ...line,
-          image: String(line.image || "").startsWith("data:") ? "" : (line.image || ""),
+          image: (line.productId && String(line.image || "").startsWith("data:")) ? "" : (line.image || ""),
         })),
       };
 
