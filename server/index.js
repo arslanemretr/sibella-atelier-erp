@@ -45,6 +45,8 @@ import {
   handleContractsDelete,
   handleContractsList,
   handleContractsUpdate,
+  handleDeliveryLineCreate,
+  handleDeliveryLineDelete,
   handleDeliveryListsComplete,
   handleDeliveryListsCreate,
   handleDeliveryListsList,
@@ -181,6 +183,8 @@ app.post("/api/pos-sales", requireRole("Yonetici", "Magaza"), handlePosSalesCrea
 app.get("/api/delivery-lists", requireRole("Yonetici", "Tedarikci"), handleDeliveryListsList);
 app.post("/api/delivery-lists", requireRole("Yonetici", "Tedarikci"), handleDeliveryListsCreate);
 app.put("/api/delivery-lists/:id", requireRole("Yonetici", "Tedarikci"), handleDeliveryListsUpdate);
+app.post("/api/delivery-lists/:id/lines", requireRole("Yonetici", "Tedarikci"), handleDeliveryLineCreate);
+app.delete("/api/delivery-lists/:id/lines/:lineId", requireRole("Yonetici", "Tedarikci"), handleDeliveryLineDelete);
 app.post("/api/delivery-lists/:id/complete", requireRole("Yonetici"), handleDeliveryListsComplete);
 app.get("/api/stores", requireRole("Yonetici", "Muhasebe"), handleStoresList);
 app.post("/api/stores", requireRole("Yonetici", "Muhasebe"), handleStoresCreate);

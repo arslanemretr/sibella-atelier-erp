@@ -651,11 +651,57 @@ export async function handleDeliveryListsUpdate(req, res) {
           shipping_method=$8, tracking_no=$9, note=$10, status=$11, created_by=$12, updated_at=$13::timestamptz
       WHERE id=$1
     `, [item.id, item.deliveryNo, item.supplierId, item.supplierName, item.contactName, item.supplierEmail, item.date || null, item.shippingMethod, item.trackingNo, item.note, item.status, item.createdBy, item.updatedAt]);
-    await replaceDeliveryLines(item);
+    if (Array.isArray(req.body?.lines)) {
+      await replaceDeliveryLines(item);
+    }
     return res.json({ ok: true, item: await getDeliveryRow(item.id) });
   } catch (error) {
     console.error("handleDeliveryListsUpdate hatasi:", error?.message, error?.stack);
     return httpError(res, 400, error?.message || "Teslimat kaydi guncellenemedi.");
+  }
+}
+
+export async function handleDeliveryLineCreate(req, res) {
+  const existing = await getDeliveryRow(req.params.id);
+  if (!existing) return httpError(res, 404, "Teslimat kaydi bulunamadi.");
+  try {
+    const schemaInfo = await ensureDeliveryLineSchema();
+    const body = req.body || {};
+    const lineId = body.id || createId("dlline");
+    const image = String(body.image || "").startsWith("data:") ? body.image : (body.image || "");
+    const sortOrder = (existing.lines || []).length + 1;
+    if (schemaInfo.hasDeliveryId) {
+      await sqlExec(`
+        INSERT INTO delivery_lines (id, delivery_id, delivery_list_id, product_id, is_new_product, image, name, code,
+          sale_price, sale_currency, quantity, description, sort_order, category_id, category_label, collection_id, collection_label)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+      `, [lineId, existing.id, existing.id, body.productId || null, Boolean(body.isNewProduct), image,
+          body.name || "", body.code || "", Number(body.salePrice || 0), body.saleCurrency || "TRY",
+          Number(body.quantity || 0), body.description || "", sortOrder,
+          body.categoryId || null, body.categoryLabel || "", body.collectionId || null, body.collectionLabel || ""]);
+    } else {
+      await sqlExec(`
+        INSERT INTO delivery_lines (id, delivery_list_id, product_id, is_new_product, image, name, code,
+          sale_price, sale_currency, quantity, description, sort_order, category_id, category_label, collection_id, collection_label)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+      `, [lineId, existing.id, body.productId || null, Boolean(body.isNewProduct), image,
+          body.name || "", body.code || "", Number(body.salePrice || 0), body.saleCurrency || "TRY",
+          Number(body.quantity || 0), body.description || "", sortOrder,
+          body.categoryId || null, body.categoryLabel || "", body.collectionId || null, body.collectionLabel || ""]);
+    }
+    return res.status(201).json({ ok: true, item: await getDeliveryRow(existing.id) });
+  } catch (error) {
+    console.error("handleDeliveryLineCreate hatasi:", error?.message);
+    return httpError(res, 400, error?.message || "Satir eklenemedi.");
+  }
+}
+
+export async function handleDeliveryLineDelete(req, res) {
+  try {
+    await sqlExec("DELETE FROM delivery_lines WHERE id = $1 AND delivery_list_id = $2", [req.params.lineId, req.params.id]);
+    return res.json({ ok: true, item: await getDeliveryRow(req.params.id) });
+  } catch (error) {
+    return httpError(res, 400, error?.message || "Satir silinemedi.");
   }
 }
 

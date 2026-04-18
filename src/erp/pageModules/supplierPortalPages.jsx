@@ -1574,7 +1574,8 @@ export function SupplierPortalDeliveryListPage() {
 export function SupplierPortalDeliveryEditorPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { deliveryId } = useParams();
+  const { deliveryId: deliveryIdParam } = useParams();
+  const [deliveryId, setDeliveryId] = React.useState(deliveryIdParam || null);
   const authUser = getAuthUser();
   const isAdminView = location.pathname.startsWith("/supplier-portal/");
   const supplierId = authUser?.supplierId || null;
@@ -1799,34 +1800,45 @@ export function SupplierPortalDeliveryEditorPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleAddLine = () => {
-    if (isDeliveryLocked) {
-      return;
-    }
-    if (!lineDraft.image) {
-      showCenteredWarning("Gorsel eklemelisin.");
-      return;
-    }
-
+  const handleAddLine = async () => {
+    if (isDeliveryLocked) return;
+    if (!lineDraft.image) { showCenteredWarning("Gorsel eklemelisin."); return; }
     if (!lineDraft.name || !lineDraft.code || !lineDraft.salePrice || !lineDraft.quantity) {
       showCenteredWarning("Urun adi, kod, birim fiyat ve teslim adedi zorunludur.");
       return;
     }
-
     const duplicateLine = deliveryLines.find((line) =>
       lineDraft.productId
         ? line.productId === lineDraft.productId
         : String(line.code || "").trim().toUpperCase() === String(lineDraft.code || "").trim().toUpperCase(),
     );
-    if (duplicateLine) {
-      showCenteredWarning("Bu urun daha once eklendi.");
-      return;
-    }
+    if (duplicateLine) { showCenteredWarning("Bu urun daha once eklendi."); return; }
 
-    const nextLines = [
-      ...deliveryLines,
-      {
-        id: `line-${Date.now()}`,
+    try {
+      setLoading(true);
+      let currentDeliveryId = deliveryId;
+
+      if (!currentDeliveryId) {
+        const headerValues = form.getFieldsValue();
+        const created = await requestJson("POST", "/api/delivery-lists", {
+          ...headerValues,
+          supplierId: targetSupplierId,
+          supplierName: supplier?.company || "",
+          contactName: supplier?.contact || "",
+          supplierEmail: supplier?.email || authUser?.email || "",
+          status: "Taslak",
+          createdBy: authUser?.id || null,
+          lines: [],
+        });
+        currentDeliveryId = created?.id;
+        setDeliveryId(currentDeliveryId);
+        const newPath = isAdminView
+          ? `/supplier-portal/delivery-lists/${currentDeliveryId}`
+          : `/supplier/deliveries/${currentDeliveryId}`;
+        navigate(newPath, { replace: true });
+      }
+
+      const result = await requestJson("POST", `/api/delivery-lists/${currentDeliveryId}/lines`, {
         productId: lineDraft.productId || null,
         isNewProduct: !lineDraft.productId,
         image: lineDraft.image,
@@ -1840,18 +1852,38 @@ export function SupplierPortalDeliveryEditorPage() {
         collectionLabel: lineDraft.collectionLabel || "",
         quantity: Number(lineDraft.quantity),
         description: "",
-      },
-    ];
+      });
 
-    setDeliveryLines(nextLines);
-    form.setFieldValue("lines", nextLines);
-    resetLineDraft();
-    message.success("Urun listeye eklendi.");
+      const nextLines = result?.item?.lines || result?.lines || [...deliveryLines, { id: `line-${Date.now()}`, ...lineDraft }];
+      setDeliveryLines(nextLines);
+      form.setFieldValue("lines", nextLines);
+      resetLineDraft();
+      message.success("Urun listeye eklendi.");
+    } catch (error) {
+      message.error(error?.message || "Satir eklenemedi.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteLine = (index) => {
+  const handleDeleteLine = async (index, lineId) => {
     if (isDeliveryLocked) {
       return;
+    }
+    if (deliveryId && lineId) {
+      try {
+        setLoading(true);
+        const result = await requestJson("DELETE", `/api/delivery-lists/${deliveryId}/lines/${lineId}`);
+        const updatedLines = result?.item?.lines ?? result?.lines ?? deliveryLines.filter((_, i) => i !== index);
+        setDeliveryLines(updatedLines);
+        form.setFieldValue("lines", updatedLines);
+        return;
+      } catch (error) {
+        message.error(error?.message || "Satir silinemedi.");
+        return;
+      } finally {
+        setLoading(false);
+      }
     }
     const currentLines = [...deliveryLines];
     currentLines.splice(index, 1);
@@ -2021,23 +2053,11 @@ export function SupplierPortalDeliveryEditorPage() {
   const handleSave = async (status, shouldDownloadPdf = false) => {
     try {
       setLoading(true);
-      const values = await validateBeforeAction();
-      if (!values) {
+      if (!deliveryLines.length) {
+        showCenteredWarning("Urun listesi bos olamaz.");
         return;
       }
-
-      const uploadedLines = await Promise.all((values.lines || []).map(async (line) => {
-        if (!String(line.image || "").startsWith("data:")) return line;
-        try {
-          const ext = line.image.match(/^data:image\/(\w+);/)?.[1] || "jpg";
-          const filename = `delivery-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
-          const result = await requestJson("POST", "/api/assets/upload", { base64: line.image, filename });
-          return { ...line, image: result?.url || "" };
-        } catch {
-          return { ...line, image: "" };
-        }
-      }));
-
+      const values = await form.validateFields();
       const payload = {
         ...values,
         supplierId: targetSupplierId,
@@ -2046,19 +2066,24 @@ export function SupplierPortalDeliveryEditorPage() {
         supplierEmail: supplier?.email || authUser?.email || "",
         status,
         createdBy: authUser?.id || null,
-        lines: uploadedLines,
       };
 
-      const savedRecord = isEditMode ? updateDeliveryList(deliveryId, payload) : createDeliveryList(payload);
+      let savedRecord;
+      if (isEditMode) {
+        savedRecord = await requestJson("PUT", `/api/delivery-lists/${deliveryId}`, payload);
+        savedRecord = savedRecord?.item || savedRecord;
+      } else {
+        savedRecord = await requestJson("POST", "/api/delivery-lists", { ...payload, lines: deliveryLines.map((l) => ({ ...l, image: "" })) });
+        savedRecord = savedRecord?.item || savedRecord;
+      }
+
       if (shouldDownloadPdf || status === "Onay Bekleniyor") {
         await createDeliveryPdf(savedRecord);
       }
       message.success(status === "Onay Bekleniyor" ? "Teslimat onaya gonderildi." : "Teslimat kaydedildi.");
       navigate(isAdminView ? `/supplier-portal/delivery-lists/${savedRecord.id}` : `/supplier/deliveries/${savedRecord.id}`);
     } catch (error) {
-      if (error?.errorFields) {
-        return;
-      }
+      if (error?.errorFields) return;
       message.error(error?.message || "Teslimat kaydedilirken hata olustu.");
     } finally {
       setLoading(false);
@@ -2269,7 +2294,7 @@ export function SupplierPortalDeliveryEditorPage() {
                     ) : null}
                     {!isDeliveryLocked ? (
                       <Tooltip title="Sil">
-                        <Button danger type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} onClick={() => handleDeleteLine(record._rowIndex)} disabled={isDeliveryLocked} />
+                        <Button danger type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} onClick={() => handleDeleteLine(record._rowIndex, record.id)} disabled={isDeliveryLocked} />
                       </Tooltip>
                     ) : null}
                   </Space>
