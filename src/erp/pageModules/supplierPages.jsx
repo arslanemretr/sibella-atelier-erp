@@ -994,7 +994,7 @@ export function SupplierEarningsManagementPage() {
         </Col>
       </Row>
 
-      <Card bordered={false} className="erp-list-table-card">
+      <Card bordered={false} className="erp-list-table-card" style={{ paddingBottom: 16 }}>
         <Table
           rowKey="key"
           loading={pageLoading}
