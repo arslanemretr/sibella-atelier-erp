@@ -7,6 +7,7 @@ import { getAuthUser } from "../../auth";
 import { listContractsFresh } from "../contractsData";
 import { completeDeliveryReceipt, createDeliveryList, createDeliveryPdf, getDeliveryListById, getNextDeliveryNoPreviewFresh, listDeliveryListsBySupplierFresh, listDeliveryListsFresh, updateDeliveryList } from "../deliveryListsData";
 import { listEarningsRecordsFresh } from "../earningsData";
+import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
 import { listPosSalesFresh } from "../posData";
 import { createProduct, listProductsFresh } from "../productsData";
@@ -2015,6 +2016,18 @@ export function SupplierPortalDeliveryEditorPage() {
         return;
       }
 
+      const uploadedLines = await Promise.all((values.lines || []).map(async (line) => {
+        if (!String(line.image || "").startsWith("data:")) return line;
+        try {
+          const ext = line.image.match(/^data:image\/(\w+);/)?.[1] || "jpg";
+          const filename = `delivery-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+          const result = await requestJson("POST", "/api/assets/upload", { base64: line.image, filename });
+          return { ...line, image: result?.url || "" };
+        } catch {
+          return { ...line, image: "" };
+        }
+      }));
+
       const payload = {
         ...values,
         supplierId: targetSupplierId,
@@ -2023,10 +2036,7 @@ export function SupplierPortalDeliveryEditorPage() {
         supplierEmail: supplier?.email || authUser?.email || "",
         status,
         createdBy: authUser?.id || null,
-        lines: (values.lines || []).map((line) => ({
-          ...line,
-          image: (line.productId && String(line.image || "").startsWith("data:")) ? "" : (line.image || ""),
-        })),
+        lines: uploadedLines,
       };
 
       const savedRecord = isEditMode ? updateDeliveryList(deliveryId, payload) : createDeliveryList(payload);

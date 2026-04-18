@@ -90,6 +90,28 @@ app.use("/api/assets", express.static(assetStoragePath, {
   immutable: true,
 }));
 
+app.post("/api/assets/upload", (req, res) => {
+  try {
+    const { base64, filename } = req.body || {};
+    if (!base64 || !filename) {
+      return res.status(400).json({ ok: false, message: "base64 ve filename zorunludur." });
+    }
+    const match = base64.match(/^data:([a-zA-Z0-9+/]+\/[a-zA-Z0-9+/]+);base64,(.+)$/);
+    if (!match) {
+      return res.status(400).json({ ok: false, message: "Gecersiz base64 formati." });
+    }
+    const buffer = Buffer.from(match[2], "base64");
+    const safeFilename = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, "_");
+    const subdir = path.join(assetStoragePath, "uploads");
+    fs.mkdirSync(subdir, { recursive: true });
+    const filePath = path.join(subdir, safeFilename);
+    fs.writeFileSync(filePath, buffer);
+    return res.json({ ok: true, url: `/api/assets/uploads/${safeFilename}` });
+  } catch (error) {
+    return res.status(500).json({ ok: false, message: error?.message || "Gorsel yuklenemedi." });
+  }
+});
+
 void ensureDatabaseReady()
   .then(() => ensureStockMovementsReady())
   .then(() => ensureEarningsReady())
