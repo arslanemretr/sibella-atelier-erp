@@ -1782,9 +1782,19 @@ export function SupplierPortalDeliveryEditorPage() {
 
     const reader = new FileReader();
     reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setLineDraft((current) => ({ ...current, image: reader.result }));
-      }
+      if (typeof reader.result !== "string") return;
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 800;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        const compressed = canvas.toDataURL("image/jpeg", 0.72);
+        setLineDraft((current) => ({ ...current, image: compressed }));
+      };
+      img.src = reader.result;
     };
     reader.readAsDataURL(file);
   };
