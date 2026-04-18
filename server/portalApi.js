@@ -390,10 +390,7 @@ function normalizeDelivery(values, existingRecord) {
 }
 
 async function replaceDeliveryLines(record) {
-  record.lines = (record.lines || []).map((line) => ({
-    ...line,
-    image: String(line.image || "").startsWith("data:") ? "" : (line.image || ""),
-  }));
+  record.lines = (record.lines || []);
   const schemaInfo = await ensureDeliveryLineSchema();
   await sqlExec(
     schemaInfo.hasDeliveryId

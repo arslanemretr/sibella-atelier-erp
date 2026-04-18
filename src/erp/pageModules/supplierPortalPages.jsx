@@ -2073,7 +2073,7 @@ export function SupplierPortalDeliveryEditorPage() {
         savedRecord = await requestJson("PUT", `/api/delivery-lists/${deliveryId}`, payload);
         savedRecord = savedRecord?.item || savedRecord;
       } else {
-        savedRecord = await requestJson("POST", "/api/delivery-lists", { ...payload, lines: deliveryLines.map((l) => ({ ...l, image: "" })) });
+        savedRecord = await requestJson("POST", "/api/delivery-lists", { ...payload, lines: deliveryLines });
         savedRecord = savedRecord?.item || savedRecord;
       }
 
