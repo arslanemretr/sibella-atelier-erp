@@ -14,8 +14,8 @@ import {
   message,
 } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
-import { listSuppliersFresh } from "../erp/suppliersData";
-import { createUser, deleteUser, listUsersFresh, updateUser } from "../erp/usersData";
+import { listSuppliersFresh } from "../suppliersData";
+import { createUser, deleteUser, listUsersFresh, updateUser } from "../usersData";
 
 const { Title, Text } = Typography;
 

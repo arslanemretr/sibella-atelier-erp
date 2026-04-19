@@ -4,8 +4,8 @@ import { Spin } from "antd";
 import AppLayout from "./components/layout/AppLayout";
 import { getAuthUser, hasAuthLoaded, isAuthenticated, onAuthChange, restoreAuthSession } from "./auth";
 import { resetOperationalDataIfNeeded } from "./erp/resetOperationalData";
-import LoginPage from "./pages/LoginPage";
-import UserManagementPage from "./pages/UserManagementPage";
+import LoginPage from "./erp/pageModules/loginPage";
+import UserManagementPage from "./erp/pageModules/userManagementPage";
 
 const DashboardPage = React.lazy(() => import("./erp/pageModules/dashboardPages").then((module) => ({ default: module.DashboardPage })));
 const SupplierDashboardPage = React.lazy(() => import("./erp/pageModules/dashboardPages").then((module) => ({ default: module.SupplierDashboardPage })));

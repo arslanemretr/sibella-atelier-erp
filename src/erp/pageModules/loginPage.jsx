@@ -10,8 +10,8 @@ import {
   onAuthChange,
   requestPasswordReset,
   restoreAuthSession,
-} from "../auth";
-import logo from "../assets/logo.png";
+} from "../../auth";
+import logo from "../../assets/logo.png";
 
 const { Text } = Typography;
 
