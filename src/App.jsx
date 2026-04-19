@@ -3,14 +3,12 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import { Spin } from "antd";
 import AppLayout from "./components/layout/AppLayout";
 import { getAuthUser, hasAuthLoaded, isAuthenticated, onAuthChange, restoreAuthSession } from "./auth";
-import {
-  DashboardPage,
-  SupplierDashboardPage,
-} from "./erp/pages";
 import { resetOperationalDataIfNeeded } from "./erp/resetOperationalData";
 import LoginPage from "./pages/LoginPage";
 import UserManagementPage from "./pages/UserManagementPage";
 
+const DashboardPage = React.lazy(() => import("./erp/pageModules/dashboardPages").then((module) => ({ default: module.DashboardPage })));
+const SupplierDashboardPage = React.lazy(() => import("./erp/pageModules/dashboardPages").then((module) => ({ default: module.SupplierDashboardPage })));
 const ProductListPage = React.lazy(() => import("./erp/pageModules/productPages").then((module) => ({ default: module.ProductListPage })));
 const ProductEditorPage = React.lazy(() => import("./erp/pageModules/productPages").then((module) => ({ default: module.ProductEditorPage })));
 const SettingsDefinitionPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.SettingsDefinitionPage })));
@@ -125,7 +123,7 @@ function ProtectedApp() {
       <Routes>
         <Route path="/" element={<Navigate to={isSupplierUser ? "/supplier/dashboard" : "/dashboard"} replace />} />
         <Route path="/settings" element={<Navigate to="/settings/users" replace />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/dashboard" element={withLazyPage(<DashboardPage />)} />
 
         <Route path="/products/list" element={withLazyPage(<ProductListPage />)} />
         <Route path="/products/new" element={withLazyPage(<ProductEditorPage />)} />
@@ -172,7 +170,7 @@ function ProtectedApp() {
         <Route path="/settings/smtp" element={withLazyPage(<SmtpSettingsPage />)} />
 
         <Route path="/supplier/products" element={withLazyPage(<SupplierPortalProductListPage />)} />
-        <Route path="/supplier/dashboard" element={<SupplierDashboardPage />} />
+        <Route path="/supplier/dashboard" element={withLazyPage(<SupplierDashboardPage />)} />
         <Route path="/supplier/earnings" element={withLazyPage(<SupplierPortalEarningsPage />)} />
         <Route path="/supplier/products/:productId" element={withLazyPage(<SupplierPortalProductEditorPage />)} />
         <Route path="/supplier/deliveries" element={withLazyPage(<SupplierPortalDeliveryListPage />)} />
