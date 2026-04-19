@@ -31,6 +31,9 @@ const PurchaseListPage = React.lazy(() => import("./erp/pageModules/purchasePage
 const PurchaseEditorPage = React.lazy(() => import("./erp/pageModules/purchasePages").then((module) => ({ default: module.PurchaseEditorPage })));
 const PosSessionsPage = React.lazy(() => import("./erp/pageModules/posPages").then((module) => ({ default: module.PosSessionsPage })));
 const PosScreenPage = React.lazy(() => import("./erp/pageModules/posPages").then((module) => ({ default: module.PosScreenPage })));
+const PosOrdersPage = React.lazy(() => import("./erp/pageModules/posPages").then((module) => ({ default: module.PosOrdersPage })));
+const PosReturnEditorPage = React.lazy(() => import("./erp/pageModules/posPages").then((module) => ({ default: module.PosReturnEditorPage })));
+const PosReturnListPage = React.lazy(() => import("./erp/pageModules/posPages").then((module) => ({ default: module.PosReturnListPage })));
 const ContractsPage = React.lazy(() => import("./erp/pageModules/contractPages").then((module) => ({ default: module.ContractsPage })));
 const SupplierDeliveryListsPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierDeliveryListsPage })));
 const SupplierPortalDeliveryEditorPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalDeliveryEditorPage })));
@@ -130,6 +133,9 @@ function ProtectedApp() {
 
         <Route path="/pos/sessions" element={withLazyPage(<PosSessionsPage />)} />
         <Route path="/pos/store" element={withLazyPage(<PosScreenPage />)} />
+        <Route path="/pos/orders" element={withLazyPage(<PosOrdersPage />)} />
+        <Route path="/pos/returns" element={withLazyPage(<PosReturnListPage />)} />
+        <Route path="/pos/returns/new" element={withLazyPage(<PosReturnEditorPage />)} />
 
         <Route path="/purchasing/suppliers" element={withLazyPage(<SupplierListPage />)} />
         <Route path="/purchasing/suppliers/new" element={withLazyPage(<SupplierEditorPage />)} />

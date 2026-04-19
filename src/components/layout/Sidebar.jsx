@@ -39,6 +39,8 @@ const iconMap = {
   "pos-group": menuIcon(MonitorSmartphone),
   "/pos/sessions": menuIcon(ClipboardList),
   "/pos/store": menuIcon(MonitorSmartphone),
+  "/pos/orders": menuIcon(ClipboardList),
+  "/pos/returns": menuIcon(Package),
   purchasing: menuIcon(HandCoins),
   "purchasing-group": menuIcon(HandCoins),
   "/purchasing/suppliers": menuIcon(Truck),

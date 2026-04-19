@@ -240,3 +240,16 @@ export function findProductByBarcode(barcode) {
 export function getProductSnapshot(productId) {
   return getProductById(productId);
 }
+
+export async function listPosReturnsFresh() {
+  const returns = await requestCollection("/api/pos-returns", []);
+  return returns.map((ret) => ({
+    ...ret,
+    totalAmount: (ret.lines || []).reduce((sum, l) => sum + Number(l.lineTotal || 0), 0),
+    totalQuantity: (ret.lines || []).reduce((sum, l) => sum + Number(l.quantity || 0), 0),
+  }));
+}
+
+export function createPosReturn(values) {
+  return mutateResourceSync("POST", "/api/pos-returns", values);
+}

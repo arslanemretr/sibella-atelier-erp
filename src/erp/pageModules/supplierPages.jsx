@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 import { listContractsFresh } from "../contractsData";
 import { listEarningsRecordsFresh, upsertEarningsRecord } from "../earningsData";
 import { createMasterData, listMasterDataFresh } from "../masterData";
-import { listPosSalesFresh } from "../posData";
+import { listPosSalesFresh, listPosReturnsFresh } from "../posData";
 import { listProductsFresh } from "../productsData";
 import { createSupplier, deleteSupplier, listSuppliersFresh, updateSupplier } from "../suppliersData";
 
@@ -741,7 +741,7 @@ function resolveAdminEarningsStatus(periodKey, earningsTotal, earningsRecord) {
   return "Tamamlandı";
 }
 
-function buildAdminEarningsList({ suppliers, products, sales, contracts, earningsRecords }) {
+function buildAdminEarningsList({ suppliers, products, sales, returns, contracts, earningsRecords }) {
   const consignmentProductsBySupplierId = new Map();
   (products || []).filter((p) => p.productType === "konsinye").forEach((p) => {
     if (!p.supplierId) {
@@ -796,6 +796,7 @@ function buildAdminEarningsList({ suppliers, products, sales, contracts, earning
 
       const commissionRate = Number(contract?.commissionRate || 0);
       let grossTotal = 0;
+      let returnTotal = 0;
 
       (sales || []).forEach((sale) => {
         const soldAt = sale.soldAt ? new Date(sale.soldAt) : null;
@@ -810,7 +811,19 @@ function buildAdminEarningsList({ suppliers, products, sales, contracts, earning
         });
       });
 
-      const earningsTotal = grossTotal * (1 - commissionRate / 100);
+      (returns || []).forEach((ret) => {
+        const retDate = ret.returnDate ? new Date(ret.returnDate) : null;
+        if (!retDate) return;
+        const retPeriodKey = getMonthKeyAdmin(new Date(retDate.getFullYear(), retDate.getMonth(), 1));
+        if (retPeriodKey !== periodKey) return;
+        (ret.lines || []).forEach((line) => {
+          if (!productIds.has(line.productId)) return;
+          returnTotal += Number(line.lineTotal || 0);
+        });
+      });
+
+      const netTotal = Math.max(0, grossTotal - returnTotal);
+      const earningsTotal = netTotal * (1 - commissionRate / 100);
       const earningsRecord = earningsRecordMap.get(`${supplierId}::${periodKey}`) || null;
       const status = resolveAdminEarningsStatus(periodKey, earningsTotal, earningsRecord);
 
@@ -822,6 +835,8 @@ function buildAdminEarningsList({ suppliers, products, sales, contracts, earning
         periodLabel: formatPeriodLabelAdmin(periodKey),
         commissionRate,
         grossTotal,
+        returnTotal,
+        netTotal,
         earningsTotal,
         earningsRecord,
         status,
@@ -847,10 +862,11 @@ export function SupplierEarningsManagementPage() {
   const refresh = React.useCallback(async () => {
     try {
       setPageLoading(true);
-      const [suppliers, products, sales, contracts, earningsRecords] = await Promise.all([
+      const [suppliers, products, sales, returns, contracts, earningsRecords] = await Promise.all([
         listSuppliersFresh(),
         listProductsFresh(),
         listPosSalesFresh(),
+        listPosReturnsFresh(),
         listContractsFresh(),
         listEarningsRecordsFresh(),
       ]);
@@ -858,7 +874,7 @@ export function SupplierEarningsManagementPage() {
         { value: "all", label: "Tüm Tedarikçiler" },
         ...suppliers.map((s) => ({ value: s.id, label: s.company || s.id })),
       ]);
-      setRows(buildAdminEarningsList({ suppliers, products, sales, contracts, earningsRecords }));
+      setRows(buildAdminEarningsList({ suppliers, products, sales, returns, contracts, earningsRecords }));
     } catch (error) {
       message.error(error?.message || "Hakediş verileri yüklenemedi.");
     } finally {
@@ -1008,7 +1024,9 @@ export function SupplierEarningsManagementPage() {
             { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 180 },
             { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130 },
             { title: "Toplam Satış", dataIndex: "grossTotal", key: "grossTotal", width: 150, render: (v) => formatMoneyAdmin(v) },
-            { title: "Komisyon", key: "commissionAmount", width: 140, render: (_, r) => formatMoneyAdmin(Number(r.grossTotal || 0) - Number(r.earningsTotal || 0)) },
+            { title: "İade", dataIndex: "returnTotal", key: "returnTotal", width: 120, render: (v) => v ? <span style={{ color: "#cf1322" }}>-{formatMoneyAdmin(v)}</span> : "-" },
+            { title: "Net Satış", dataIndex: "netTotal", key: "netTotal", width: 140, render: (v) => formatMoneyAdmin(v) },
+            { title: "Komisyon", key: "commissionAmount", width: 140, render: (_, r) => formatMoneyAdmin(Number(r.netTotal || 0) - Number(r.earningsTotal || 0)) },
             { title: "Hakediş Tutarı", dataIndex: "earningsTotal", key: "earningsTotal", width: 150, render: (v) => formatMoneyAdmin(v) },
             {
               title: "Son Ödeme Tarihi (Otomatik)",
@@ -1052,6 +1070,9 @@ export function SupplierEarningsManagementPage() {
                 <Card size="small" bordered style={{ background: "#fafafa" }}>
                   <Text type="secondary" style={{ fontSize: 12 }}>Toplam Satış</Text>
                   <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>{formatMoneyAdmin(selectedRow.grossTotal)}</div>
+                  {Number(selectedRow.returnTotal || 0) > 0 && (
+                    <div style={{ fontSize: 12, color: "#cf1322", marginTop: 2 }}>İade: -{formatMoneyAdmin(selectedRow.returnTotal)}</div>
+                  )}
                 </Card>
               </Col>
               <Col span={12}>

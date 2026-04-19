@@ -398,6 +398,34 @@ CREATE TABLE IF NOT EXISTS supplier_earnings_records (
   UNIQUE (supplier_id, period_key)
 );
 
+CREATE TABLE IF NOT EXISTS pos_returns (
+  id TEXT PRIMARY KEY,
+  return_no TEXT NOT NULL,
+  original_sale_id TEXT REFERENCES pos_sales(id),
+  stock_location_id TEXT REFERENCES stock_locations(id),
+  return_date TIMESTAMPTZ NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Tamamlandi',
+  note TEXT,
+  created_by TEXT REFERENCES users(id),
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS pos_return_lines (
+  id TEXT PRIMARY KEY,
+  return_id TEXT NOT NULL REFERENCES pos_returns(id) ON DELETE CASCADE,
+  original_sale_line_id TEXT,
+  product_id TEXT REFERENCES products(id),
+  product_code TEXT,
+  product_name TEXT,
+  quantity DOUBLE PRECISION NOT NULL,
+  unit_price DOUBLE PRECISION NOT NULL,
+  line_total DOUBLE PRECISION NOT NULL,
+  supplier_id TEXT,
+  commission_rate DOUBLE PRECISION DEFAULT 0,
+  sort_order INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS system_parameters (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   product_code_control_enabled BOOLEAN,

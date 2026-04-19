@@ -14,6 +14,8 @@ export const mainMenuItems = [
     children: [
       { key: "/pos/sessions", label: "Oturumlar" },
       { key: "/pos/store", label: "Pos Ekrani" },
+      { key: "/pos/orders", label: "Siparişler" },
+      { key: "/pos/returns", label: "İadeler" },
     ],
   },
   {
@@ -89,6 +91,8 @@ export const sidebarGroups = [
         children: [
           { key: "/pos/sessions", label: "Oturumlar" },
           { key: "/pos/store", label: "Pos Ekrani" },
+          { key: "/pos/orders", label: "Siparişler" },
+          { key: "/pos/returns", label: "İadeler" },
         ],
       },
       {

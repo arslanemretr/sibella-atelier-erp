@@ -764,3 +764,185 @@ export async function handleDeliveryListsDelete(req, res) {
     return httpError(res, 400, error?.message || "Teslimat silinemedi.");
   }
 }
+
+export async function ensurePosReturnsReady() {
+  await sqlExec(`
+    CREATE TABLE IF NOT EXISTS pos_returns (
+      id TEXT PRIMARY KEY,
+      return_no TEXT NOT NULL,
+      original_sale_id TEXT REFERENCES pos_sales(id),
+      stock_location_id TEXT REFERENCES stock_locations(id),
+      return_date TIMESTAMPTZ NOT NULL,
+      status TEXT NOT NULL DEFAULT 'Tamamlandi',
+      note TEXT,
+      created_by TEXT REFERENCES users(id),
+      created_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ
+    )
+  `);
+  await sqlExec(`
+    CREATE TABLE IF NOT EXISTS pos_return_lines (
+      id TEXT PRIMARY KEY,
+      return_id TEXT NOT NULL REFERENCES pos_returns(id) ON DELETE CASCADE,
+      original_sale_line_id TEXT,
+      product_id TEXT REFERENCES products(id),
+      product_code TEXT,
+      product_name TEXT,
+      quantity DOUBLE PRECISION NOT NULL,
+      unit_price DOUBLE PRECISION NOT NULL,
+      line_total DOUBLE PRECISION NOT NULL,
+      supplier_id TEXT,
+      commission_rate DOUBLE PRECISION DEFAULT 0,
+      sort_order INTEGER
+    )
+  `);
+}
+
+async function listPosReturnsRows() {
+  const returnRows = await sqlMany("SELECT * FROM pos_returns ORDER BY created_at DESC, return_date DESC");
+  const lineRows = await sqlMany("SELECT * FROM pos_return_lines ORDER BY return_id ASC, sort_order ASC, id ASC");
+  const linesByReturnId = new Map();
+
+  lineRows.forEach((row) => {
+    const items = linesByReturnId.get(row.return_id) || [];
+    items.push({
+      id: row.id,
+      returnId: row.return_id,
+      originalSaleLineId: row.original_sale_line_id || null,
+      productId: row.product_id || null,
+      productCode: row.product_code || "",
+      productName: row.product_name || "",
+      quantity: Number(row.quantity || 0),
+      unitPrice: Number(row.unit_price || 0),
+      lineTotal: Number(row.line_total || 0),
+      supplierId: row.supplier_id || null,
+      commissionRate: Number(row.commission_rate || 0),
+    });
+    linesByReturnId.set(row.return_id, items);
+  });
+
+  return returnRows.map((row) => ({
+    id: row.id,
+    returnNo: row.return_no || "",
+    originalSaleId: row.original_sale_id || null,
+    stockLocationId: row.stock_location_id || null,
+    returnDate: row.return_date || null,
+    status: row.status || "Tamamlandi",
+    note: row.note || "",
+    createdBy: row.created_by || null,
+    lines: linesByReturnId.get(row.id) || [],
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+  }));
+}
+
+export async function handlePosReturnsList(_req, res) {
+  return res.json({ ok: true, items: await listPosReturnsRows() });
+}
+
+export async function handlePosReturnsCreate(req, res) {
+  try {
+    const body = req.body || {};
+    const originalSaleId = body.originalSaleId;
+    if (!originalSaleId) return httpError(res, 400, "Orijinal satis secimi zorunludur.");
+
+    const saleRow = await sqlOne("SELECT * FROM pos_sales WHERE id = $1", [originalSaleId]);
+    if (!saleRow) return httpError(res, 404, "Orijinal satis bulunamadi.");
+
+    const saleLineRows = await sqlMany("SELECT * FROM pos_sale_lines WHERE sale_id = $1", [originalSaleId]);
+
+    const returnLines = (body.lines || []).filter((l) => Number(l.quantity || 0) > 0);
+    if (returnLines.length === 0) return httpError(res, 400, "En az bir iade satiri zorunludur.");
+
+    const existingReturnLines = await sqlMany(
+      "SELECT prl.original_sale_line_id, SUM(prl.quantity) AS returned_qty FROM pos_return_lines prl JOIN pos_returns pr ON pr.id = prl.return_id WHERE pr.original_sale_id = $1 GROUP BY prl.original_sale_line_id",
+      [originalSaleId],
+    );
+    const alreadyReturnedMap = new Map(existingReturnLines.map((r) => [r.original_sale_line_id, Number(r.returned_qty || 0)]));
+
+    for (const line of returnLines) {
+      const saleLine = saleLineRows.find((sl) => sl.id === line.originalSaleLineId);
+      if (!saleLine) return httpError(res, 400, `Satis satiri bulunamadi: ${line.originalSaleLineId}`);
+      const maxReturnable = Number(saleLine.quantity || 0) - (alreadyReturnedMap.get(line.originalSaleLineId) || 0);
+      if (Number(line.quantity) > maxReturnable) {
+        return httpError(res, 400, `İade miktari orijinal satis miktarini asiyor (max: ${maxReturnable}).`);
+      }
+    }
+
+    const countRow = await sqlOne("SELECT COUNT(*)::int AS cnt FROM pos_returns");
+    const returnNo = `IAS-${String(Number(countRow?.cnt || 0) + 1).padStart(3, "0")}`;
+    const returnId = createId("posret");
+    const now = nowIso();
+    const returnDate = body.returnDate || now;
+    const stockLocationId = body.stockLocationId || saleRow.stock_location_id || null;
+
+    const productIds = [...new Set(returnLines.map((l) => l.productId).filter(Boolean))];
+    const productRows = productIds.length > 0
+      ? await sqlMany(`SELECT id, code, name, supplier_id FROM products WHERE id = ANY($1::text[])`, [productIds])
+      : [];
+    const productMap = new Map(productRows.map((p) => [p.id, p]));
+
+    const contractRows = await sqlMany("SELECT supplier_id, commission_rate FROM consignment_contracts ORDER BY start_date DESC");
+    const contractMap = new Map();
+    contractRows.forEach((c) => {
+      if (!contractMap.has(c.supplier_id)) contractMap.set(c.supplier_id, Number(c.commission_rate || 0));
+    });
+
+    await withInventoryTransaction(async (tx) => {
+      await tx.exec(
+        `INSERT INTO pos_returns (id, return_no, original_sale_id, stock_location_id, return_date, status, note, created_by, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5::timestamptz,$6,$7,$8,$9::timestamptz,$10::timestamptz)`,
+        [returnId, returnNo, originalSaleId, stockLocationId, returnDate, "Tamamlandi", body.note || "", req.authUser?.id || null, now, now],
+      );
+
+      const movementLines = [];
+      for (let index = 0; index < returnLines.length; index += 1) {
+        const line = returnLines[index];
+        const product = productMap.get(line.productId);
+        const supplierId = product?.supplier_id || null;
+        const commissionRate = supplierId ? (contractMap.get(supplierId) || 0) : 0;
+        const quantity = Number(line.quantity || 0);
+        const unitPrice = Number(line.unitPrice || 0);
+        const lineTotal = quantity * unitPrice;
+        const lineId = createId("posretline");
+
+        await tx.exec(
+          `INSERT INTO pos_return_lines (id, return_id, original_sale_line_id, product_id, product_code, product_name, quantity, unit_price, line_total, supplier_id, commission_rate, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+          [lineId, returnId, line.originalSaleLineId || null, line.productId || null, product?.code || "", product?.name || "", quantity, unitPrice, lineTotal, supplierId, commissionRate, index + 1],
+        );
+
+        if (line.productId && stockLocationId) {
+          movementLines.push({
+            movementType: "IADE_GIRISI",
+            direction: "IN",
+            affectsStock: true,
+            quantity,
+            stockDelta: quantity,
+            productId: line.productId,
+            stockLocationId,
+            documentNo: returnNo,
+            documentDate: returnDate,
+            sourceLineId: lineId,
+            partyName: saleRow.customer_name || "Musteri",
+            unitAmount: unitPrice,
+            totalAmount: lineTotal,
+            note: body.note || "",
+            createdAt: now,
+          });
+        }
+      }
+
+      if (movementLines.length > 0) {
+        await replaceStockMovementsForSource("pos-return", returnId, movementLines, tx);
+        await rebuildStockBalancesFromMovements(tx);
+      }
+    });
+
+    const created = (await listPosReturnsRows()).find((r) => r.id === returnId);
+    return res.status(201).json({ ok: true, item: created });
+  } catch (error) {
+    console.error("handlePosReturnsCreate hatasi:", error?.message, error?.stack);
+    return httpError(res, 400, error?.message || "İade olusturulamadi.");
+  }
+}
