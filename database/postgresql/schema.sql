@@ -31,10 +31,12 @@ CREATE TABLE IF NOT EXISTS pos_categories (
 CREATE TABLE IF NOT EXISTS barcode_standards (
   id TEXT PRIMARY KEY,
   name TEXT,
-  prefix TEXT,
-  separator TEXT,
-  digits INTEGER,
-  next_number INTEGER,
+  standard_prefix TEXT NOT NULL DEFAULT '111',
+  supplier_id TEXT REFERENCES suppliers(id),
+  supplier_short_code TEXT,
+  customer_seq_no TEXT,
+  customer_type TEXT DEFAULT 'Konsinye',
+  customer_type_code TEXT DEFAULT '0020',
   status TEXT,
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
@@ -129,6 +131,7 @@ CREATE TABLE IF NOT EXISTS products (
 );
 
 ALTER TABLE products ADD COLUMN IF NOT EXISTS shopify_product_gid TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode_standard_id TEXT REFERENCES barcode_standards(id);
 
 CREATE UNIQUE INDEX IF NOT EXISTS products_shopify_product_gid_idx
   ON products (shopify_product_gid)

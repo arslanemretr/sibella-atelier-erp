@@ -23,6 +23,16 @@ async function ensureSupplierLogoColumn() {
   await ensureSupplierLogoColumnPromise;
 }
 
+export async function ensureBarcodeStandardsReady() {
+  await sqlExec("ALTER TABLE barcode_standards ADD COLUMN IF NOT EXISTS standard_prefix TEXT DEFAULT '111'");
+  await sqlExec("ALTER TABLE barcode_standards ADD COLUMN IF NOT EXISTS supplier_id TEXT REFERENCES suppliers(id)");
+  await sqlExec("ALTER TABLE barcode_standards ADD COLUMN IF NOT EXISTS supplier_short_code TEXT");
+  await sqlExec("ALTER TABLE barcode_standards ADD COLUMN IF NOT EXISTS customer_seq_no TEXT");
+  await sqlExec("ALTER TABLE barcode_standards ADD COLUMN IF NOT EXISTS customer_type TEXT DEFAULT 'Konsinye'");
+  await sqlExec("ALTER TABLE barcode_standards ADD COLUMN IF NOT EXISTS customer_type_code TEXT DEFAULT '0020'");
+  await sqlExec("ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode_standard_id TEXT REFERENCES barcode_standards(id)");
+}
+
 const MASTER_DATA_CONFIG = {
   categories: {
     table: "categories",
@@ -152,10 +162,12 @@ const MASTER_DATA_CONFIG = {
       return {
         id: row.id,
         name: row.name || "",
-        prefix: row.prefix || "",
-        separator: row.separator || "",
-        digits: Number(row.digits || 0),
-        nextNumber: Number(row.next_number || 0),
+        standardPrefix: row.standard_prefix || "111",
+        supplierId: row.supplier_id || null,
+        supplierShortCode: row.supplier_short_code || "",
+        customerSeqNo: row.customer_seq_no || "",
+        customerType: row.customer_type || "Konsinye",
+        customerTypeCode: row.customer_type_code || "0020",
         status: row.status || "Aktif",
         createdAt: row.created_at || null,
         updatedAt: row.updated_at || null,
@@ -165,10 +177,12 @@ const MASTER_DATA_CONFIG = {
       return {
         id: existingRecord?.id || createId("barcode"),
         name: String(values.name || "").trim(),
-        prefix: String(values.prefix || "").trim(),
-        separator: String(values.separator || "").trim(),
-        digits: Number(values.digits || 0),
-        nextNumber: Number(values.nextNumber || 0),
+        standardPrefix: String(values.standardPrefix || "111").trim(),
+        supplierId: values.supplierId || null,
+        supplierShortCode: String(values.supplierShortCode || "").trim(),
+        customerSeqNo: String(values.customerSeqNo || "").trim().padStart(2, "0").slice(-2),
+        customerType: values.customerType || "Konsinye",
+        customerTypeCode: String(values.customerTypeCode || "0020").trim(),
         status: values.status || "Aktif",
         createdAt: existingRecord?.createdAt || nowIso(),
         updatedAt: nowIso(),
@@ -176,16 +190,16 @@ const MASTER_DATA_CONFIG = {
     },
     async insert(record) {
       await sqlExec(`
-        INSERT INTO barcode_standards (id, name, prefix, separator, digits, next_number, status, created_at, updated_at)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8::timestamptz,$9::timestamptz)
-      `, [record.id, record.name, record.prefix, record.separator, record.digits, record.nextNumber, record.status, record.createdAt, record.updatedAt]);
+        INSERT INTO barcode_standards (id, name, standard_prefix, supplier_id, supplier_short_code, customer_seq_no, customer_type, customer_type_code, status, created_at, updated_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::timestamptz,$11::timestamptz)
+      `, [record.id, record.name, record.standardPrefix, record.supplierId, record.supplierShortCode, record.customerSeqNo, record.customerType, record.customerTypeCode, record.status, record.createdAt, record.updatedAt]);
     },
     async update(record) {
       await sqlExec(`
         UPDATE barcode_standards
-        SET name=$2, prefix=$3, separator=$4, digits=$5, next_number=$6, status=$7, updated_at=$8::timestamptz
+        SET name=$2, standard_prefix=$3, supplier_id=$4, supplier_short_code=$5, customer_seq_no=$6, customer_type=$7, customer_type_code=$8, status=$9, updated_at=$10::timestamptz
         WHERE id=$1
-      `, [record.id, record.name, record.prefix, record.separator, record.digits, record.nextNumber, record.status, record.updatedAt]);
+      `, [record.id, record.name, record.standardPrefix, record.supplierId, record.supplierShortCode, record.customerSeqNo, record.customerType, record.customerTypeCode, record.status, record.updatedAt]);
     },
   },
   "procurement-types": {
@@ -401,6 +415,7 @@ async function listProductsRows() {
     workflowStatus: row.workflow_status || "Taslak",
     createdBy: row.created_by || null,
     notes: row.notes || "",
+    barcodeStandardId: row.barcode_standard_id || null,
     features: featuresByProductId.get(row.id) || [],
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
@@ -442,6 +457,7 @@ function normalizeProduct(values, existingRecord) {
     workflowStatus: values.workflowStatus || existingRecord?.workflowStatus || "Taslak",
     createdBy: values.createdBy || existingRecord?.createdBy || null,
     notes: String(values.notes || "").trim(),
+    barcodeStandardId: values.barcodeStandardId || existingRecord?.barcodeStandardId || null,
     features: Array.isArray(values.features)
       ? values.features
           .filter((item) => item && (item.name || item.value))
@@ -596,15 +612,15 @@ export async function handleProductsCreate(req, res) {
         id, code, name, sale_price, sale_currency, cost, cost_currency, category_id, collection_id, pos_category_id,
         supplier_id, barcode, supplier_code, min_stock, supplier_lead_time, stock, product_type, sales_tax, image,
         is_for_sale, is_for_purchase, use_in_pos, track_inventory, status, workflow_status, created_by, notes,
-        created_at, updated_at
+        barcode_standard_id, created_at, updated_at
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28::timestamptz,$29::timestamptz)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29::timestamptz,$30::timestamptz)
     `, [
       item.id, item.code, item.name, item.salePrice, item.saleCurrency, item.cost, item.costCurrency,
       item.categoryId, item.collectionId, item.posCategoryId, item.supplierId, item.barcode, item.supplierCode,
       item.minStock, item.supplierLeadTime, item.stock, item.productType, item.salesTax, item.image,
       item.isForSale, item.isForPurchase, item.useInPos, item.trackInventory, item.status, item.workflowStatus,
-      item.createdBy, item.notes, item.createdAt, item.updatedAt,
+      item.createdBy, item.notes, item.barcodeStandardId, item.createdAt, item.updatedAt,
     ]);
     await replaceProductFeatures(item.id, item.features);
     await syncMainBalanceWithProductStock(item.id);
@@ -626,14 +642,15 @@ export async function handleProductsUpdate(req, res) {
       SET code=$2, name=$3, sale_price=$4, sale_currency=$5, cost=$6, cost_currency=$7, category_id=$8, collection_id=$9,
           pos_category_id=$10, supplier_id=$11, barcode=$12, supplier_code=$13, min_stock=$14, supplier_lead_time=$15,
           stock=$16, product_type=$17, sales_tax=$18, image=$19, is_for_sale=$20, is_for_purchase=$21, use_in_pos=$22,
-          track_inventory=$23, status=$24, workflow_status=$25, created_by=$26, notes=$27, updated_at=$28::timestamptz
+          track_inventory=$23, status=$24, workflow_status=$25, created_by=$26, notes=$27, barcode_standard_id=$28,
+          updated_at=$29::timestamptz
       WHERE id=$1
     `, [
       item.id, item.code, item.name, item.salePrice, item.saleCurrency, item.cost, item.costCurrency,
       item.categoryId, item.collectionId, item.posCategoryId, item.supplierId, item.barcode, item.supplierCode,
       item.minStock, item.supplierLeadTime, item.stock, item.productType, item.salesTax, item.image,
       item.isForSale, item.isForPurchase, item.useInPos, item.trackInventory, item.status, item.workflowStatus,
-      item.createdBy, item.notes, item.updatedAt,
+      item.createdBy, item.notes, item.barcodeStandardId, item.updatedAt,
     ]);
     await replaceProductFeatures(item.id, item.features);
     await syncMainBalanceWithProductStock(item.id);

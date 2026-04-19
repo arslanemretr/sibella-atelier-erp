@@ -836,6 +836,7 @@ export function ProductEditorPage() {
   const [collectionOptions, setCollectionOptions] = React.useState([]);
   const [posCategoryOptions, setPosCategoryOptions] = React.useState([]);
   const [supplierOptions, setSupplierOptions] = React.useState([]);
+  const [barcodeStandards, setBarcodeStandards] = React.useState([]);
   const productIndex = productList.findIndex((item) => item.id === productId);
   const previousProduct = productIndex > 0 ? productList[productIndex - 1] : null;
   const nextProduct = productIndex >= 0 && productIndex < productList.length - 1 ? productList[productIndex + 1] : null;
@@ -843,6 +844,8 @@ export function ProductEditorPage() {
   const imagePath = Form.useWatch("image", form) || "/products/baroque-necklace.svg";
   const currentStock = Form.useWatch("stock", form) ?? 0;
   const watchedSupplierId = Form.useWatch("supplierId", form);
+  const watchedCode = Form.useWatch("code", form);
+  const watchedBarcodeStandardId = Form.useWatch("barcodeStandardId", form);
   const currencyOptions = ["TRY", "USD", "EUR"].map((value) => ({ value, label: value }));
   const quickImages = [
     "/products/baroque-necklace.svg",
@@ -886,6 +889,7 @@ export function ProductEditorPage() {
           collections,
           posCategories,
           suppliers,
+          barcodeStandardList,
         ] = await Promise.all([
           getSystemParametersFresh(),
           listProductsFresh(),
@@ -893,6 +897,7 @@ export function ProductEditorPage() {
           listMasterDataFresh("collections"),
           listMasterDataFresh("pos-categories"),
           listSuppliersFresh(),
+          listMasterDataFresh("barcode-standards"),
         ]);
 
         if (cancelled) {
@@ -909,6 +914,7 @@ export function ProductEditorPage() {
           label: item.company,
           shortCode: item.shortCode,
         })));
+        setBarcodeStandards(barcodeStandardList.filter((item) => item.status === "Aktif"));
 
         if (!isEditMode) {
           initialSupplierIdRef.current = null;
@@ -977,6 +983,23 @@ export function ProductEditorPage() {
     const nextCode = `${shortCode}${String(supplierProductCount + 1).padStart(4, "0")}`;
     form.setFieldValue("code", nextCode);
   }, [form, isEditMode, productId, productList, supplierOptions, systemParameters.productCodeControlEnabled, watchedSupplierId]);
+
+  React.useEffect(() => {
+    if (!watchedBarcodeStandardId) {
+      return;
+    }
+    const standard = barcodeStandards.find((s) => s.id === watchedBarcodeStandardId);
+    if (!standard) {
+      return;
+    }
+    const code = String(watchedCode || "").trim();
+    const last4 = code.length >= 4 ? code.slice(-4) : code.padStart(4, "0");
+    const prefix = String(standard.standardPrefix || "111");
+    const typeCode = String(standard.customerTypeCode || "0020");
+    const seqNo = String(standard.customerSeqNo || "00").padStart(2, "0");
+    const barcode = `${prefix}${typeCode}${seqNo}${last4}`;
+    form.setFieldValue("barcode", barcode);
+  }, [barcodeStandards, form, watchedBarcodeStandardId, watchedCode]);
 
   const handleSubmit = async () => {
     try {
@@ -1215,6 +1238,16 @@ export function ProductEditorPage() {
                         <Col xs={24} md={12}><Form.Item name="categoryId" label="Kategori" rules={[{ required: true, message: "Kategori seciniz." }]}><Select options={categoryOptions} placeholder="Kategori seciniz" /></Form.Item></Col>
                         <Col xs={24} md={12}><Form.Item name="collectionId" label="Koleksiyon"><Select options={collectionOptions} placeholder="Koleksiyon seciniz" allowClear /></Form.Item></Col>
                         <Col xs={24} md={12}><Form.Item name="posCategoryId" label="POS Kategorisi"><Select options={posCategoryOptions} placeholder="POS kategorisi seciniz" /></Form.Item></Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item name="barcodeStandardId" label="Barkod Standardı">
+                            <Select
+                              placeholder="Standart seçiniz"
+                              allowClear
+                              options={barcodeStandards.map((s) => ({ value: s.id, label: s.name || s.id }))}
+                              onChange={() => {}}
+                            />
+                          </Form.Item>
+                        </Col>
                         <Col xs={24} md={12}><Form.Item name="barcode" label="Barkod"><Input placeholder="868..." /></Form.Item></Col>
                         <Col xs={24} md={12}><Form.Item name="status" label="Durum"><Select options={["Aktif", "Pasif"].map((value) => ({ value, label: value }))} /></Form.Item></Col>
                       </Row>

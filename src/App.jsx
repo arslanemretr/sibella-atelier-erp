@@ -12,6 +12,7 @@ const SupplierDashboardPage = React.lazy(() => import("./erp/pageModules/dashboa
 const ProductListPage = React.lazy(() => import("./erp/pageModules/productPages").then((module) => ({ default: module.ProductListPage })));
 const ProductEditorPage = React.lazy(() => import("./erp/pageModules/productPages").then((module) => ({ default: module.ProductEditorPage })));
 const SettingsDefinitionPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.SettingsDefinitionPage })));
+const BarcodeStandardsPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.BarcodeStandardsPage })));
 const ParametersPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.ParametersPage })));
 const SmtpSettingsPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.SmtpSettingsPage })));
 const StockListPage = React.lazy(() => import("./erp/pageModules/stockListPage").then((module) => ({ default: module.StockListPage })));
@@ -163,7 +164,7 @@ function ProtectedApp() {
         <Route path="/settings/categories" element={withLazyPage(<SettingsDefinitionPage entityKey="categories" />)} />
         <Route path="/settings/collections" element={withLazyPage(<SettingsDefinitionPage entityKey="collections" />)} />
         <Route path="/settings/pos-categories" element={withLazyPage(<SettingsDefinitionPage entityKey="pos-categories" />)} />
-        <Route path="/settings/barcode-standards" element={withLazyPage(<SettingsDefinitionPage entityKey="barcode-standards" />)} />
+        <Route path="/settings/barcode-standards" element={withLazyPage(<BarcodeStandardsPage />)} />
         <Route path="/settings/procurement-types" element={withLazyPage(<SettingsDefinitionPage entityKey="procurement-types" />)} />
         <Route path="/settings/payment-terms" element={withLazyPage(<SettingsDefinitionPage entityKey="payment-terms" />)} />
         <Route path="/settings/parameters" element={withLazyPage(<ParametersPage />)} />

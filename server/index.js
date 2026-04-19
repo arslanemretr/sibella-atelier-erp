@@ -16,6 +16,7 @@ import {
   migrateLegacyPasswords,
 } from "./auth.js";
 import {
+  ensureBarcodeStandardsReady,
   handleMasterDataCreate,
   handleMasterDataList,
   handleMasterDataUpdate,
@@ -123,6 +124,7 @@ void ensureDatabaseReady()
   .then(() => ensureEarningsReady())
   .then(() => ensureStockLocationInSessions())
   .then(() => ensurePosReturnsReady())
+  .then(() => ensureBarcodeStandardsReady())
   .then(() => migrateLegacyPasswords())
   .catch((error) => {
     console.error("Database init / auth migration hatasi:", error?.message || error);
