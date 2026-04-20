@@ -1,7 +1,7 @@
 ﻿import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Avatar, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
-import { BarcodeOutlined, CloseCircleOutlined, EditOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { Avatar, Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { BarcodeOutlined, CloseCircleOutlined, CloseOutlined, DeleteOutlined, EditOutlined, FilterOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
@@ -1396,13 +1396,27 @@ export function PosScreenPage() {
   );
 }
 
+const POS_ORDERS_SAVED_FILTERS_KEY = "sibella.erp.posOrderFilters.v1";
+
+const EMPTY_POS_FILTERS = {
+  search: "",
+  productSearch: "",
+  paymentMethod: undefined,
+  dateFrom: null,
+  dateTo: null,
+};
+
 export function PosOrdersPage() {
   const navigate = useNavigate();
   const [sales, setSales] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
-  const [filterOpen, setFilterOpen] = React.useState(false);
-  const [filters, setFilters] = React.useState({});
-  const [filterForm] = Form.useForm();
+  const [filterModalOpen, setFilterModalOpen] = React.useState(false);
+  const [savedFilterName, setSavedFilterName] = React.useState("");
+  const [filters, setFilters] = React.useState(EMPTY_POS_FILTERS);
+  const [savedFilters, setSavedFilters] = React.useState(() => {
+    try { return JSON.parse(window.localStorage.getItem(POS_ORDERS_SAVED_FILTERS_KEY) || "[]"); }
+    catch { return []; }
+  });
 
   const refresh = React.useCallback(async () => {
     try {
@@ -1418,45 +1432,109 @@ export function PosOrdersPage() {
 
   React.useEffect(() => { void refresh(); }, [refresh]);
 
+  const paymentOptions = React.useMemo(() => {
+    const methods = [...new Set(sales.map((s) => s.paymentMethod).filter(Boolean))];
+    return methods.map((m) => ({ value: m, label: m }));
+  }, [sales]);
+
+  const persistSavedFilters = (next) => {
+    setSavedFilters(next);
+    window.localStorage.setItem(POS_ORDERS_SAVED_FILTERS_KEY, JSON.stringify(next));
+  };
+
+  const handleFilterChange = (key, value) => setFilters((prev) => ({ ...prev, [key]: value }));
+
+  const handleResetFilters = () => setFilters(EMPTY_POS_FILTERS);
+
+  const handleSaveFilterPreset = () => {
+    if (!savedFilterName.trim()) { message.warning("Filtre adını girin."); return; }
+    const next = [
+      { name: savedFilterName.trim(), filters },
+      ...savedFilters.filter((f) => f.name !== savedFilterName.trim()),
+    ];
+    persistSavedFilters(next);
+    setSavedFilterName("");
+    message.success("Filtre kaydedildi.");
+  };
+
+  const applySavedFilter = (saved) => {
+    setFilters(saved.filters);
+    setFilterModalOpen(false);
+    message.success(`${saved.name} filtresi uygulandı.`);
+  };
+
+  const activeFilterCount = Object.entries(filters).filter(([, v]) => v).length;
+
   const filteredSales = React.useMemo(() => {
     return sales.filter((sale) => {
-      if (filters.receiptNo && !String(sale.receiptNo || "").toLowerCase().includes(filters.receiptNo.toLowerCase())) return false;
-      if (filters.customerName && !String(sale.customerName || "").toLowerCase().includes(filters.customerName.toLowerCase())) return false;
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        const inHeader =
+          String(sale.receiptNo || "").toLowerCase().includes(q) ||
+          String(sale.customerName || "").toLowerCase().includes(q);
+        if (!inHeader) return false;
+      }
+      if (filters.productSearch) {
+        const q = filters.productSearch.toLowerCase();
+        const hasMatch = (sale.lines || []).some(
+          (l) =>
+            String(l.productCode || "").toLowerCase().includes(q) ||
+            String(l.productName || "").toLowerCase().includes(q)
+        );
+        if (!hasMatch) return false;
+      }
+      if (filters.paymentMethod && sale.paymentMethod !== filters.paymentMethod) return false;
       if (filters.dateFrom && dayjs(sale.soldAt).isBefore(dayjs(filters.dateFrom).startOf("day"))) return false;
       if (filters.dateTo && dayjs(sale.soldAt).isAfter(dayjs(filters.dateTo).endOf("day"))) return false;
       return true;
     });
   }, [sales, filters]);
 
-  const handleApplyFilters = async () => {
-    try {
-      const values = await filterForm.validateFields();
-      setFilters({
-        receiptNo: values.receiptNo || "",
-        customerName: values.customerName || "",
-        dateFrom: values.dateFrom || null,
-        dateTo: values.dateTo || null,
-      });
-      setFilterOpen(false);
-    } catch { /* noop */ }
-  };
-
-  const handleClearFilters = () => {
-    filterForm.resetFields();
-    setFilters({});
-    setFilterOpen(false);
-  };
-
   const columns = [
-    { title: "Fiş No", dataIndex: "receiptNo", key: "receiptNo", sorter: (a, b) => (a.receiptNo || "").localeCompare(b.receiptNo || "", "tr") },
-    { title: "Müşteri", dataIndex: "customerName", key: "customerName" },
-    { title: "Tarih", dataIndex: "soldAt", key: "soldAt", sorter: (a, b) => (a.soldAt || "").localeCompare(b.soldAt || "", "tr"), render: (v) => v ? new Date(v).toLocaleString("tr-TR") : "-" },
-    { title: "Ödeme", dataIndex: "paymentMethod", key: "paymentMethod" },
-    { title: "Toplam", dataIndex: "grandTotalDisplay", key: "grandTotalDisplay", sorter: (a, b) => a.grandTotal - b.grandTotal },
-    { title: "Ürün Adedi", key: "lineCount", render: (_, record) => (record.lines || []).length },
     {
-      title: "İşlemler",
+      title: "Fiş No",
+      dataIndex: "receiptNo",
+      key: "receiptNo",
+      width: 110,
+      sorter: (a, b) => (a.receiptNo || "").localeCompare(b.receiptNo || "", "tr"),
+    },
+    { title: "Müşteri", dataIndex: "customerName", key: "customerName", ellipsis: true },
+    {
+      title: "Tarih",
+      dataIndex: "soldAt",
+      key: "soldAt",
+      width: 150,
+      defaultSortOrder: "descend",
+      sorter: (a, b) => new Date(a.soldAt || 0) - new Date(b.soldAt || 0),
+      render: (v) => v ? new Date(v).toLocaleString("tr-TR") : "-",
+    },
+    {
+      title: "Ödeme",
+      dataIndex: "paymentMethod",
+      key: "paymentMethod",
+      width: 110,
+      render: (v) => v ? <Tag>{v}</Tag> : "-",
+    },
+    {
+      title: "Tutar",
+      dataIndex: "grandTotalDisplay",
+      key: "grandTotalDisplay",
+      width: 120,
+      align: "right",
+      sorter: (a, b) => a.grandTotal - b.grandTotal,
+      render: (v) => <Text strong>{v}</Text>,
+    },
+    {
+      title: "Kalem",
+      key: "lineCount",
+      width: 70,
+      align: "center",
+      render: (_, record) => (record.lines || []).length,
+    },
+    {
+      title: "",
       key: "actions",
+      width: 50,
       render: (_, record) => (
         <Tooltip title="İade Yap">
           <Button
@@ -1472,62 +1550,171 @@ export function PosOrdersPage() {
 
   return (
     <Space direction="vertical" size={20} style={{ width: "100%" }}>
+
+      {/* Başlık */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>POS Siparişleri</Title>
           <Text type="secondary">Tüm POS satışları. İade işlemi için ilgili siparişi seçin.</Text>
         </div>
-        <Space>
-          <Button icon={<SearchOutlined />} onClick={() => setFilterOpen(true)}>Filtrele</Button>
-          <Button icon={<ReloadOutlined />} onClick={() => { void refresh(); }}>Yenile</Button>
-        </Space>
+        <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>Yenile</Button>
       </div>
 
-      <Card title="Sipariş Listesi" className="erp-list-table-card" style={{ paddingBottom: 16 }}>
+      {/* Arama + Filtre Toolbar */}
+      <Card bordered={false} className="erp-list-toolbar-card">
+        <div className="erp-list-toolbar">
+          <div style={{ flex: 1 }} />
+          <div className="erp-product-toolbar-search">
+            <Input
+              prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
+              placeholder="Fiş no veya müşteri ara..."
+              value={filters.search}
+              onChange={(e) => handleFilterChange("search", e.target.value)}
+              allowClear
+            />
+            <Badge count={activeFilterCount} size="small">
+              <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
+            </Badge>
+          </div>
+        </div>
+      </Card>
+
+      {/* Tablo */}
+      <Card title={`Sipariş Listesi${activeFilterCount > 0 ? ` (${filteredSales.length} / ${sales.length})` : ` (${sales.length})`}`} className="erp-list-table-card">
         <Table
           loading={loading}
           columns={columns}
           dataSource={filteredSales.map((item) => ({ key: item.id, ...item }))}
-          pagination={{ pageSize: 50, showSizeChanger: true }}
+          pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (total, range) => `${range[0]}-${range[1]} / ${total}` }}
           expandable={{
-            expandedRowRender: (record) => (
-              <div style={{ overflowX: "auto", margin: "0 0 8px 0" }}>
-                <Table
-                  rowKey="id"
-                  size="small"
-                  pagination={false}
-                  dataSource={(record.lines || []).map((l) => ({ key: l.id, ...l }))}
-                  style={{ minWidth: 520 }}
-                  columns={[
-                    { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 120 },
-                    { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 220 },
-                    { title: "Adet", dataIndex: "quantity", key: "quantity", width: 70, align: "right" },
-                    { title: "Birim Fiyat", dataIndex: "unitPriceDisplay", key: "unitPriceDisplay", width: 120, align: "right" },
-                    { title: "Toplam", dataIndex: "lineTotalDisplay", key: "lineTotalDisplay", width: 120, align: "right" },
-                  ]}
-                />
-              </div>
-            ),
+            expandedRowRender: (record) => {
+              const q = (filters.productSearch || "").toLowerCase();
+              return (
+                <div style={{ overflowX: "auto", margin: "0 0 8px 0" }}>
+                  <Table
+                    rowKey="id"
+                    size="small"
+                    pagination={false}
+                    dataSource={(record.lines || []).map((l) => ({ key: l.id, ...l }))}
+                    style={{ minWidth: 560 }}
+                    rowClassName={(row) => {
+                      if (!q) return "";
+                      const match =
+                        String(row.productCode || "").toLowerCase().includes(q) ||
+                        String(row.productName || "").toLowerCase().includes(q);
+                      return match ? "erp-row-highlight" : "";
+                    }}
+                    columns={[
+                      { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 120 },
+                      { title: "Ürün Adı", dataIndex: "productName", key: "productName" },
+                      { title: "Adet", dataIndex: "quantity", key: "quantity", width: 70, align: "right" },
+                      { title: "Birim Fiyat", dataIndex: "unitPriceDisplay", key: "unitPriceDisplay", width: 130, align: "right" },
+                      { title: "Toplam", dataIndex: "lineTotalDisplay", key: "lineTotalDisplay", width: 130, align: "right" },
+                    ]}
+                  />
+                </div>
+              );
+            },
             rowExpandable: (record) => (record.lines || []).length > 0,
           }}
         />
       </Card>
 
-      <Modal title="Filtrele" open={filterOpen} onCancel={() => setFilterOpen(false)} onOk={handleApplyFilters} okText="Uygula" cancelText="Kapat"
-        footer={[
-          <Button key="clear" onClick={handleClearFilters}>Filtreleri Temizle</Button>,
-          <Button key="cancel" onClick={() => setFilterOpen(false)}>Kapat</Button>,
-          <Button key="ok" type="primary" onClick={handleApplyFilters}>Uygula</Button>,
-        ]}
+      {/* Gelişmiş Filtreler Modal */}
+      <Modal
+        title="Gelişmiş Filtreler"
+        open={filterModalOpen}
+        onCancel={() => setFilterModalOpen(false)}
+        footer={null}
       >
-        <Form form={filterForm} layout="vertical">
-          <Row gutter={[12, 0]}>
-            <Col span={24}><Form.Item name="receiptNo" label="Fiş No"><Input placeholder="Fiş no ara..." /></Form.Item></Col>
-            <Col span={24}><Form.Item name="customerName" label="Müşteri"><Input placeholder="Müşteri adı ara..." /></Form.Item></Col>
-            <Col span={12}><Form.Item name="dateFrom" label="Başlangıç Tarihi"><DatePicker style={{ width: "100%" }} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="dateTo" label="Bitiş Tarihi"><DatePicker style={{ width: "100%" }} /></Form.Item></Col>
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Row gutter={[12, 12]}>
+            <Col span={24}>
+              <Form.Item label="Ürün Kodu / Adı">
+                <Input
+                  prefix={<SearchOutlined />}
+                  placeholder="Ürün kodu veya adı..."
+                  value={filters.productSearch}
+                  onChange={(e) => handleFilterChange("productSearch", e.target.value)}
+                  allowClear
+                />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item label="Ödeme Yöntemi">
+                <Select
+                  placeholder="Tümü"
+                  value={filters.paymentMethod}
+                  onChange={(v) => handleFilterChange("paymentMethod", v)}
+                  options={paymentOptions}
+                  allowClear
+                  style={{ width: "100%" }}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Başlangıç Tarihi">
+                <DatePicker
+                  style={{ width: "100%" }}
+                  format="DD.MM.YYYY"
+                  value={filters.dateFrom ? dayjs(filters.dateFrom) : null}
+                  onChange={(d) => handleFilterChange("dateFrom", d ? d.format("YYYY-MM-DD") : null)}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Bitiş Tarihi">
+                <DatePicker
+                  style={{ width: "100%" }}
+                  format="DD.MM.YYYY"
+                  value={filters.dateTo ? dayjs(filters.dateTo) : null}
+                  onChange={(d) => handleFilterChange("dateTo", d ? d.format("YYYY-MM-DD") : null)}
+                />
+              </Form.Item>
+            </Col>
           </Row>
-        </Form>
+
+          <Card size="small" title="Filtreyi Kaydet">
+            <Space.Compact style={{ width: "100%" }}>
+              <Input
+                value={savedFilterName}
+                onChange={(e) => setSavedFilterName(e.target.value)}
+                placeholder="Filtre adı"
+                onPressEnter={handleSaveFilterPreset}
+              />
+              <Button type="primary" onClick={handleSaveFilterPreset}>Kaydet</Button>
+            </Space.Compact>
+          </Card>
+
+          <Card size="small" title="Kayıtlı Filtreler">
+            {savedFilters.length === 0 ? (
+              <Text type="secondary">Henüz kayıtlı filtre yok.</Text>
+            ) : (
+              <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                {savedFilters.map((item) => (
+                  <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Button style={{ flex: 1, textAlign: "left" }} onClick={() => applySavedFilter(item)}>
+                      {item.name}
+                    </Button>
+                    <Popconfirm
+                      title="Bu filtre silinsin mi?"
+                      okText="Sil"
+                      cancelText="Vazgeç"
+                      onConfirm={() => persistSavedFilters(savedFilters.filter((f) => f.name !== item.name))}
+                    >
+                      <Button type="text" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                  </div>
+                ))}
+              </Space>
+            )}
+          </Card>
+
+          <Space style={{ justifyContent: "space-between", width: "100%" }}>
+            <Button onClick={handleResetFilters}>Filtreleri Temizle</Button>
+            <Button type="primary" onClick={() => setFilterModalOpen(false)}>Uygula</Button>
+          </Space>
+        </Space>
       </Modal>
     </Space>
   );

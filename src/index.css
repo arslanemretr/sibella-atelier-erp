@@ -461,6 +461,10 @@ html, body {
   background: #fff8f5 !important;
 }
 
+.erp-row-highlight .ant-table-cell {
+  background-color: #fffbe6 !important;
+}
+
 .erp-icon-btn {
   width: 28px !important;
   height: 28px !important;

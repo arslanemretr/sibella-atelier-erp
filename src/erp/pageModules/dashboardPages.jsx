@@ -1,8 +1,48 @@
 import React from "react";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
-import { Alert, Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Row, Space, Statistic, Table, Tag, Typography } from "antd";
-import { ReloadOutlined } from "@ant-design/icons";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Descriptions,
+  Drawer,
+  Empty,
+  Row,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+  message,
+} from "antd";
+import {
+  AppstoreOutlined,
+  ArrowRightOutlined,
+  BarChartOutlined,
+  DollarOutlined,
+  ExclamationCircleOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  RollbackOutlined,
+  ShoppingCartOutlined,
+  ShoppingOutlined,
+  TeamOutlined,
+  ThunderboltOutlined,
+} from "@ant-design/icons";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { getAuthUser } from "../../auth";
 import { fetchDashboardSummary } from "../dashboardApi";
 import { listDeliveryListsBySupplierFresh, listDeliveryListsFresh } from "../deliveryListsData";
@@ -10,6 +50,578 @@ import { listProductsFresh } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 
 const { Title, Text } = Typography;
+
+function formatMoney(value) {
+  return new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency: "TRY",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
+
+function formatMoneyFull(value) {
+  return new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency: "TRY",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(d);
+}
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(d);
+}
+
+function KpiCard({ title, value, description, icon, color, onClick, loading }) {
+  return (
+    <Card
+      bordered={false}
+      hoverable={Boolean(onClick)}
+      onClick={onClick}
+      style={{ cursor: onClick ? "pointer" : "default", height: "100%" }}
+      styles={{ body: { padding: "20px 24px" } }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Text type="secondary" style={{ fontSize: 13 }}>{title}</Text>
+          <div style={{ fontSize: 26, fontWeight: 700, color: color || "#1677ff", marginTop: 4, lineHeight: 1.2 }}>
+            {loading ? "—" : value}
+          </div>
+          {description ? (
+            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: "block" }}>{description}</Text>
+          ) : null}
+        </div>
+        <div style={{
+          width: 44, height: 44, borderRadius: 10, display: "flex",
+          alignItems: "center", justifyContent: "center", flexShrink: 0, marginLeft: 12,
+          background: color ? `${color}18` : "#1677ff18",
+          color: color || "#1677ff", fontSize: 20,
+        }}>
+          {icon}
+        </div>
+      </div>
+      {onClick ? (
+        <div style={{ marginTop: 12, borderTop: "1px solid #f0f0f0", paddingTop: 10 }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Detay görüntüle <ArrowRightOutlined style={{ fontSize: 10 }} />
+          </Text>
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
+function CustomBarTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 8, padding: "10px 14px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+      <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+      <div style={{ color: "#1f9d66" }}>{formatMoneyFull(payload[0]?.value)}</div>
+      {payload[1] ? <div style={{ color: "#1677ff", fontSize: 12 }}>{payload[1].value} işlem</div> : null}
+    </div>
+  );
+}
+
+export function DashboardPage() {
+  const navigate = useNavigate();
+  const defaultDateRange = React.useMemo(() => {
+    const end = dayjs();
+    return [end.subtract(29, "day"), end];
+  }, []);
+
+  const [dateRange, setDateRange] = React.useState(defaultDateRange);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState("");
+  const [data, setData] = React.useState(null);
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [drawerKey, setDrawerKey] = React.useState(null);
+
+  const refresh = React.useCallback(async (rangeOverride) => {
+    const range = rangeOverride || dateRange;
+    try {
+      setLoading(true);
+      setError("");
+      const payload = await fetchDashboardSummary({
+        startDate: range?.[0]?.format("YYYY-MM-DD"),
+        endDate: range?.[1]?.format("YYYY-MM-DD"),
+      });
+      setData(payload);
+    } catch (err) {
+      setError(err?.message || "Dashboard verileri alınamadı.");
+    } finally {
+      setLoading(false);
+    }
+  }, [dateRange]);
+
+  React.useEffect(() => {
+    void refresh(defaultDateRange);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const stats = data?.stats || {};
+  const dailySales = data?.dailySales || [];
+  const topProducts = data?.topProducts || [];
+  const recentSales = data?.recentSales || [];
+  const lowStockProducts = data?.lowStockProducts || [];
+  const recentPurchases = data?.recentPurchases || [];
+  const alerts = data?.alerts || [];
+
+  const maxTopQty = topProducts[0]?.totalQty || 1;
+
+  function openDrawer(key) {
+    setDrawerKey(key);
+    setDrawerOpen(true);
+  }
+
+  const drawerContent = {
+    "low-stock": {
+      title: "Düşük Stok Ürünleri",
+      render: () => (
+        <Table
+          rowKey="id"
+          size="small"
+          pagination={false}
+          dataSource={lowStockProducts}
+          locale={{ emptyText: "Düşük stok uyarısı yok." }}
+          columns={[
+            { title: "Kod", dataIndex: "code", key: "code", width: 100 },
+            { title: "Ürün Adı", dataIndex: "name", key: "name" },
+            { title: "Stok", dataIndex: "stock", key: "stock", width: 70, align: "right",
+              render: (v) => <span style={{ color: v <= 0 ? "#cf1322" : "#d46b08", fontWeight: 600 }}>{v}</span> },
+            { title: "Min.", dataIndex: "minStock", key: "minStock", width: 60, align: "right" },
+          ]}
+        />
+      ),
+    },
+    "open-pos": {
+      title: "Açık POS Oturumları",
+      render: () => (
+        <Descriptions column={1} size="small" bordered>
+          {(data?.metricDetails?.["open-pos"]?.items || []).map((item, i) => (
+            <Descriptions.Item key={i} label={item.label}>
+              <Space direction="vertical" size={2}>
+                <Text strong>{item.value}</Text>
+                {item.hint ? <Text type="secondary">{item.hint}</Text> : null}
+              </Space>
+            </Descriptions.Item>
+          ))}
+        </Descriptions>
+      ),
+    },
+    suppliers: {
+      title: "Aktif Tedarikçiler",
+      render: () => (
+        <Descriptions column={1} size="small" bordered>
+          {(data?.metricDetails?.suppliers?.items || []).map((item, i) => (
+            <Descriptions.Item key={i} label={item.label}>
+              <Space direction="vertical" size={2}>
+                <Text strong>{item.value}</Text>
+                {item.hint ? <Text type="secondary">{item.hint}</Text> : null}
+              </Space>
+            </Descriptions.Item>
+          ))}
+        </Descriptions>
+      ),
+    },
+    "top-products": {
+      title: "En Çok Satan Ürünler",
+      render: () => (
+        <Table
+          rowKey="id"
+          size="small"
+          pagination={false}
+          dataSource={topProducts}
+          locale={{ emptyText: "Bu dönemde satış yok." }}
+          columns={[
+            { title: "Kod", dataIndex: "code", key: "code", width: 90 },
+            { title: "Ürün Adı", dataIndex: "name", key: "name" },
+            { title: "Adet", dataIndex: "totalQty", key: "totalQty", width: 70, align: "right", render: (v) => <b>{v}</b> },
+            { title: "Tutar", dataIndex: "totalAmount", key: "totalAmount", width: 110, align: "right", render: (v) => formatMoney(v) },
+          ]}
+        />
+      ),
+    },
+    "recent-purchases": {
+      title: "Dönem Satın Almalar",
+      render: () => (
+        <Table
+          rowKey="id"
+          size="small"
+          pagination={false}
+          dataSource={recentPurchases}
+          locale={{ emptyText: "Bu dönemde satın alma yok." }}
+          columns={[
+            { title: "Belge No", dataIndex: "documentNo", key: "documentNo" },
+            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName" },
+            { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 60, align: "right" },
+            { title: "Tutar", dataIndex: "totalAmount", key: "totalAmount", width: 110, align: "right", render: (v) => formatMoney(v) },
+          ]}
+        />
+      ),
+    },
+  };
+
+  return (
+    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+
+      {/* Başlık + Filtre */}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <Title level={3} style={{ marginBottom: 2 }}>Dashboard</Title>
+          <Text type="secondary">Satış, stok, satın alma ve operasyon özeti.</Text>
+        </div>
+        <Space wrap>
+          <DatePicker.RangePicker
+            value={dateRange}
+            allowClear={false}
+            format="DD.MM.YYYY"
+            onChange={(v) => { if (v?.[0] && v?.[1]) setDateRange(v); }}
+          />
+          <Button icon={<ReloadOutlined />} onClick={() => { setDateRange(defaultDateRange); void refresh(defaultDateRange); }}>
+            Son 30 Gün
+          </Button>
+          <Button type="primary" loading={loading} onClick={() => void refresh()}>
+            Getir
+          </Button>
+        </Space>
+      </div>
+
+      {/* Hızlı Erişim */}
+      <Card bordered={false} styles={{ body: { padding: "12px 20px" } }}>
+        <Space wrap>
+          <Text type="secondary" style={{ fontSize: 13 }}>Hızlı Erişim:</Text>
+          <Button icon={<ThunderboltOutlined />} onClick={() => navigate("/pos/store")}>POS Ekranı</Button>
+          <Button icon={<PlusOutlined />} onClick={() => navigate("/products/new")}>Ürün Ekle</Button>
+          <Button icon={<AppstoreOutlined />} onClick={() => navigate("/stock/entry/new")}>Stok Girişi</Button>
+          <Button icon={<ShoppingCartOutlined />} onClick={() => navigate("/purchasing/entry")}>Satın Alma</Button>
+          <Button icon={<BarChartOutlined />} onClick={() => navigate("/pos/orders")}>Satış Listesi</Button>
+        </Space>
+      </Card>
+
+      {/* Hata */}
+      {error ? <Alert type="error" showIcon message="Dashboard yüklenemedi" description={error} /> : null}
+
+      {/* KPI Kartları — Satış */}
+      <div>
+        <Text type="secondary" style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>
+          DÖNEM SATIŞ
+        </Text>
+        <Row gutter={[16, 16]} style={{ marginTop: 8 }}>
+          <Col xs={24} sm={12} xl={6}>
+            <KpiCard
+              loading={loading}
+              title="Dönem Ciro"
+              value={formatMoney(stats.totalSalesAmount)}
+              description={`${data?.filters?.startDate || ""} – ${data?.filters?.endDate || ""}`}
+              icon={<DollarOutlined />}
+              color="#1f9d66"
+              onClick={() => navigate("/pos/orders")}
+            />
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <KpiCard
+              loading={loading}
+              title="Satış İşlemi"
+              value={stats.totalSalesCount ?? "—"}
+              description="Kesilen fiş sayısı"
+              icon={<ShoppingOutlined />}
+              color="#1677ff"
+              onClick={() => navigate("/pos/orders")}
+            />
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <KpiCard
+              loading={loading}
+              title="Satılan Ürün Adedi"
+              value={stats.totalSalesQty ?? "—"}
+              description="Toplam satış adeti"
+              icon={<AppstoreOutlined />}
+              color="#7c3aed"
+              onClick={() => navigate("/pos/orders")}
+            />
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <KpiCard
+              loading={loading}
+              title="İade Tutarı"
+              value={formatMoney(stats.totalReturnAmount)}
+              description={`${stats.totalReturnCount ?? 0} iade işlemi`}
+              icon={<RollbackOutlined />}
+              color="#cf1322"
+              onClick={() => navigate("/pos/returns")}
+            />
+          </Col>
+        </Row>
+      </div>
+
+      {/* KPI Kartları — Operasyon */}
+      <div>
+        <Text type="secondary" style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>
+          OPERASYON
+        </Text>
+        <Row gutter={[16, 16]} style={{ marginTop: 8 }}>
+          <Col xs={24} sm={12} xl={6}>
+            <KpiCard
+              loading={loading}
+              title="Aktif Ürün"
+              value={stats.activeProductCount ?? "—"}
+              description="Katalogdaki aktif ürünler"
+              icon={<AppstoreOutlined />}
+              color="#0f766e"
+              onClick={() => navigate("/products/list")}
+            />
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <KpiCard
+              loading={loading}
+              title="Aktif Tedarikçi"
+              value={stats.supplierCount ?? "—"}
+              description="Kayıtlı tedarikçi sayısı"
+              icon={<TeamOutlined />}
+              color="#1d4ed8"
+              onClick={() => openDrawer("suppliers")}
+            />
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <KpiCard
+              loading={loading}
+              title="Düşük Stok"
+              value={stats.lowStockCount ?? "—"}
+              description="Min. stok altındaki ürünler"
+              icon={<ExclamationCircleOutlined />}
+              color={stats.lowStockCount > 0 ? "#d46b08" : "#0f766e"}
+              onClick={stats.lowStockCount > 0 ? () => openDrawer("low-stock") : null}
+            />
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <KpiCard
+              loading={loading}
+              title="Satın Alma Kaydı"
+              value={stats.purchaseCount ?? "—"}
+              description="Dönem satın alma sayısı"
+              icon={<ShoppingCartOutlined />}
+              color="#c2410c"
+              onClick={() => openDrawer("recent-purchases")}
+            />
+          </Col>
+        </Row>
+      </div>
+
+      {/* Grafik + En Çok Satanlar */}
+      <Row gutter={[16, 16]}>
+        {/* Günlük Satış Grafiği */}
+        <Col xs={24} xl={16}>
+          <Card
+            bordered={false}
+            title={
+              <Space>
+                <BarChartOutlined />
+                Günlük Satış Grafiği
+              </Space>
+            }
+            styles={{ body: { paddingTop: 8 } }}
+          >
+            {dailySales.length === 0 ? (
+              <Empty description="Bu dönemde satış verisi yok." style={{ padding: "32px 0" }} />
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={dailySales} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => {
+                      const d = new Date(v);
+                      return `${d.getDate().toString().padStart(2, "0")}.${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+                    }}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => {
+                      if (v >= 1000) return `${(v / 1000).toFixed(0)}K`;
+                      return String(v);
+                    }}
+                  />
+                  <RechartsTooltip content={<CustomBarTooltip />} />
+                  <Bar dataKey="amount" fill="#1f9d66" radius={[4, 4, 0, 0]} name="Ciro" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Card>
+        </Col>
+
+        {/* En Çok Satan Ürünler */}
+        <Col xs={24} xl={8}>
+          <Card
+            bordered={false}
+            title={
+              <Space>
+                <ShoppingOutlined />
+                En Çok Satan Ürünler
+              </Space>
+            }
+            extra={
+              <Button type="link" size="small" onClick={() => openDrawer("top-products")}>
+                Tümü
+              </Button>
+            }
+            styles={{ body: { paddingTop: 8 } }}
+          >
+            {topProducts.length === 0 ? (
+              <Empty description="Bu dönemde satış yok." style={{ padding: "24px 0" }} />
+            ) : (
+              <Space direction="vertical" style={{ width: "100%" }} size={12}>
+                {topProducts.slice(0, 6).map((product, index) => (
+                  <div key={product.id}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <Text style={{ fontSize: 13 }} ellipsis>
+                        <span style={{ color: "#999", marginRight: 6, fontSize: 11 }}>#{index + 1}</span>
+                        {product.name || product.code}
+                      </Text>
+                      <Text strong style={{ fontSize: 13, marginLeft: 8, flexShrink: 0 }}>
+                        {product.totalQty} adet
+                      </Text>
+                    </div>
+                    <div style={{ height: 6, background: "#f5f5f5", borderRadius: 3, overflow: "hidden" }}>
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${Math.round((product.totalQty / maxTopQty) * 100)}%`,
+                          background: index === 0 ? "#1f9d66" : index === 1 ? "#1677ff" : index === 2 ? "#7c3aed" : "#64748b",
+                          borderRadius: 3,
+                          transition: "width 0.6s ease",
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </Space>
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Son Satışlar + Düşük Stok */}
+      <Row gutter={[16, 16]}>
+        {/* Son Satışlar */}
+        <Col xs={24} xl={14}>
+          <Card
+            bordered={false}
+            title={
+              <Space>
+                <ShoppingOutlined />
+                Son Satışlar
+              </Space>
+            }
+            extra={
+              <Button type="link" size="small" icon={<ArrowRightOutlined />} onClick={() => navigate("/pos/orders")}>
+                Tümünü Gör
+              </Button>
+            }
+          >
+            <Table
+              rowKey="id"
+              size="small"
+              pagination={false}
+              dataSource={recentSales}
+              locale={{ emptyText: "Bu dönemde satış kaydı yok." }}
+              onRow={(r) => ({ onClick: () => navigate("/pos/orders"), style: { cursor: "pointer" } })}
+              columns={[
+                { title: "Fiş No", dataIndex: "receiptNo", key: "receiptNo", width: 90 },
+                { title: "Müşteri", dataIndex: "customerName", key: "customerName", ellipsis: true },
+                { title: "Ödeme", dataIndex: "paymentMethod", key: "paymentMethod", width: 90,
+                  render: (v) => <Tag>{v}</Tag> },
+                { title: "Tutar", dataIndex: "grandTotal", key: "grandTotal", width: 110, align: "right",
+                  render: (v) => <Text strong style={{ color: "#1f9d66" }}>{formatMoney(v)}</Text> },
+                { title: "Tarih", dataIndex: "soldAt", key: "soldAt", width: 120,
+                  render: (v) => <Text type="secondary" style={{ fontSize: 12 }}>{formatDateTime(v)}</Text> },
+              ]}
+            />
+          </Card>
+        </Col>
+
+        {/* Düşük Stok */}
+        <Col xs={24} xl={10}>
+          <Card
+            bordered={false}
+            title={
+              <Space>
+                <ExclamationCircleOutlined style={{ color: lowStockProducts.length > 0 ? "#d46b08" : undefined }} />
+                Düşük Stok Uyarıları
+                {lowStockProducts.length > 0 ? (
+                  <Badge count={lowStockProducts.length} color="#d46b08" />
+                ) : null}
+              </Space>
+            }
+            extra={
+              lowStockProducts.length > 0 ? (
+                <Button type="link" size="small" icon={<ArrowRightOutlined />} onClick={() => navigate("/products/list")}>
+                  Ürünlere Git
+                </Button>
+              ) : null
+            }
+          >
+            {lowStockProducts.length === 0 ? (
+              <Empty description="Düşük stok uyarısı yok." style={{ padding: "24px 0" }} />
+            ) : (
+              <Table
+                rowKey="id"
+                size="small"
+                pagination={false}
+                dataSource={lowStockProducts.slice(0, 8)}
+                locale={{ emptyText: "Düşük stok yok." }}
+                onRow={(r) => ({ onClick: () => navigate(`/products/${r.id}`), style: { cursor: "pointer" } })}
+                columns={[
+                  { title: "Kod", dataIndex: "code", key: "code", width: 90, render: (v) => <Text code style={{ fontSize: 12 }}>{v}</Text> },
+                  { title: "Ürün", dataIndex: "name", key: "name", ellipsis: true },
+                  { title: "Stok / Min", key: "stockMin", width: 90, align: "right",
+                    render: (_, r) => (
+                      <span style={{ color: r.stock <= 0 ? "#cf1322" : "#d46b08", fontWeight: 600, fontSize: 13 }}>
+                        {r.stock} / {r.minStock}
+                      </span>
+                    ),
+                  },
+                ]}
+              />
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Detay Drawer */}
+      <Drawer
+        title={drawerContent[drawerKey]?.title || "Detay"}
+        placement="right"
+        width={520}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      >
+        {drawerKey && drawerContent[drawerKey] ? drawerContent[drawerKey].render() : <Empty />}
+      </Drawer>
+    </Space>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tedarikçi Dashboard (değiştirilmedi)                               */
+/* ------------------------------------------------------------------ */
+
+const deliveryStatusColorMap = {
+  "Onay Bekleniyor": "gold",
+  Onaylandi: "green",
+  Tamamlandi: "blue",
+  "Revizyon Istendi": "red",
+};
 
 function formatDashboardMoney(value) {
   return new Intl.NumberFormat("tr-TR", {
@@ -25,172 +637,6 @@ function formatDisplayDate(value) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return String(value);
   return new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(parsed);
-}
-
-const deliveryStatusColorMap = {
-  "Onay Bekleniyor": "gold",
-  Onaylandi: "green",
-  Tamamlandi: "blue",
-  "Revizyon Istendi": "red",
-};
-
-export function DashboardPage() {
-  const defaultDateRange = React.useMemo(() => {
-    const end = dayjs();
-    return [end.subtract(29, "day"), end];
-  }, []);
-  const [detailOpen, setDetailOpen] = React.useState(false);
-  const [selectedMovement, setSelectedMovement] = React.useState(null);
-  const [metricDrawerOpen, setMetricDrawerOpen] = React.useState(false);
-  const [selectedMetric, setSelectedMetric] = React.useState(null);
-  const [dateRange, setDateRange] = React.useState(defaultDateRange);
-  const [dashboardLoading, setDashboardLoading] = React.useState(false);
-  const [dashboardError, setDashboardError] = React.useState("");
-  const [dashboardSummary, setDashboardSummary] = React.useState({
-    stats: [],
-    movements: [],
-    alerts: [],
-    metricDetails: {},
-    filters: null,
-  });
-
-  const refreshDashboard = React.useCallback(async (rangeOverride) => {
-    const activeRange = rangeOverride || dateRange || defaultDateRange;
-    try {
-      setDashboardLoading(true);
-      setDashboardError("");
-      const payload = await fetchDashboardSummary({
-        startDate: activeRange?.[0]?.format("YYYY-MM-DD"),
-        endDate: activeRange?.[1]?.format("YYYY-MM-DD"),
-      });
-      setDashboardSummary(payload);
-    } catch (error) {
-      setDashboardError(error?.message || "Dashboard verileri alinamadi.");
-    } finally {
-      setDashboardLoading(false);
-    }
-  }, [dateRange, defaultDateRange]);
-
-  React.useEffect(() => {
-    void refreshDashboard(defaultDateRange);
-  }, [refreshDashboard, defaultDateRange]);
-
-  const stats = dashboardSummary.stats || [];
-  const movements = dashboardSummary.movements || [];
-  const alerts = dashboardSummary.alerts || [];
-
-  const columns = [
-    { title: "Modul", dataIndex: "module", key: "module", sorter: (a, b) => a.module.localeCompare(b.module, "tr") },
-    { title: "Belge", dataIndex: "documentNo", key: "documentNo", sorter: (a, b) => a.documentNo.localeCompare(b.documentNo, "tr") },
-    { title: "Aciklama", dataIndex: "description", key: "description", sorter: (a, b) => a.description.localeCompare(b.description, "tr") },
-    { title: "Durum", dataIndex: "status", key: "status", render: (value) => <Tag color="blue">{value}</Tag> },
-  ];
-
-  return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
-      <div>
-        <Title level={3} style={{ marginBottom: 6 }}>Dashboard</Title>
-        <Text type="secondary">Satis, stok, satin alma ve magaza akislarinin genel ozeti.</Text>
-      </div>
-
-      <Card bordered={false}>
-        <Row gutter={[16, 16]} align="bottom">
-          <Col xs={24} md={12} xl={10}>
-            <Text type="secondary">Tarih Araligi</Text>
-            <DatePicker.RangePicker
-              value={dateRange}
-              allowClear={false}
-              style={{ width: "100%", marginTop: 8 }}
-              format="DD.MM.YYYY"
-              onChange={(value) => {
-                if (value?.[0] && value?.[1]) setDateRange(value);
-              }}
-            />
-          </Col>
-          <Col xs={24} md={12} xl={14}>
-            <Space wrap style={{ width: "100%", justifyContent: "flex-end" }}>
-              <Button icon={<ReloadOutlined />} onClick={() => { setDateRange(defaultDateRange); void refreshDashboard(defaultDateRange); }}>
-                Son 30 Gun
-              </Button>
-              <Button type="primary" loading={dashboardLoading} onClick={() => { void refreshDashboard(); }}>
-                Ozeti Getir
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-        {dashboardSummary.filters ? (
-          <Text type="secondary" style={{ display: "block", marginTop: 12 }}>
-            Rapor araligi: {dashboardSummary.filters.startDate} - {dashboardSummary.filters.endDate}
-          </Text>
-        ) : null}
-      </Card>
-
-      {dashboardError ? (
-        <Alert type="error" showIcon message="Dashboard yuklenemedi" description={dashboardError} />
-      ) : null}
-
-      {alerts.length > 0 ? (
-        <Space direction="vertical" size={12} style={{ width: "100%" }}>
-          {alerts.map((item) => (
-            <Alert key={item.key} type={item.severity === "warning" ? "warning" : "info"} showIcon message={item.title} description={item.description} />
-          ))}
-        </Space>
-      ) : null}
-
-      <Row gutter={[16, 16]}>
-        {stats.map((item) => (
-          <Col xs={24} md={12} xl={8} xxl={4} key={item.title}>
-            <Card bordered={false} className="erp-clickable-row" onClick={() => { setSelectedMetric(item.key); setMetricDrawerOpen(true); }}>
-              <Statistic title={item.title} value={item.value} valueStyle={{ color: item.color, fontWeight: 700 }} />
-              <Text type="secondary">Detayi gor</Text>
-            </Card>
-          </Col>
-        ))}
-      </Row>
-
-      <Card title="Son Hareketler" extra={<Button type="primary" loading={dashboardLoading} onClick={() => { void refreshDashboard(); }}>Yenile</Button>}>
-        <Table
-          rowKey="key"
-          pagination={false}
-          columns={columns}
-          dataSource={movements}
-          locale={{ emptyText: "Henuz hareket bulunmuyor." }}
-          onRow={(record) => ({ onClick: () => { setSelectedMovement(record); setDetailOpen(true); } })}
-          rowClassName={() => "erp-clickable-row"}
-        />
-      </Card>
-
-      <Drawer title="Hareket Detayi" placement="right" width={420} open={detailOpen} onClose={() => setDetailOpen(false)}>
-        {selectedMovement ? (
-          <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="Modul">{selectedMovement.module}</Descriptions.Item>
-            <Descriptions.Item label="Belge">{selectedMovement.documentNo}</Descriptions.Item>
-            <Descriptions.Item label="Aciklama">{selectedMovement.description}</Descriptions.Item>
-            <Descriptions.Item label="Durum">{selectedMovement.status}</Descriptions.Item>
-            <Descriptions.Item label="Tutar">{selectedMovement.amount || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Tarih">{selectedMovement.date ? new Date(selectedMovement.date).toLocaleString("tr-TR") : "-"}</Descriptions.Item>
-          </Descriptions>
-        ) : null}
-      </Drawer>
-
-      <Drawer title={(dashboardSummary.metricDetails?.[selectedMetric]?.title) || "Kart Detayi"} placement="right" width={460} open={metricDrawerOpen} onClose={() => setMetricDrawerOpen(false)}>
-        {(dashboardSummary.metricDetails?.[selectedMetric]?.items || []).length > 0 ? (
-          <Descriptions column={1} size="small" bordered>
-            {(dashboardSummary.metricDetails?.[selectedMetric]?.items || []).map((item, index) => (
-              <Descriptions.Item key={`${selectedMetric}-${index}`} label={item.label}>
-                <Space direction="vertical" size={2}>
-                  <Text strong>{item.value}</Text>
-                  {item.hint ? <Text type="secondary">{item.hint}</Text> : null}
-                </Space>
-              </Descriptions.Item>
-            ))}
-          </Descriptions>
-        ) : (
-          <Empty description="Bu kart icin gosterilecek detay bulunmuyor." />
-        )}
-      </Drawer>
-    </Space>
-  );
 }
 
 export function SupplierDashboardPage() {
@@ -256,7 +702,7 @@ export function SupplierDashboardPage() {
     <Space direction="vertical" size={20} style={{ width: "100%" }}>
       <div>
         <Title level={3} style={{ marginBottom: 6 }}>Dashboard</Title>
-        <Text type="secondary">Tedarikci hesabinizdaki urun, stok ve teslimat ozetini buradan takip edebilirsiniz.</Text>
+        <Text type="secondary">Tedarikçi hesabınızdaki ürün, stok ve teslimat özetini buradan takip edebilirsiniz.</Text>
       </div>
 
       <Row gutter={[16, 16]}>
@@ -280,7 +726,7 @@ export function SupplierDashboardPage() {
                   <Descriptions.Item label="Yetkili">{supplier?.contact || authUser?.fullName || "-"}</Descriptions.Item>
                   <Descriptions.Item label="E-posta">{supplier?.email || authUser?.email || "-"}</Descriptions.Item>
                   <Descriptions.Item label="Telefon">{supplier?.phone || "-"}</Descriptions.Item>
-                  <Descriptions.Item label="Sehir">{supplier?.city || "-"}</Descriptions.Item>
+                  <Descriptions.Item label="Şehir">{supplier?.city || "-"}</Descriptions.Item>
                 </Descriptions>
               </div>
               <div className="erp-supplier-info-visual">
@@ -302,13 +748,13 @@ export function SupplierDashboardPage() {
               pagination={false}
               size="small"
               dataSource={deliveries.slice(0, 5)}
-              locale={{ emptyText: "Henuz teslimat kaydiniz bulunmuyor." }}
+              locale={{ emptyText: "Henüz teslimat kaydınız bulunmuyor." }}
               columns={[
                 { title: "Teslimat No", dataIndex: "deliveryNo", key: "deliveryNo" },
-                { title: "Sevk Tarihi", dataIndex: "date", key: "date", render: (value) => formatDisplayDate(value) },
-                { title: "Teslim Alinan Tarih", dataIndex: "inventoryPostedAt", key: "inventoryPostedAt", render: (value) => formatDisplayDate(value) },
-                { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 90 },
-                { title: "Durum", dataIndex: "status", key: "status", render: (value) => <Tag color={deliveryStatusColorMap[value] || "default"}>{value || "Taslak"}</Tag> },
+                { title: "Sevk Tarihi", dataIndex: "date", key: "date", render: (v) => formatDisplayDate(v) },
+                { title: "Teslim Alınan", dataIndex: "inventoryPostedAt", key: "inventoryPostedAt", render: (v) => formatDisplayDate(v) },
+                { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 80 },
+                { title: "Durum", dataIndex: "status", key: "status", render: (v) => <Tag color={deliveryStatusColorMap[v] || "default"}>{v || "Taslak"}</Tag> },
               ]}
             />
           </Card>
