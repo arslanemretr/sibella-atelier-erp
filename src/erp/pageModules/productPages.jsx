@@ -481,6 +481,15 @@ export function ProductListPage() {
       render: (value) => <Tag color={Number(value || 0) === 0 ? "red" : "blue"}>{value ?? 0}</Tag>,
     },
     {
+      title: "İade Adet",
+      dataIndex: "returnQuantity",
+      key: "returnQuantity",
+      sorter: (a, b) => Number(a.returnQuantity || 0) - Number(b.returnQuantity || 0),
+      render: (value) => Number(value || 0) > 0
+        ? <Tag color="orange">{value}</Tag>
+        : <Tag>{0}</Tag>,
+    },
+    {
       title: "Toplam Tutar",
       key: "totalValue",
       sorter: (a, b) => (Number(a.totalStock || 0) * Number(a.salePrice || 0)) - (Number(b.totalStock || 0) * Number(b.salePrice || 0)),

@@ -845,12 +845,22 @@ export function SupplierPortalProductListPage() {
       render: (value) => <Tag color={Number(value || 0) > 0 ? "blue" : "red"}>{Number(value || 0)}</Tag>,
     },
     {
-      title: "Satis Adet",
+      title: "Satış Adet",
       dataIndex: "soldQuantity",
       key: "soldQuantity",
-      width: 120,
+      width: 110,
       sorter: (a, b) => Number(a.soldQuantity || 0) - Number(b.soldQuantity || 0),
       render: (value) => Number(value || 0),
+    },
+    {
+      title: "İade Adet",
+      dataIndex: "returnQuantity",
+      key: "returnQuantity",
+      width: 110,
+      sorter: (a, b) => Number(a.returnQuantity || 0) - Number(b.returnQuantity || 0),
+      render: (value) => Number(value || 0) > 0
+        ? <Text style={{ color: "#cf1322" }}>{value}</Text>
+        : <Text type="secondary">0</Text>,
     },
     {
       title: "Toplam Tutar",

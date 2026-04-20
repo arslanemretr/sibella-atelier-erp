@@ -250,6 +250,7 @@ function enrichProductsWithLookups(products, lookups) {
     suppliers = [],
   } = lookups || {};
   const salesByProductId = lookups?.salesByProductId || new Map();
+  const returnsByProductId = lookups?.returnsByProductId || new Map();
 
   const categoryMap = Object.fromEntries(categories.map((item) => [item.id, item.fullPath]));
   const collectionMap = Object.fromEntries(collections.map((item) => [item.id, item.name]));
@@ -271,6 +272,7 @@ function enrichProductsWithLookups(products, lookups) {
       costDisplay: formatMoney(product.cost, product.costCurrency),
       stockDisplay: String(totalStock),
       soldQuantity: Number(salesByProductId.get(product.id) || 0),
+      returnQuantity: Number(returnsByProductId.get(product.id) || 0),
     };
   });
 }
@@ -321,9 +323,10 @@ export function listProducts() {
 }
 
 export async function listProductsFresh() {
-  const [products, posSales, categories, collections, posCategories, suppliers] = await Promise.all([
+  const [products, posSales, posReturns, categories, collections, posCategories, suppliers] = await Promise.all([
     requestCollection("/api/products", seedProducts()),
     requestCollection("/api/pos-sales", [], { suppressStatuses: [403] }),
+    requestCollection("/api/pos-returns", [], { suppressStatuses: [403] }),
     requestCollection("/api/master-data/categories", []),
     requestCollection("/api/master-data/collections", []),
     requestCollection("/api/master-data/pos-categories", []),
@@ -334,10 +337,17 @@ export async function listProductsFresh() {
   posSales.forEach((sale) => {
     (sale?.lines || []).forEach((line) => {
       const productId = line?.productId;
-      if (!productId) {
-        return;
-      }
+      if (!productId) return;
       salesByProductId.set(productId, Number(salesByProductId.get(productId) || 0) + Number(line.quantity || 0));
+    });
+  });
+
+  const returnsByProductId = new Map();
+  posReturns.forEach((ret) => {
+    (ret?.lines || []).forEach((line) => {
+      const productId = line?.productId;
+      if (!productId) return;
+      returnsByProductId.set(productId, Number(returnsByProductId.get(productId) || 0) + Number(line.quantity || 0));
     });
   });
 
@@ -347,6 +357,7 @@ export async function listProductsFresh() {
     posCategories,
     suppliers,
     salesByProductId,
+    returnsByProductId,
   });
 }
 
