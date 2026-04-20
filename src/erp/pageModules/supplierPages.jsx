@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppstoreOutlined, BarsOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import dayjs from "dayjs";
 import { listContractsFresh } from "../contractsData";
 import { listEarningsRecordsFresh, upsertEarningsRecord } from "../earningsData";
@@ -795,19 +795,26 @@ function buildAdminEarningsList({ suppliers, products, sales, returns, contracts
       }) || relevantContracts[0] || null;
 
       const commissionRate = Number(contract?.commissionRate || 0);
-      let grossTotal = 0;
-      let returnTotal = 0;
+
+      // Ürün bazlı satış/iade toplama
+      const productLineMap = new Map();
 
       (sales || []).forEach((sale) => {
         const soldAt = sale.soldAt ? new Date(sale.soldAt) : null;
-        if (!soldAt || soldAt < start || soldAt > end) {
-          return;
-        }
+        if (!soldAt || soldAt < start || soldAt > end) return;
         (sale.lines || []).forEach((line) => {
-          if (!productIds.has(line.productId)) {
-            return;
-          }
-          grossTotal += Number(line.lineTotal || (Number(line.quantity || 0) * Number(line.unitPrice || 0)));
+          if (!productIds.has(line.productId)) return;
+          const existing = productLineMap.get(line.productId) || {
+            productId: line.productId,
+            productCode: line.productCode || "",
+            productName: line.productName || "",
+            salesQty: 0,
+            salesAmount: 0,
+            returnQty: 0,
+          };
+          existing.salesQty += Number(line.quantity || 0);
+          existing.salesAmount += Number(line.lineTotal || Number(line.quantity || 0) * Number(line.unitPrice || 0));
+          productLineMap.set(line.productId, existing);
         });
       });
 
@@ -818,12 +825,40 @@ function buildAdminEarningsList({ suppliers, products, sales, returns, contracts
         if (retPeriodKey !== periodKey) return;
         (ret.lines || []).forEach((line) => {
           if (!productIds.has(line.productId)) return;
-          returnTotal += Number(line.lineTotal || 0);
+          const existing = productLineMap.get(line.productId);
+          if (!existing) return;
+          existing.returnQty += Number(line.quantity || 0);
+          productLineMap.set(line.productId, existing);
         });
       });
 
-      const netTotal = Math.max(0, grossTotal - returnTotal);
-      const earningsTotal = netTotal * (1 - commissionRate / 100);
+      // Her ürün için net hesap
+      const productLines = Array.from(productLineMap.values())
+        .map((p) => {
+          const unitPrice = p.salesQty > 0 ? p.salesAmount / p.salesQty : 0;
+          const netQty = Math.max(0, p.salesQty - p.returnQty);
+          const netAmount = netQty * unitPrice;
+          const earningsAmount = netAmount * (1 - commissionRate / 100);
+          return {
+            productId: p.productId,
+            productCode: p.productCode,
+            productName: p.productName,
+            salesQty: p.salesQty,
+            returnQty: p.returnQty,
+            netQty,
+            unitPrice,
+            netAmount,
+            earningsAmount,
+            commissionRate,
+          };
+        })
+        .sort((a, b) => String(a.productCode).localeCompare(String(b.productCode), "tr"));
+
+      const grossTotal = productLines.reduce((sum, p) => sum + p.salesQty * p.unitPrice, 0);
+      const returnTotal = productLines.reduce((sum, p) => sum + p.returnQty * p.unitPrice, 0);
+      const netTotal = productLines.reduce((sum, p) => sum + p.netAmount, 0);
+      const earningsTotal = productLines.reduce((sum, p) => sum + p.earningsAmount, 0);
+
       const earningsRecord = earningsRecordMap.get(`${supplierId}::${periodKey}`) || null;
       const status = resolveAdminEarningsStatus(periodKey, earningsTotal, earningsRecord);
 
@@ -838,6 +873,7 @@ function buildAdminEarningsList({ suppliers, products, sales, returns, contracts
         returnTotal,
         netTotal,
         earningsTotal,
+        productLines,
         earningsRecord,
         status,
       });
@@ -898,8 +934,8 @@ export function SupplierEarningsManagementPage() {
   );
 
   const totals = React.useMemo(() => ({
-    grossTotal: filteredRows.reduce((sum, r) => sum + Number(r.grossTotal || 0), 0),
-    commissionTotal: filteredRows.reduce((sum, r) => sum + Number(r.grossTotal || 0) - Number(r.earningsTotal || 0), 0),
+    netTotal: filteredRows.reduce((sum, r) => sum + Number(r.netTotal || 0), 0),
+    commissionTotal: filteredRows.reduce((sum, r) => sum + Number(r.netTotal || 0) - Number(r.earningsTotal || 0), 0),
     earningsTotal: filteredRows.reduce((sum, r) => sum + Number(r.earningsTotal || 0), 0),
   }), [filteredRows]);
 
@@ -989,9 +1025,9 @@ export function SupplierEarningsManagementPage() {
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={8}>
           <Card bordered={false} style={{ background: "#f0f5ff", border: "1px solid #adc6ff" }}>
-            <Text type="secondary" style={{ fontSize: 13 }}>Toplam Satış</Text>
-            <div style={{ fontSize: 24, fontWeight: 700, marginTop: 6 }}>{formatMoneyAdmin(totals.grossTotal)}</div>
-            <Text type="secondary" style={{ fontSize: 12 }}>Dönem brüt satış tutarı</Text>
+            <Text type="secondary" style={{ fontSize: 13 }}>Net Satış</Text>
+            <div style={{ fontSize: 24, fontWeight: 700, marginTop: 6 }}>{formatMoneyAdmin(totals.netTotal)}</div>
+            <Text type="secondary" style={{ fontSize: 12 }}>Dönem net satış tutarı (iade düşülmüş)</Text>
           </Card>
         </Col>
         <Col xs={24} sm={8}>
@@ -1068,17 +1104,17 @@ export function SupplierEarningsManagementPage() {
             <Row gutter={[12, 12]}>
               <Col span={12}>
                 <Card size="small" bordered style={{ background: "#fafafa" }}>
-                  <Text type="secondary" style={{ fontSize: 12 }}>Toplam Satış</Text>
-                  <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>{formatMoneyAdmin(selectedRow.grossTotal)}</div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>Net Satış</Text>
+                  <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>{formatMoneyAdmin(selectedRow.netTotal)}</div>
                   {Number(selectedRow.returnTotal || 0) > 0 && (
                     <div style={{ fontSize: 12, color: "#cf1322", marginTop: 2 }}>İade: -{formatMoneyAdmin(selectedRow.returnTotal)}</div>
                   )}
                 </Card>
               </Col>
               <Col span={12}>
-                <Card size="small" bordered style={{ background: "#fafafa" }}>
+                <Card size="small" bordered style={{ background: "#f6ffed", border: "1px solid #b7eb8f" }}>
                   <Text type="secondary" style={{ fontSize: 12 }}>Hakediş Tutarı</Text>
-                  <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>{formatMoneyAdmin(selectedRow.earningsTotal)}</div>
+                  <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4, color: "#389e0d" }}>{formatMoneyAdmin(selectedRow.earningsTotal)}</div>
                 </Card>
               </Col>
               <Col span={12}>
@@ -1096,6 +1132,93 @@ export function SupplierEarningsManagementPage() {
                 </Card>
               </Col>
             </Row>
+
+            <Card
+              size="small"
+              title={
+                <span>
+                  Ürün Bazlı Satış / İade Detayı{" "}
+                  <Badge count={(selectedRow.productLines || []).length} color="blue" />
+                </span>
+              }
+              className="erp-list-table-card"
+              styles={{ body: { padding: 0 } }}
+            >
+              <Table
+                size="small"
+                rowKey="productId"
+                dataSource={selectedRow.productLines || []}
+                pagination={false}
+                scroll={{ x: 760 }}
+                summary={(data) => {
+                  const totalNet = data.reduce((s, p) => s + p.netAmount, 0);
+                  const totalEarnings = data.reduce((s, p) => s + p.earningsAmount, 0);
+                  return (
+                    <Table.Summary.Row style={{ background: "#fafafa", fontWeight: 700 }}>
+                      <Table.Summary.Cell index={0} colSpan={4}><Text strong>Toplam</Text></Table.Summary.Cell>
+                      <Table.Summary.Cell index={4} align="right" />
+                      <Table.Summary.Cell index={5} align="right" />
+                      <Table.Summary.Cell index={6} align="right">{formatMoneyAdmin(totalNet)}</Table.Summary.Cell>
+                      <Table.Summary.Cell index={7} align="right" />
+                      <Table.Summary.Cell index={8} align="right" style={{ color: "#389e0d" }}>{formatMoneyAdmin(totalEarnings)}</Table.Summary.Cell>
+                    </Table.Summary.Row>
+                  );
+                }}
+                columns={[
+                  { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 100, ellipsis: true },
+                  { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 140, ellipsis: true },
+                  { title: "Satış Adet", dataIndex: "salesQty", key: "salesQty", width: 85, align: "right" },
+                  {
+                    title: "İade Adet",
+                    dataIndex: "returnQty",
+                    key: "returnQty",
+                    width: 80,
+                    align: "right",
+                    render: (v) => v > 0 ? <span style={{ color: "#cf1322" }}>{v}</span> : <Text type="secondary">-</Text>,
+                  },
+                  {
+                    title: "Net Adet",
+                    dataIndex: "netQty",
+                    key: "netQty",
+                    width: 80,
+                    align: "right",
+                    render: (v) => <strong>{v}</strong>,
+                  },
+                  {
+                    title: "Birim Fiyat",
+                    dataIndex: "unitPrice",
+                    key: "unitPrice",
+                    width: 105,
+                    align: "right",
+                    render: (v) => formatMoneyAdmin(v),
+                  },
+                  {
+                    title: "Net Satış",
+                    dataIndex: "netAmount",
+                    key: "netAmount",
+                    width: 110,
+                    align: "right",
+                    render: (v) => formatMoneyAdmin(v),
+                  },
+                  {
+                    title: "Kom.%",
+                    dataIndex: "commissionRate",
+                    key: "commissionRate",
+                    width: 65,
+                    align: "right",
+                    render: (v) => `%${Number(v).toFixed(0)}`,
+                  },
+                  {
+                    title: "Hakediş",
+                    dataIndex: "earningsAmount",
+                    key: "earningsAmount",
+                    width: 110,
+                    align: "right",
+                    render: (v) => <strong style={{ color: "#389e0d" }}>{formatMoneyAdmin(v)}</strong>,
+                  },
+                ]}
+              />
+            </Card>
 
             <Form form={form} layout="vertical">
               <Form.Item name="invoiceNo" label="Fatura No">

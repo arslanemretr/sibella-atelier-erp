@@ -1490,60 +1490,122 @@ export function PosOrdersPage() {
     });
   }, [sales, filters]);
 
+  const [detailSale, setDetailSale] = React.useState(null);
+  const [detailOpen, setDetailOpen] = React.useState(false);
+
+  // Satışları düz satır listesine çevir (her line → bir satır)
+  const flatRows = React.useMemo(() => {
+    const q = (filters.productSearch || "").toLowerCase();
+    return filteredSales.flatMap((sale) =>
+      (sale.lines || [])
+        .filter((line) => {
+          if (!q) return true;
+          return (
+            String(line.productCode || "").toLowerCase().includes(q) ||
+            String(line.productName || "").toLowerCase().includes(q)
+          );
+        })
+        .map((line) => ({
+          key: `${sale.id}-${line.id}`,
+          saleId: sale.id,
+          soldAt: sale.soldAt,
+          receiptNo: sale.receiptNo,
+          paymentMethod: sale.paymentMethod,
+          customerName: sale.customerName,
+          productCode: line.productCode,
+          productName: line.productName,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          unitPriceDisplay: line.unitPriceDisplay,
+          lineTotal: line.lineTotal,
+          lineTotalDisplay: line.lineTotalDisplay,
+          _sale: sale,
+        }))
+    );
+  }, [filteredSales, filters.productSearch]);
+
   const columns = [
-    {
-      title: "Fiş No",
-      dataIndex: "receiptNo",
-      key: "receiptNo",
-      width: 110,
-      sorter: (a, b) => (a.receiptNo || "").localeCompare(b.receiptNo || "", "tr"),
-    },
-    { title: "Müşteri", dataIndex: "customerName", key: "customerName", ellipsis: true },
     {
       title: "Tarih",
       dataIndex: "soldAt",
       key: "soldAt",
-      width: 150,
+      width: 110,
       defaultSortOrder: "descend",
       sorter: (a, b) => new Date(a.soldAt || 0) - new Date(b.soldAt || 0),
-      render: (v) => v ? new Date(v).toLocaleString("tr-TR") : "-",
+      render: (v) => v ? new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(v)) : "-",
     },
     {
-      title: "Ödeme",
+      title: "Fiş No",
+      dataIndex: "receiptNo",
+      key: "receiptNo",
+      width: 100,
+      sorter: (a, b) => (a.receiptNo || "").localeCompare(b.receiptNo || "", "tr"),
+    },
+    {
+      title: "Ödeme Tipi",
       dataIndex: "paymentMethod",
       key: "paymentMethod",
       width: 110,
       render: (v) => v ? <Tag>{v}</Tag> : "-",
     },
     {
-      title: "Tutar",
-      dataIndex: "grandTotalDisplay",
-      key: "grandTotalDisplay",
+      title: "Ürün Kodu",
+      dataIndex: "productCode",
+      key: "productCode",
+      width: 120,
+    },
+    {
+      title: "Ürün Adı",
+      dataIndex: "productName",
+      key: "productName",
+      ellipsis: true,
+    },
+    {
+      title: "Satış Adet",
+      dataIndex: "quantity",
+      key: "quantity",
+      width: 90,
+      align: "right",
+      sorter: (a, b) => a.quantity - b.quantity,
+    },
+    {
+      title: "Birim Fiyat",
+      dataIndex: "unitPriceDisplay",
+      key: "unitPriceDisplay",
       width: 120,
       align: "right",
-      sorter: (a, b) => a.grandTotal - b.grandTotal,
+    },
+    {
+      title: "Toplam Fiyat",
+      dataIndex: "lineTotalDisplay",
+      key: "lineTotalDisplay",
+      width: 120,
+      align: "right",
       render: (v) => <Text strong>{v}</Text>,
     },
     {
-      title: "Kalem",
-      key: "lineCount",
-      width: 70,
-      align: "center",
-      render: (_, record) => (record.lines || []).length,
-    },
-    {
-      title: "",
+      title: "İşlemler",
       key: "actions",
-      width: 50,
+      width: 100,
       render: (_, record) => (
-        <Tooltip title="İade Yap">
-          <Button
-            size="small"
-            className="erp-icon-btn"
-            icon={<RollbackOutlined />}
-            onClick={(e) => { e.stopPropagation(); navigate(`/pos/returns/new?saleId=${record.id}`); }}
-          />
-        </Tooltip>
+        <Space size={4}>
+          <Tooltip title="Görüntüle">
+            <Button
+              size="small"
+              className="erp-icon-btn erp-icon-btn-view"
+              icon={<SearchOutlined />}
+              onClick={(e) => { e.stopPropagation(); setDetailSale(record._sale); setDetailOpen(true); }}
+            />
+          </Tooltip>
+          <Tooltip title="İade Yap">
+            <Button
+              size="small"
+              className="erp-icon-btn"
+              icon={<RollbackOutlined />}
+              onClick={(e) => { e.stopPropagation(); navigate(`/pos/returns/new?saleId=${record.saleId}`); }}
+            />
+          </Tooltip>
+        </Space>
       ),
     },
   ];
@@ -1580,45 +1642,58 @@ export function PosOrdersPage() {
       </Card>
 
       {/* Tablo */}
-      <Card title={`Sipariş Listesi${activeFilterCount > 0 ? ` (${filteredSales.length} / ${sales.length})` : ` (${sales.length})`}`} className="erp-list-table-card">
+      <Card
+        title={`Sipariş Listesi${activeFilterCount > 0 ? ` (${flatRows.length} satır / ${filteredSales.length} fiş)` : ` (${flatRows.length} satır)`}`}
+        className="erp-list-table-card"
+      >
         <Table
           loading={loading}
           columns={columns}
-          dataSource={filteredSales.map((item) => ({ key: item.id, ...item }))}
+          dataSource={flatRows}
           pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (total, range) => `${range[0]}-${range[1]} / ${total}` }}
-          expandable={{
-            expandedRowRender: (record) => {
-              const q = (filters.productSearch || "").toLowerCase();
-              return (
-                <div style={{ overflowX: "auto", margin: "0 0 8px 0" }}>
-                  <Table
-                    rowKey="id"
-                    size="small"
-                    pagination={false}
-                    dataSource={(record.lines || []).map((l) => ({ key: l.id, ...l }))}
-                    style={{ minWidth: 560 }}
-                    rowClassName={(row) => {
-                      if (!q) return "";
-                      const match =
-                        String(row.productCode || "").toLowerCase().includes(q) ||
-                        String(row.productName || "").toLowerCase().includes(q);
-                      return match ? "erp-row-highlight" : "";
-                    }}
-                    columns={[
-                      { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 120 },
-                      { title: "Ürün Adı", dataIndex: "productName", key: "productName" },
-                      { title: "Adet", dataIndex: "quantity", key: "quantity", width: 70, align: "right" },
-                      { title: "Birim Fiyat", dataIndex: "unitPriceDisplay", key: "unitPriceDisplay", width: 130, align: "right" },
-                      { title: "Toplam", dataIndex: "lineTotalDisplay", key: "lineTotalDisplay", width: 130, align: "right" },
-                    ]}
-                  />
-                </div>
-              );
-            },
-            rowExpandable: (record) => (record.lines || []).length > 0,
-          }}
         />
       </Card>
+
+      {/* Satış Detay Drawer */}
+      <Drawer
+        title={detailSale ? `Fiş: ${detailSale.receiptNo} — ${detailSale.customerName || "Misafir"}` : "Satış Detayı"}
+        placement="right"
+        width={480}
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+      >
+        {detailSale ? (
+          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="Fiş No">{detailSale.receiptNo}</Descriptions.Item>
+              <Descriptions.Item label="Müşteri">{detailSale.customerName || "Misafir"}</Descriptions.Item>
+              <Descriptions.Item label="Tarih">{detailSale.soldAt ? new Date(detailSale.soldAt).toLocaleString("tr-TR") : "-"}</Descriptions.Item>
+              <Descriptions.Item label="Ödeme">{detailSale.paymentMethod || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Genel Toplam"><Text strong>{detailSale.grandTotalDisplay}</Text></Descriptions.Item>
+            </Descriptions>
+            <Table
+              rowKey="id"
+              size="small"
+              pagination={false}
+              dataSource={(detailSale.lines || []).map((l) => ({ key: l.id, ...l }))}
+              columns={[
+                { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 110 },
+                { title: "Ürün Adı", dataIndex: "productName", key: "productName", ellipsis: true },
+                { title: "Adet", dataIndex: "quantity", key: "quantity", width: 60, align: "right" },
+                { title: "Toplam", dataIndex: "lineTotalDisplay", key: "lineTotalDisplay", width: 100, align: "right" },
+              ]}
+            />
+            <Button
+              type="primary"
+              icon={<RollbackOutlined />}
+              block
+              onClick={() => { setDetailOpen(false); navigate(`/pos/returns/new?saleId=${detailSale.id}`); }}
+            >
+              Bu Fişe İade Yap
+            </Button>
+          </Space>
+        ) : null}
+      </Drawer>
 
       {/* Gelişmiş Filtreler Modal */}
       <Modal
@@ -1846,12 +1921,13 @@ export function PosReturnEditorPage() {
         </Space>
       </div>
 
-      <Card title="İade Edilecek Ürünler" className="erp-list-table-card">
+      <Card title="İade Edilecek Ürünler" className="erp-list-table-card" styles={{ body: { padding: 0 } }}>
         <Table
           rowKey="id"
           columns={columns}
           dataSource={(sale.lines || []).map((l) => ({ key: l.id, ...l }))}
           pagination={false}
+          scroll={{ x: 700 }}
         />
       </Card>
 
@@ -1878,11 +1954,25 @@ export function PosReturnEditorPage() {
   );
 }
 
+const POS_RETURNS_SAVED_FILTERS_KEY = "sibella.erp.posReturnFilters.v1";
+
+const EMPTY_RETURN_FILTERS = {
+  search: "",
+  productSearch: "",
+  dateFrom: null,
+  dateTo: null,
+};
+
 export function PosReturnListPage() {
   const [returns, setReturns] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
-  const [detailOpen, setDetailOpen] = React.useState(false);
-  const [selected, setSelected] = React.useState(null);
+  const [filterModalOpen, setFilterModalOpen] = React.useState(false);
+  const [savedFilterName, setSavedFilterName] = React.useState("");
+  const [filters, setFilters] = React.useState(EMPTY_RETURN_FILTERS);
+  const [savedFilters, setSavedFilters] = React.useState(() => {
+    try { return JSON.parse(window.localStorage.getItem(POS_RETURNS_SAVED_FILTERS_KEY) || "[]"); }
+    catch { return []; }
+  });
 
   const refresh = React.useCallback(async () => {
     try {
@@ -1898,64 +1988,256 @@ export function PosReturnListPage() {
 
   React.useEffect(() => { void refresh(); }, [refresh]);
 
+  const persistSavedFilters = (next) => {
+    setSavedFilters(next);
+    window.localStorage.setItem(POS_RETURNS_SAVED_FILTERS_KEY, JSON.stringify(next));
+  };
+
+  const handleFilterChange = (key, value) => setFilters((prev) => ({ ...prev, [key]: value }));
+  const handleResetFilters = () => setFilters(EMPTY_RETURN_FILTERS);
+
+  const handleSaveFilterPreset = () => {
+    if (!savedFilterName.trim()) { message.warning("Filtre adını girin."); return; }
+    const next = [
+      { name: savedFilterName.trim(), filters },
+      ...savedFilters.filter((f) => f.name !== savedFilterName.trim()),
+    ];
+    persistSavedFilters(next);
+    setSavedFilterName("");
+    message.success("Filtre kaydedildi.");
+  };
+
+  const applySavedFilter = (saved) => {
+    setFilters(saved.filters);
+    setFilterModalOpen(false);
+    message.success(`${saved.name} filtresi uygulandı.`);
+  };
+
+  const activeFilterCount = Object.entries(filters).filter(([, v]) => v).length;
+
+  // Düz satır: her iade kalemi ayrı satır
+  const flatRows = React.useMemo(() => {
+    const pq = (filters.productSearch || "").toLowerCase();
+    return returns
+      .filter((ret) => {
+        if (filters.search) {
+          const q = filters.search.toLowerCase();
+          const match =
+            String(ret.returnNo || "").toLowerCase().includes(q) ||
+            String(ret.receiptNo || "").toLowerCase().includes(q);
+          if (!match) return false;
+        }
+        if (filters.dateFrom && dayjs(ret.returnDate).isBefore(dayjs(filters.dateFrom).startOf("day"))) return false;
+        if (filters.dateTo && dayjs(ret.returnDate).isAfter(dayjs(filters.dateTo).endOf("day"))) return false;
+        return true;
+      })
+      .flatMap((ret) =>
+        (ret.lines || [])
+          .filter((line) => {
+            if (!pq) return true;
+            return (
+              String(line.productCode || "").toLowerCase().includes(pq) ||
+              String(line.productName || "").toLowerCase().includes(pq)
+            );
+          })
+          .map((line) => ({
+            key: `${ret.id}-${line.id}`,
+            returnId: ret.id,
+            returnNo: ret.returnNo,
+            receiptNo: ret.receiptNo,
+            returnDate: ret.returnDate,
+            productCode: line.productCode,
+            productName: line.productName,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            lineTotal: line.lineTotal,
+          }))
+      );
+  }, [returns, filters]);
+
   const columns = [
-    { title: "İade No", dataIndex: "returnNo", key: "returnNo", sorter: (a, b) => (a.returnNo || "").localeCompare(b.returnNo || "", "tr") },
-    { title: "Orijinal Satış", dataIndex: "originalSaleId", key: "originalSaleId" },
-    { title: "İade Tarihi", dataIndex: "returnDate", key: "returnDate", sorter: (a, b) => (a.returnDate || "").localeCompare(b.returnDate || "", "tr"), render: (v) => v ? new Date(v).toLocaleString("tr-TR") : "-" },
-    { title: "Adet", dataIndex: "totalQuantity", key: "totalQuantity" },
-    { title: "Tutar", key: "totalAmount", render: (_, record) => formatMovementMoney(record.totalAmount) },
-    { title: "Durum", dataIndex: "status", key: "status", render: (v) => <Tag color="green">{v}</Tag> },
+    {
+      title: "İade Tarihi",
+      dataIndex: "returnDate",
+      key: "returnDate",
+      width: 110,
+      defaultSortOrder: "descend",
+      sorter: (a, b) => new Date(a.returnDate || 0) - new Date(b.returnDate || 0),
+      render: (v) => v ? new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(v)) : "-",
+    },
+    {
+      title: "İade Kodu",
+      dataIndex: "returnNo",
+      key: "returnNo",
+      width: 110,
+      sorter: (a, b) => (a.returnNo || "").localeCompare(b.returnNo || "", "tr"),
+    },
+    {
+      title: "Fiş Kodu",
+      dataIndex: "receiptNo",
+      key: "receiptNo",
+      width: 110,
+      sorter: (a, b) => (a.receiptNo || "").localeCompare(b.receiptNo || "", "tr"),
+    },
+    {
+      title: "Ürün Kodu",
+      dataIndex: "productCode",
+      key: "productCode",
+      width: 120,
+    },
+    {
+      title: "Ürün Adı",
+      dataIndex: "productName",
+      key: "productName",
+      ellipsis: true,
+    },
+    {
+      title: "İade Adet",
+      dataIndex: "quantity",
+      key: "quantity",
+      width: 90,
+      align: "right",
+      sorter: (a, b) => a.quantity - b.quantity,
+    },
+    {
+      title: "İade Tutar",
+      dataIndex: "lineTotal",
+      key: "lineTotal",
+      width: 120,
+      align: "right",
+      sorter: (a, b) => a.lineTotal - b.lineTotal,
+      render: (v) => <Text strong>{formatMovementMoney(v)}</Text>,
+    },
   ];
 
   return (
     <Space direction="vertical" size={20} style={{ width: "100%" }}>
+
+      {/* Başlık */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>İade Listesi</Title>
           <Text type="secondary">POS üzerinden gerçekleştirilen müşteri iadeleri.</Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={() => { void refresh(); }}>Yenile</Button>
+        <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>Yenile</Button>
       </div>
 
-      <Card title="İadeler" className="erp-list-table-card" style={{ paddingBottom: 16 }}>
+      {/* Toolbar */}
+      <Card bordered={false} className="erp-list-toolbar-card">
+        <div className="erp-list-toolbar">
+          <div style={{ flex: 1 }} />
+          <div className="erp-product-toolbar-search">
+            <Input
+              prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
+              placeholder="İade kodu veya fiş kodu ara..."
+              value={filters.search}
+              onChange={(e) => handleFilterChange("search", e.target.value)}
+              allowClear
+            />
+            <Badge count={activeFilterCount} size="small">
+              <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
+            </Badge>
+          </div>
+        </div>
+      </Card>
+
+      {/* Tablo */}
+      <Card
+        title={`İade Listesi${activeFilterCount > 0 ? ` (${flatRows.length} / ${returns.reduce((s, r) => s + (r.lines || []).length, 0)})` : ` (${flatRows.length} satır)`}`}
+        className="erp-list-table-card"
+      >
         <Table
           loading={loading}
           columns={columns}
-          dataSource={returns.map((item) => ({ key: item.id, ...item }))}
-          pagination={{ pageSize: 50, showSizeChanger: true }}
-          onRow={(record) => ({ onClick: () => { setSelected(record); setDetailOpen(true); }, className: "erp-clickable-row" })}
-          rowClassName={() => "erp-clickable-row"}
+          dataSource={flatRows}
+          pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (total, range) => `${range[0]}-${range[1]} / ${total}` }}
         />
       </Card>
 
-      <Drawer title="İade Detayı" placement="right" width={520} open={detailOpen} onClose={() => setDetailOpen(false)}>
-        {selected ? (
-          <Space direction="vertical" size={16} style={{ width: "100%" }}>
-            <Descriptions column={1} size="small" bordered>
-              <Descriptions.Item label="İade No">{selected.returnNo}</Descriptions.Item>
-              <Descriptions.Item label="Orijinal Satış ID">{selected.originalSaleId}</Descriptions.Item>
-              <Descriptions.Item label="İade Tarihi">{selected.returnDate ? new Date(selected.returnDate).toLocaleString("tr-TR") : "-"}</Descriptions.Item>
-              <Descriptions.Item label="Durum">{selected.status}</Descriptions.Item>
-              <Descriptions.Item label="Not">{selected.note || "-"}</Descriptions.Item>
-            </Descriptions>
-            <Card size="small" title="İade Kalemleri">
-              <Table
-                rowKey="id"
-                size="small"
-                pagination={false}
-                dataSource={(selected.lines || []).map((l) => ({ key: l.id, ...l }))}
-                columns={[
-                  { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode" },
-                  { title: "Ürün Adı", dataIndex: "productName", key: "productName" },
-                  { title: "Adet", dataIndex: "quantity", key: "quantity" },
-                  { title: "Birim Fiyat", key: "unitPrice", render: (_, l) => formatMovementMoney(l.unitPrice) },
-                  { title: "Toplam", key: "lineTotal", render: (_, l) => formatMovementMoney(l.lineTotal) },
-                ]}
+      {/* Gelişmiş Filtreler Modal */}
+      <Modal
+        title="Gelişmiş Filtreler"
+        open={filterModalOpen}
+        onCancel={() => setFilterModalOpen(false)}
+        footer={null}
+      >
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Row gutter={[12, 12]}>
+            <Col span={24}>
+              <Form.Item label="Ürün Kodu / Adı">
+                <Input
+                  prefix={<SearchOutlined />}
+                  placeholder="Ürün kodu veya adı..."
+                  value={filters.productSearch}
+                  onChange={(e) => handleFilterChange("productSearch", e.target.value)}
+                  allowClear
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Başlangıç Tarihi">
+                <DatePicker
+                  style={{ width: "100%" }}
+                  format="DD.MM.YYYY"
+                  value={filters.dateFrom ? dayjs(filters.dateFrom) : null}
+                  onChange={(d) => handleFilterChange("dateFrom", d ? d.format("YYYY-MM-DD") : null)}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Bitiş Tarihi">
+                <DatePicker
+                  style={{ width: "100%" }}
+                  format="DD.MM.YYYY"
+                  value={filters.dateTo ? dayjs(filters.dateTo) : null}
+                  onChange={(d) => handleFilterChange("dateTo", d ? d.format("YYYY-MM-DD") : null)}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Card size="small" title="Filtreyi Kaydet">
+            <Space.Compact style={{ width: "100%" }}>
+              <Input
+                value={savedFilterName}
+                onChange={(e) => setSavedFilterName(e.target.value)}
+                placeholder="Filtre adı"
+                onPressEnter={handleSaveFilterPreset}
               />
-            </Card>
+              <Button type="primary" onClick={handleSaveFilterPreset}>Kaydet</Button>
+            </Space.Compact>
+          </Card>
+
+          <Card size="small" title="Kayıtlı Filtreler">
+            {savedFilters.length === 0 ? (
+              <Text type="secondary">Henüz kayıtlı filtre yok.</Text>
+            ) : (
+              <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                {savedFilters.map((item) => (
+                  <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Button style={{ flex: 1, textAlign: "left" }} onClick={() => applySavedFilter(item)}>
+                      {item.name}
+                    </Button>
+                    <Popconfirm
+                      title="Bu filtre silinsin mi?"
+                      okText="Sil"
+                      cancelText="Vazgeç"
+                      onConfirm={() => persistSavedFilters(savedFilters.filter((f) => f.name !== item.name))}
+                    >
+                      <Button type="text" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                  </div>
+                ))}
+              </Space>
+            )}
+          </Card>
+
+          <Space style={{ justifyContent: "space-between", width: "100%" }}>
+            <Button onClick={handleResetFilters}>Filtreleri Temizle</Button>
+            <Button type="primary" onClick={() => setFilterModalOpen(false)}>Uygula</Button>
           </Space>
-        ) : null}
-      </Drawer>
+        </Space>
+      </Modal>
     </Space>
   );
 }

@@ -10,7 +10,7 @@ import { completeDeliveryReceipt, createDeliveryList, createDeliveryPdf, deleteD
 import { listEarningsRecordsFresh } from "../earningsData";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
-import { listPosSalesFresh } from "../posData";
+import { listPosSalesFresh, listPosReturnsFresh } from "../posData";
 import { createProduct, listProductsFresh } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 
@@ -202,7 +202,7 @@ function resolveEarningsStatus(periodDate, earningsTotal, earningsRecord) {
   return "Tamamlandı";
 }
 
-function buildEarningsSummary({ periodDate, products = [], sales = [], contracts = [], supplierId, earningsRecord = null }) {
+function buildEarningsSummary({ periodDate, products = [], sales = [], returns = [], contracts = [], supplierId, earningsRecord = null }) {
   const relevantProducts = (products || []).filter((item) => item.supplierId === supplierId && item.productType === "konsinye");
   const productMap = new Map(relevantProducts.map((item) => [item.id, item]));
   const contract = getPeriodContract(contracts, supplierId, periodDate);
@@ -228,6 +228,7 @@ function buildEarningsSummary({ periodDate, products = [], sales = [], contracts
         productCode: line.productCode || product.code || "-",
         productName: line.productName || product.name || "-",
         salesQuantity: 0,
+        returnQuantity: 0,
         unitPrice: Number(line.unitPrice || 0),
         grossAmount: 0,
       };
@@ -239,12 +240,27 @@ function buildEarningsSummary({ periodDate, products = [], sales = [], contracts
     });
   });
 
+  // İade adedini ürün bazında dönem içindeki iadelere göre hesapla
+  (returns || []).forEach((ret) => {
+    const retDate = parseDateValue(ret.returnDate);
+    if (!retDate || retDate < start || retDate > end) return;
+    (ret.lines || []).forEach((line) => {
+      const existing = groupedRows.get(line.productId);
+      if (!existing) return;
+      existing.returnQuantity += Number(line.quantity || 0);
+    });
+  });
+
   const detailRows = Array.from(groupedRows.values())
     .map((row) => {
-      const commissionAmount = row.grossAmount * (commissionRate / 100);
-      const netAmount = row.grossAmount - commissionAmount;
+      const netQuantity = Math.max(0, row.salesQuantity - row.returnQuantity);
+      const salesAmount = netQuantity * row.unitPrice;
+      const commissionAmount = salesAmount * (commissionRate / 100);
+      const netAmount = salesAmount - commissionAmount;
       return {
         ...row,
+        netQuantity,
+        salesAmount,
         commissionRate,
         commissionAmount,
         netAmount,
@@ -253,6 +269,8 @@ function buildEarningsSummary({ periodDate, products = [], sales = [], contracts
     .sort((a, b) => String(a.productCode || "").localeCompare(String(b.productCode || ""), "tr"));
 
   const grossTotal = detailRows.reduce((sum, item) => sum + item.grossAmount, 0);
+  const returnTotal = detailRows.reduce((sum, item) => sum + item.returnQuantity * item.unitPrice, 0);
+  const netSalesTotal = detailRows.reduce((sum, item) => sum + item.salesAmount, 0);
   const commissionTotal = detailRows.reduce((sum, item) => sum + item.commissionAmount, 0);
   const earningsTotal = detailRows.reduce((sum, item) => sum + item.netAmount, 0);
   const status = resolveEarningsStatus(periodDate, earningsTotal, earningsRecord);
@@ -265,6 +283,8 @@ function buildEarningsSummary({ periodDate, products = [], sales = [], contracts
     commissionRate,
     detailRows,
     grossTotal,
+    returnTotal,
+    netSalesTotal,
     commissionTotal,
     earningsTotal,
     invoiceNo: earningsRecord?.invoiceNo || null,
@@ -283,6 +303,7 @@ export function SupplierPortalEarningsPage() {
   const [resolvedSupplierId, setResolvedSupplierId] = React.useState(authUser?.supplierId || null);
   const [products, setProducts] = React.useState([]);
   const [sales, setSales] = React.useState([]);
+  const [returns, setReturns] = React.useState([]);
   const [contracts, setContracts] = React.useState([]);
   const [earningsRecords, setEarningsRecords] = React.useState([]);
 
@@ -291,10 +312,11 @@ export function SupplierPortalEarningsPage() {
     const loadEarnings = async () => {
       try {
         setPageLoading(true);
-        const [suppliers, nextProducts, nextSales, nextContracts, nextRecords] = await Promise.all([
+        const [suppliers, nextProducts, nextSales, nextReturns, nextContracts, nextRecords] = await Promise.all([
           listSuppliersFresh(),
           listProductsFresh(),
           listPosSalesFresh(),
+          listPosReturnsFresh(),
           listContractsFresh(),
           listEarningsRecordsFresh(),
         ]);
@@ -315,6 +337,7 @@ export function SupplierPortalEarningsPage() {
         setResolvedSupplierId(supplierId);
         setProducts(supplierId ? nextProducts.filter((item) => item.supplierId === supplierId) : []);
         setSales(nextSales || []);
+        setReturns(nextReturns || []);
         setContracts(nextContracts || []);
         setEarningsRecords(nextRecords || []);
       } catch (error) {
@@ -322,6 +345,7 @@ export function SupplierPortalEarningsPage() {
           setResolvedSupplierId(null);
           setProducts([]);
           setSales([]);
+          setReturns([]);
           setContracts([]);
           setEarningsRecords([]);
           message.error(error?.message || "Hakediş verileri yüklenemedi.");
@@ -349,11 +373,12 @@ export function SupplierPortalEarningsPage() {
       periodDate,
       products,
       sales,
+      returns,
       contracts,
       supplierId: resolvedSupplierId,
       earningsRecord: earningsRecordMap.get(getMonthKey(periodDate)) || null,
     }),
-    [contracts, earningsRecordMap, periodDate, products, resolvedSupplierId, sales],
+    [contracts, earningsRecordMap, periodDate, products, resolvedSupplierId, returns, sales],
   );
 
   const historySummaries = React.useMemo(() => {
@@ -378,6 +403,7 @@ export function SupplierPortalEarningsPage() {
         periodDate: item,
         products,
         sales,
+        returns,
         contracts,
         supplierId: resolvedSupplierId,
         earningsRecord: earningsRecordMap.get(getMonthKey(item)) || null,
@@ -393,17 +419,20 @@ export function SupplierPortalEarningsPage() {
       ["Hakediş Tutarı", formatDisplayMoney(currentSummary.earningsTotal)],
       ["Ödeme Durumu", currentSummary.status],
       [],
-      ["Ürün Kodu", "Ürün Adı", "Satış Adedi", "Birim Fiyat", "Komisyon %", "Hakediş Tutar"],
+      ["Ürün Kodu", "Ürün Adı", "Satış Adet", "İade Adet", "Net Satış Adet", "Birim Fiyat", "Satış Fiyatı", "Komisyon %", "Hakediş Tutar"],
       ...currentSummary.detailRows.map((item) => [
         item.productCode,
         item.productName,
         item.salesQuantity,
+        item.returnQuantity,
+        item.netQuantity,
         formatDisplayMoney(item.unitPrice),
+        formatDisplayMoney(item.salesAmount),
         `${Number(item.commissionRate || 0).toFixed(2)}%`,
         formatDisplayMoney(item.netAmount),
       ]),
       [],
-      ["Toplam", "", "", "", "", formatDisplayMoney(currentSummary.earningsTotal)],
+      ["Toplam", "", "", "", "", "", "", "", formatDisplayMoney(currentSummary.earningsTotal)],
     ];
     downloadWorkbook(rows, "SatisDetayi", `satis-detayi-${currentSummary.periodKey}.xlsx`);
     message.success("Excel dosyası indirildi.");
@@ -521,20 +550,44 @@ export function SupplierPortalEarningsPage() {
           locale={{ emptyText: "Bu dönemde satış bulunmamaktadır." }}
           scroll={{ x: 860 }}
           columns={[
-            { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 140 },
-            { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 220 },
-            { title: "Satış Adedi", dataIndex: "salesQuantity", key: "salesQuantity", width: 110 },
-            { title: "Birim Fiyat", dataIndex: "unitPrice", key: "unitPrice", width: 140, render: (value) => formatDisplayMoney(value) },
-            { title: "Komisyon %", dataIndex: "commissionRate", key: "commissionRate", width: 120, render: (value) => `%${Number(value || 0).toFixed(2)}` },
-            { title: "Hakediş Tutar", dataIndex: "netAmount", key: "netAmount", width: 150, render: (value) => <Text strong>{formatDisplayMoney(value)}</Text> },
+            { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 120, ellipsis: true },
+            { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 180, ellipsis: true },
+            { title: "Satış Adet", dataIndex: "salesQuantity", key: "salesQuantity", width: 95, align: "right" },
+            {
+              title: "İade Adet",
+              dataIndex: "returnQuantity",
+              key: "returnQuantity",
+              width: 90,
+              align: "right",
+              render: (v) => v > 0 ? <Text style={{ color: "#cf1322" }}>{v}</Text> : <Text type="secondary">-</Text>,
+            },
+            {
+              title: "Net Satış Adet",
+              dataIndex: "netQuantity",
+              key: "netQuantity",
+              width: 115,
+              align: "right",
+              render: (v) => <Text strong>{v}</Text>,
+            },
+            { title: "Birim Fiyat", dataIndex: "unitPrice", key: "unitPrice", width: 120, align: "right", render: (value) => formatDisplayMoney(value) },
+            {
+              title: "Satış Fiyatı",
+              dataIndex: "salesAmount",
+              key: "salesAmount",
+              width: 120,
+              align: "right",
+              render: (value) => formatDisplayMoney(value),
+            },
+            { title: "Komisyon %", dataIndex: "commissionRate", key: "commissionRate", width: 105, align: "right", render: (value) => `%${Number(value || 0).toFixed(2)}` },
+            { title: "Hakediş Tutar", dataIndex: "netAmount", key: "netAmount", width: 130, align: "right", render: (value) => <Text strong>{formatDisplayMoney(value)}</Text> },
           ]}
           summary={() => (
             <Table.Summary>
               <Table.Summary.Row style={{ background: "#d86d5b" }}>
-                <Table.Summary.Cell index={0} colSpan={5}>
+                <Table.Summary.Cell index={0} colSpan={8}>
                   <Text strong style={{ color: "#fff" }}>Toplam</Text>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={1}>
+                <Table.Summary.Cell index={8} align="right">
                   <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(currentSummary.earningsTotal)}</Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
@@ -561,11 +614,20 @@ export function SupplierPortalEarningsPage() {
           scroll={{ x: 900 }}
           columns={[
             { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130 },
-            { title: "Toplam Satış Tutar", dataIndex: "grossTotal", key: "grossTotal", width: 160, render: (value) => formatDisplayMoney(value) },
-            { title: "Komisyon Oranı", dataIndex: "commissionRate", key: "commissionRate", width: 130, render: (value) => `%${Number(value || 0).toFixed(2)}` },
-            { title: "Toplam Hakediş Tutar", dataIndex: "earningsTotal", key: "earningsTotal", width: 170, render: (value) => formatDisplayMoney(Number(value || 0) * 1.2) },
-            { title: "Fatura Hizmet Tutar", dataIndex: "earningsTotal", key: "invoiceServiceAmount", width: 160, render: (value) => formatDisplayMoney(value) },
-            { title: "Fatura KDV Tutar", key: "invoiceKdv", width: 140, render: (_, record) => formatDisplayMoney(Number(record.earningsTotal || 0) * 0.2) },
+            { title: "Brüt Satış", dataIndex: "grossTotal", key: "grossTotal", width: 140, align: "right", render: (v) => formatDisplayMoney(v) },
+            {
+              title: "İade Tutar",
+              dataIndex: "returnTotal",
+              key: "returnTotal",
+              width: 120,
+              align: "right",
+              render: (v) => v > 0 ? <Text style={{ color: "#cf1322" }}>-{formatDisplayMoney(v)}</Text> : <Text type="secondary">-</Text>,
+            },
+            { title: "Net Satış", dataIndex: "netSalesTotal", key: "netSalesTotal", width: 140, align: "right", render: (v) => <Text strong>{formatDisplayMoney(v)}</Text> },
+            { title: "Komisyon Oranı", dataIndex: "commissionRate", key: "commissionRate", width: 120, align: "right", render: (value) => `%${Number(value || 0).toFixed(2)}` },
+            { title: "Fatura Hizmet Tutar", dataIndex: "earningsTotal", key: "invoiceServiceAmount", width: 155, align: "right", render: (value) => formatDisplayMoney(value) },
+            { title: "Fatura KDV Tutar", key: "invoiceKdv", width: 135, align: "right", render: (_, record) => formatDisplayMoney(Number(record.earningsTotal || 0) * 0.2) },
+            { title: "Toplam Hakediş", key: "earningsTotalKdv", width: 140, align: "right", render: (_, record) => <Text strong>{formatDisplayMoney(Number(record.earningsTotal || 0) * 1.2)}</Text> },
             {
               title: "Ödeme Durumu",
               dataIndex: "status",
@@ -579,28 +641,22 @@ export function SupplierPortalEarningsPage() {
           ]}
           summary={() => {
             const totalGross = historySummaries.reduce((sum, item) => sum + Number(item.grossTotal || 0), 0);
+            const totalReturn = historySummaries.reduce((sum, item) => sum + Number(item.returnTotal || 0), 0);
+            const totalNetSales = historySummaries.reduce((sum, item) => sum + Number(item.netSalesTotal || 0), 0);
             const totalEarnings = historySummaries.reduce((sum, item) => sum + Number(item.earningsTotal || 0), 0);
             const totalKdv = totalEarnings * 0.2;
             return (
               <Table.Summary>
                 <Table.Summary.Row style={{ background: "#d86d5b" }}>
-                  <Table.Summary.Cell index={0}>
-                    <Text strong style={{ color: "#fff" }}>Toplam</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={1}>
-                    <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalGross)}</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={2} />
-                  <Table.Summary.Cell index={3}>
-                    <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings * 1.2)}</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={4}>
-                    <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings)}</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={5}>
-                    <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalKdv)}</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={6} />
+                  <Table.Summary.Cell index={0}><Text strong style={{ color: "#fff" }}>Toplam</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={1} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalGross)}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={2} align="right"><Text strong style={{ color: "#fff" }}>{totalReturn > 0 ? `-${formatDisplayMoney(totalReturn)}` : "-"}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={3} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalNetSales)}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={4} />
+                  <Table.Summary.Cell index={5} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings)}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={6} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalKdv)}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={7} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings * 1.2)}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={8} />
                 </Table.Summary.Row>
               </Table.Summary>
             );

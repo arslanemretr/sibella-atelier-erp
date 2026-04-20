@@ -799,7 +799,12 @@ export async function ensurePosReturnsReady() {
 }
 
 async function listPosReturnsRows() {
-  const returnRows = await sqlMany("SELECT * FROM pos_returns ORDER BY created_at DESC, return_date DESC");
+  const returnRows = await sqlMany(`
+    SELECT pr.*, ps.receipt_no
+    FROM pos_returns pr
+    LEFT JOIN pos_sales ps ON ps.id = pr.original_sale_id
+    ORDER BY pr.created_at DESC, pr.return_date DESC
+  `);
   const lineRows = await sqlMany("SELECT * FROM pos_return_lines ORDER BY return_id ASC, sort_order ASC, id ASC");
   const linesByReturnId = new Map();
 
@@ -825,6 +830,7 @@ async function listPosReturnsRows() {
     id: row.id,
     returnNo: row.return_no || "",
     originalSaleId: row.original_sale_id || null,
+    receiptNo: row.receipt_no || "",
     stockLocationId: row.stock_location_id || null,
     returnDate: row.return_date || null,
     status: row.status || "Tamamlandi",
@@ -836,8 +842,23 @@ async function listPosReturnsRows() {
   }));
 }
 
-export async function handlePosReturnsList(_req, res) {
-  return res.json({ ok: true, items: await listPosReturnsRows() });
+export async function handlePosReturnsList(req, res) {
+  const items = await listPosReturnsRows();
+  if (req.authUser?.role !== "Tedarikci") {
+    return res.json({ ok: true, items });
+  }
+
+  const supplierId = await resolveSupplierIdForAuthUser(req.authUser);
+  const supplierProductRows = await sqlMany("SELECT id FROM products WHERE supplier_id = $1", [supplierId]);
+  const allowedProductIds = new Set(supplierProductRows.map((row) => row.id));
+  const filteredItems = items
+    .map((ret) => ({
+      ...ret,
+      lines: (ret.lines || []).filter((line) => allowedProductIds.has(line.productId)),
+    }))
+    .filter((ret) => ret.lines.length > 0);
+
+  return res.json({ ok: true, items: filteredItems });
 }
 
 export async function handlePosReturnsCreate(req, res) {
