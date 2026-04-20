@@ -459,22 +459,18 @@ export function SupplierPortalEarningsPage() {
     {
       title: "Toplam Net Satış",
       value: formatDisplayMoney(currentSummary.netSalesTotal),
-      description: "Net Satış Adet × Birim Fiyat (iade düşülmüş)",
     },
     {
       title: "Komisyon Oranı",
       value: `%${Number(currentSummary.commissionRate || 0).toFixed(2)}`,
-      description: "Sözleşmelerde yer alan komisyon oranıdır",
     },
     {
       title: "Hakediş Tutarı",
       value: formatDisplayMoney(currentSummary.earningsTotal),
-      description: "Toplam Satış − Komisyon",
     },
     {
       title: "Ödeme Durumu",
       value: currentSummary.status,
-      description: currentSummary.invoiceNo ? "Fatura ve ödeme takibi" : "Fatura süreci bekleniyor",
       isStatus: true,
     },
   ];
@@ -514,7 +510,7 @@ export function SupplierPortalEarningsPage() {
               <div style={{ fontSize: 28, fontWeight: 700, marginTop: 8, marginBottom: 6 }}>
                 {card.isStatus ? <Tag color={statusMeta.color} style={{ fontSize: 18, padding: "6px 10px" }}>{card.value}</Tag> : card.value}
               </div>
-              <Text type="secondary">{card.description}</Text>
+              {card.description ? <Text type="secondary">{card.description}</Text> : null}
             </Card>
           </Col>
         ))}
