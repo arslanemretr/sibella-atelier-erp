@@ -457,9 +457,9 @@ export function SupplierPortalEarningsPage() {
 
   const summaryCards = [
     {
-      title: "Toplam Satış",
-      value: formatDisplayMoney(currentSummary.grossTotal),
-      description: "Dönem içi brüt satış tutarı",
+      title: "Toplam Net Satış",
+      value: formatDisplayMoney(currentSummary.netSalesTotal),
+      description: "Net Satış Adet × Birim Fiyat (iade düşülmüş)",
     },
     {
       title: "Komisyon Oranı",
