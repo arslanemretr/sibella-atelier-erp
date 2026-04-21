@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm, Row, Select, Space, Switch, Table, Tag, Tooltip, Typography, message } from "antd";
+import { Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm, Row, Select, Space, Switch, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { createMasterData, listMasterDataFresh, masterDataDefinitions, updateMasterData } from "../masterData";
 import { getSmtpSettingsFresh, updateSmtpSettings } from "../smtpSettings";
@@ -8,6 +8,20 @@ import { listSuppliersFresh } from "../suppliersData";
 import { requestJson } from "../apiClient";
 
 const { Title, Text } = Typography;
+
+function requiredWhenEnabled(label) {
+  return ({ getFieldValue }) => ({
+    validator(_, value) {
+      if (!getFieldValue("enabled")) {
+        return Promise.resolve();
+      }
+      if (value === undefined || value === null || String(value).trim() === "") {
+        return Promise.reject(new Error(`${label} zorunludur.`));
+      }
+      return Promise.resolve();
+    },
+  });
+}
 
 export function SettingsDefinitionPage({ entityKey }) {
   const activeConfig = masterDataDefinitions[entityKey];
@@ -324,6 +338,16 @@ export function SmtpSettingsPage() {
   const [testing, setTesting] = React.useState(false);
   const [pageLoading, setPageLoading] = React.useState(false);
 
+  const applyGmailPreset = React.useCallback(() => {
+    smtpForm.setFieldsValue({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      fromName: smtpForm.getFieldValue("fromName") || "Sibella Atelier",
+    });
+    message.success("Gmail icin onerilen SMTP ayarlari dolduruldu.");
+  }, [smtpForm]);
+
   React.useEffect(() => {
     let cancelled = false;
     const loadSmtpSettings = async () => {
@@ -401,6 +425,25 @@ export function SmtpSettingsPage() {
 
       <Card title="SMTP Ayarlari" extra={<Tag color="gold">Sifremi Unuttum Maili</Tag>} loading={pageLoading}>
         <Form form={smtpForm} layout="vertical">
+          <Space direction="vertical" size={12} style={{ width: "100%", marginBottom: 16 }}>
+            <Alert
+              type="info"
+              showIcon
+              message="Gmail kurulumu"
+              description={(
+                <Space direction="vertical" size={2}>
+                  <Text>1. Google hesabinizda 2 Adimli Dogrulama acin.</Text>
+                  <Text>2. Google hesabinizdan 16 haneli Uygulama Sifresi olusturun.</Text>
+                  <Text>3. Bu sayfada Gmail ayarlarini doldurun veya hazir ayari uygulayin.</Text>
+                  <Text>4. Kaydedip test maili gonderin.</Text>
+                </Space>
+              )}
+            />
+            <Space wrap>
+              <Button onClick={applyGmailPreset}>Gmail Ayarlarini Doldur</Button>
+              <Text type="secondary">Onerilen kombinasyon: `smtp.gmail.com` + `587` + `STARTTLS` + uygulama sifresi.</Text>
+            </Space>
+          </Space>
           <Row gutter={[16, 16]}>
             <Col xs={24} md={12} xl={8}>
               <Card size="small" title="SMTP Durumu">
@@ -414,17 +457,56 @@ export function SmtpSettingsPage() {
                 </Space>
               </Card>
             </Col>
-            <Col xs={24} md={12} xl={8}><Form.Item name="host" label="SMTP Host"><Input placeholder="smtp.example.com" /></Form.Item></Col>
-            <Col xs={24} md={12} xl={4}><Form.Item name="port" label="Port"><InputNumber style={{ width: "100%" }} min={1} /></Form.Item></Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item name="host" label="SMTP Host" rules={[requiredWhenEnabled("SMTP Host")]}>
+                <Input placeholder="smtp.gmail.com" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={4}>
+              <Form.Item name="port" label="Port" rules={[requiredWhenEnabled("Port")]}>
+                <InputNumber style={{ width: "100%" }} min={1} />
+              </Form.Item>
+            </Col>
             <Col xs={24} md={12} xl={4}>
               <Form.Item name="secure" label="Guvenli Baglanti" valuePropName="checked">
                 <Switch checkedChildren="SSL/TLS" unCheckedChildren="STARTTLS" />
               </Form.Item>
             </Col>
-            <Col xs={24} md={12}><Form.Item name="username" label="Kullanici Adi"><Input placeholder="smtp kullanici adi" /></Form.Item></Col>
-            <Col xs={24} md={12}><Form.Item name="password" label="Sifre"><Input.Password placeholder="smtp sifresi" /></Form.Item></Col>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="username"
+                label="Kullanici Adi"
+                rules={[
+                  requiredWhenEnabled("Kullanici Adi"),
+                  { type: "email", message: "Gecerli bir e-posta adresi girin." },
+                ]}
+              >
+                <Input placeholder="seninadresin@gmail.com" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="password"
+                label="Sifre"
+                extra="Gmail normal hesap sifresi yerine 16 haneli uygulama sifresi kullanin."
+                rules={[requiredWhenEnabled("Sifre")]}
+              >
+                <Input.Password placeholder="16 haneli uygulama sifresi" />
+              </Form.Item>
+            </Col>
             <Col xs={24} md={12}><Form.Item name="fromName" label="Gonderen Adi"><Input placeholder="Sibella Atelier" /></Form.Item></Col>
-            <Col xs={24} md={12}><Form.Item name="fromEmail" label="Gonderen E-posta"><Input placeholder="info@sibellaatelier.com" /></Form.Item></Col>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="fromEmail"
+                label="Gonderen E-posta"
+                rules={[
+                  requiredWhenEnabled("Gonderen E-posta"),
+                  { type: "email", message: "Gecerli bir e-posta adresi girin." },
+                ]}
+              >
+                <Input placeholder="seninadresin@gmail.com" />
+              </Form.Item>
+            </Col>
           </Row>
         </Form>
       </Card>
