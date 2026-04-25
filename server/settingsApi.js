@@ -1,4 +1,16 @@
 import { sqlExec, sqlOne } from "./db.js";
+export {
+  handleEmailDeliveryLogsList,
+  handleEmailScenariosCreate,
+  handleEmailScenariosDelete,
+  handleEmailScenariosList,
+  handleEmailScenariosUpdate,
+  handleEmailTemplatesCreate,
+  handleEmailTemplatesDelete,
+  handleEmailTemplatesList,
+  handleEmailTemplatesUpdate,
+  mailEventDefinitions,
+} from "./mailSettings.js";
 
 function nowIso() {
   return new Date().toISOString();

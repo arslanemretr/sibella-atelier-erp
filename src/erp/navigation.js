@@ -67,7 +67,7 @@ export const mainMenuItems = [
       { key: "/settings/procurement-types", label: "Tedarik Tipi Tanimlama" },
       { key: "/settings/payment-terms", label: "Odeme Kosulu Tanimlama" },
       { key: "/settings/parameters", label: "Parametreler" },
-      { key: "/settings/smtp", label: "SMTP ve E-posta" },
+      { key: "/settings/mail-management", label: "Mail Yonetimi" },
     ],
   },
 ];
@@ -144,7 +144,7 @@ export const sidebarGroups = [
           { key: "/settings/procurement-types", label: "Tedarik Tipi Tanimlama" },
           { key: "/settings/payment-terms", label: "Odeme Kosulu Tanimlama" },
           { key: "/settings/parameters", label: "Parametreler" },
-          { key: "/settings/smtp", label: "SMTP ve E-posta" },
+          { key: "/settings/mail-management", label: "Mail Yonetimi" },
         ],
       },
     ],

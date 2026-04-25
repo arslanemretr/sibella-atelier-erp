@@ -71,6 +71,7 @@ const iconMap = {
   "/settings/procurement-types": menuIcon(HandCoins),
   "/settings/payment-terms": menuIcon(ClipboardList),
   "/settings/parameters": menuIcon(Settings2),
+  "/settings/mail-management": menuIcon(Mail),
   "/settings/smtp": menuIcon(Mail),
   "/supplier/dashboard": menuIcon(LayoutDashboard),
   "/supplier/products": menuIcon(Package),

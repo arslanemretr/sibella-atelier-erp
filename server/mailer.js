@@ -1,5 +1,8 @@
+import fs from "node:fs";
+import path from "node:path";
 import nodemailer from "nodemailer";
 import { sqlOne } from "./db.js";
+import { buildEmailContent, recordEmailDeliveryLog } from "./mailSettings.js";
 
 function envBool(value, fallback = false) {
   if (value === undefined || value === null || value === "") {
@@ -58,6 +61,137 @@ function createTransportFromSettings(settings) {
   });
 }
 
+function getAssetRootPath() {
+  return path.resolve(String(process.env.ASSET_STORAGE_PATH || path.resolve(process.cwd(), "data/assets")).trim());
+}
+
+function resolveAttachmentFile(attachment) {
+  const url = String(attachment?.url || "").trim();
+  if (!url.startsWith("/api/assets/")) {
+    return null;
+  }
+
+  const relativePath = url.replace(/^\/api\/assets\//, "");
+  const assetRoot = getAssetRootPath();
+  const resolvedPath = path.resolve(assetRoot, relativePath);
+  if (!resolvedPath.startsWith(assetRoot)) {
+    return null;
+  }
+  if (!fs.existsSync(resolvedPath)) {
+    return null;
+  }
+
+  return {
+    filename: String(attachment?.name || path.basename(resolvedPath)).trim() || path.basename(resolvedPath),
+    path: resolvedPath,
+  };
+}
+
+function resolveAttachments(attachments) {
+  return (attachments || [])
+    .map(resolveAttachmentFile)
+    .filter(Boolean);
+}
+
+async function sendManagedEmail({ eventKey, context }) {
+  const settings = await getSmtpSettings();
+  if (!settings) {
+    return { sent: false, reason: "SMTP_NOT_CONFIGURED" };
+  }
+
+  const finalContext = {
+    appName: settings.fromName || "Sibella Atelier",
+    ...context,
+  };
+
+  const content = await buildEmailContent(eventKey, finalContext);
+  if (!content?.subject || !content?.textBody || !content?.htmlBody || !Array.isArray(content?.toEmails) || content.toEmails.length === 0) {
+    await recordEmailDeliveryLog({
+      eventKey,
+      scenarioId: content?.scenarioId || null,
+      scenarioName: content?.scenarioName || null,
+      templateId: content?.templateId || null,
+      templateName: content?.templateName || null,
+      toEmails: content?.toEmails || [],
+      ccEmails: content?.ccEmails || [],
+      bccEmails: content?.bccEmails || [],
+      subject: content?.subject || "",
+      status: "Hata",
+      errorMessage: "Aktif ve eslesen bir mail senaryosu bulunamadi.",
+      attachmentCount: 0,
+      details: { reason: "EMAIL_SCENARIO_NOT_FOUND" },
+    });
+    return { sent: false, reason: "EMAIL_SCENARIO_NOT_FOUND" };
+  }
+
+  const transporter = createTransportFromSettings(settings);
+  const resolvedAttachments = resolveAttachments(content.attachments);
+
+  try {
+    const info = await transporter.sendMail({
+      from: settings.fromName
+        ? `"${settings.fromName}" <${settings.fromEmail}>`
+        : settings.fromEmail,
+      to: content.toEmails,
+      cc: content.ccEmails.length ? content.ccEmails : undefined,
+      bcc: content.bccEmails.length ? content.bccEmails : undefined,
+      subject: content.subject,
+      text: content.textBody,
+      html: content.htmlBody,
+      attachments: resolvedAttachments.length ? resolvedAttachments : undefined,
+    });
+
+    const sent = Array.isArray(info?.accepted) && info.accepted.length > 0;
+    await recordEmailDeliveryLog({
+      eventKey,
+      scenarioId: content.scenarioId,
+      scenarioName: content.scenarioName,
+      templateId: content.templateId,
+      templateName: content.templateName,
+      toEmails: content.toEmails,
+      ccEmails: content.ccEmails,
+      bccEmails: content.bccEmails,
+      subject: content.subject,
+      status: sent ? "Basarili" : "Reddedildi",
+      messageId: info?.messageId || null,
+      errorMessage: sent ? null : "Mail alici tarafindan kabul edilmedi.",
+      attachmentCount: resolvedAttachments.length,
+      details: {
+        accepted: info?.accepted || [],
+        rejected: info?.rejected || [],
+      },
+    });
+
+    return {
+      sent,
+      accepted: info?.accepted || [],
+      rejected: info?.rejected || [],
+      messageId: info?.messageId || null,
+      toEmails: content.toEmails,
+      ccEmails: content.ccEmails,
+      bccEmails: content.bccEmails,
+      attachmentCount: resolvedAttachments.length,
+    };
+  } catch (error) {
+    await recordEmailDeliveryLog({
+      eventKey,
+      scenarioId: content.scenarioId,
+      scenarioName: content.scenarioName,
+      templateId: content.templateId,
+      templateName: content.templateName,
+      toEmails: content.toEmails,
+      ccEmails: content.ccEmails,
+      bccEmails: content.bccEmails,
+      subject: content.subject,
+      status: "Hata",
+      errorMessage: error?.message || "Mail gonderilemedi.",
+      attachmentCount: resolvedAttachments.length,
+      details: { reason: "SEND_FAILED" },
+    });
+    throw error;
+  }
+}
+
 export async function isSmtpConfigured() {
   const settings = await getSmtpSettings();
   return Boolean(
@@ -70,67 +204,25 @@ export async function isSmtpConfigured() {
   );
 }
 
-export async function sendPasswordResetEmail({ toEmail, resetCode, expiresAt }) {
-  const settings = await getSmtpSettings();
-  if (!settings) {
-    return { sent: false, reason: "SMTP_NOT_CONFIGURED" };
-  }
-
-  const transporter = createTransportFromSettings(settings);
+export async function sendPasswordResetEmail({ toEmail, resetCode, expiresAt, role }) {
   const expiryText = expiresAt ? new Date(expiresAt).toLocaleString("tr-TR") : "-";
-
-  const info = await transporter.sendMail({
-    from: settings.fromName
-      ? `"${settings.fromName}" <${settings.fromEmail}>`
-      : settings.fromEmail,
-    to: toEmail,
-    subject: "Sibella Atelier - Sifre Yenileme Kodu",
-    text: `Sifre yenileme kodunuz: ${resetCode}\nGecerlilik suresi: ${expiryText}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-        <h2 style="margin:0 0 12px;">Sifre Yenileme</h2>
-        <p>Sifre yenileme kodunuz:</p>
-        <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${resetCode}</p>
-        <p>Bu kodun gecerlilik suresi: <strong>${expiryText}</strong></p>
-      </div>
-    `,
+  return sendManagedEmail({
+    eventKey: "password_reset_requested",
+    context: {
+      toEmail,
+      role,
+      resetCode,
+      expiresAt: expiryText,
+    },
   });
-
-  return {
-    sent: Array.isArray(info?.accepted) && info.accepted.length > 0,
-    accepted: info?.accepted || [],
-    rejected: info?.rejected || [],
-    messageId: info?.messageId || null,
-  };
 }
 
 export async function sendSmtpTestEmail({ toEmail }) {
-  const settings = await getSmtpSettings();
-  if (!settings) {
-    return { sent: false, reason: "SMTP_NOT_CONFIGURED" };
-  }
-
-  const transporter = createTransportFromSettings(settings);
-  const info = await transporter.sendMail({
-    from: settings.fromName
-      ? `"${settings.fromName}" <${settings.fromEmail}>`
-      : settings.fromEmail,
-    to: toEmail,
-    subject: "Sibella Atelier - SMTP Test Maili",
-    text: "SMTP ayarlariniz basariyla calisiyor. Bu bir test e-postasidir.",
-    html: `
-      <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-        <h2 style="margin:0 0 12px;">SMTP Test Basarili</h2>
-        <p>SMTP ayarlariniz basariyla calisiyor.</p>
-        <p>Bu bir test e-postasidir.</p>
-      </div>
-    `,
+  return sendManagedEmail({
+    eventKey: "smtp_test_requested",
+    context: {
+      toEmail,
+      currentDateTime: new Date().toLocaleString("tr-TR"),
+    },
   });
-
-  return {
-    sent: Array.isArray(info?.accepted) && info.accepted.length > 0,
-    accepted: info?.accepted || [],
-    rejected: info?.rejected || [],
-    messageId: info?.messageId || null,
-  };
 }

@@ -78,6 +78,15 @@ import {
   handleStoresUpdate,
 } from "./stores.js";
 import {
+  handleEmailDeliveryLogsList,
+  handleEmailScenariosCreate,
+  handleEmailScenariosDelete,
+  handleEmailScenariosList,
+  handleEmailScenariosUpdate,
+  handleEmailTemplatesCreate,
+  handleEmailTemplatesDelete,
+  handleEmailTemplatesList,
+  handleEmailTemplatesUpdate,
   handleSmtpSettingsGet,
   handleSmtpSettingsPut,
   handleSystemParametersGet,
@@ -155,6 +164,15 @@ app.get("/api/settings/system-parameters", requireRole("Yonetici"), handleSystem
 app.put("/api/settings/system-parameters", requireRole("Yonetici"), handleSystemParametersPut);
 app.get("/api/settings/smtp", requireRole("Yonetici"), handleSmtpSettingsGet);
 app.put("/api/settings/smtp", requireRole("Yonetici"), handleSmtpSettingsPut);
+app.get("/api/settings/email-templates", requireRole("Yonetici"), handleEmailTemplatesList);
+app.post("/api/settings/email-templates", requireRole("Yonetici"), handleEmailTemplatesCreate);
+app.put("/api/settings/email-templates/:id", requireRole("Yonetici"), handleEmailTemplatesUpdate);
+app.delete("/api/settings/email-templates/:id", requireRole("Yonetici"), handleEmailTemplatesDelete);
+app.get("/api/settings/email-scenarios", requireRole("Yonetici"), handleEmailScenariosList);
+app.post("/api/settings/email-scenarios", requireRole("Yonetici"), handleEmailScenariosCreate);
+app.put("/api/settings/email-scenarios/:id", requireRole("Yonetici"), handleEmailScenariosUpdate);
+app.delete("/api/settings/email-scenarios/:id", requireRole("Yonetici"), handleEmailScenariosDelete);
+app.get("/api/settings/email-delivery-logs", requireRole("Yonetici"), handleEmailDeliveryLogsList);
 app.get("/api/master-data/:entityKey", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleMasterDataList);
 app.post("/api/master-data/:entityKey", requireRole("Yonetici"), handleMasterDataCreate);
 app.put("/api/master-data/:entityKey/:id", requireRole("Yonetici"), handleMasterDataUpdate);

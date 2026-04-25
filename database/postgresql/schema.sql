@@ -448,6 +448,74 @@ CREATE TABLE IF NOT EXISTS smtp_settings (
   updated_at TIMESTAMPTZ
 );
 
+CREATE TABLE IF NOT EXISTS email_templates (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL UNIQUE,
+  event_key TEXT NOT NULL,
+  description TEXT,
+  subject TEXT NOT NULL,
+  text_body TEXT NOT NULL,
+  html_body TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Aktif',
+  is_system BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS email_scenarios (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL UNIQUE,
+  event_key TEXT NOT NULL,
+  template_id TEXT REFERENCES email_templates(id) ON DELETE SET NULL,
+  recipient_mode TEXT NOT NULL DEFAULT 'event',
+  recipient_email TEXT,
+  fixed_to_emails TEXT,
+  cc_emails TEXT,
+  bcc_emails TEXT,
+  match_type TEXT NOT NULL DEFAULT 'all',
+  role_condition TEXT,
+  email_contains TEXT,
+  conditions_json TEXT,
+  attachments_json TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 100,
+  stop_after_match BOOLEAN NOT NULL DEFAULT TRUE,
+  status TEXT NOT NULL DEFAULT 'Aktif',
+  is_system BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+);
+
+ALTER TABLE email_scenarios ADD COLUMN IF NOT EXISTS fixed_to_emails TEXT;
+ALTER TABLE email_scenarios ADD COLUMN IF NOT EXISTS cc_emails TEXT;
+ALTER TABLE email_scenarios ADD COLUMN IF NOT EXISTS bcc_emails TEXT;
+ALTER TABLE email_scenarios ADD COLUMN IF NOT EXISTS match_type TEXT NOT NULL DEFAULT 'all';
+ALTER TABLE email_scenarios ADD COLUMN IF NOT EXISTS conditions_json TEXT;
+ALTER TABLE email_scenarios ADD COLUMN IF NOT EXISTS attachments_json TEXT;
+
+CREATE TABLE IF NOT EXISTS email_delivery_logs (
+  id TEXT PRIMARY KEY,
+  event_key TEXT NOT NULL,
+  scenario_id TEXT,
+  scenario_name TEXT,
+  template_id TEXT,
+  template_name TEXT,
+  to_emails TEXT,
+  cc_emails TEXT,
+  bcc_emails TEXT,
+  subject TEXT,
+  status TEXT NOT NULL,
+  message_id TEXT,
+  error_message TEXT,
+  attachment_count INTEGER NOT NULL DEFAULT 0,
+  details_json TEXT,
+  created_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS email_delivery_logs_created_at_idx
+  ON email_delivery_logs (created_at DESC);
+
 CREATE TABLE IF NOT EXISTS auth_sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

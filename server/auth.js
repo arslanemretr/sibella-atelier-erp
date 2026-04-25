@@ -556,6 +556,7 @@ export async function handleForgotPasswordRequest(req, res) {
   try {
     const result = await sendPasswordResetEmail({
       toEmail: user.email,
+      role: user.role,
       resetCode,
       expiresAt,
     });

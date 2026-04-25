@@ -14,7 +14,7 @@ const ProductEditorPage = React.lazy(() => import("./erp/pageModules/productPage
 const SettingsDefinitionPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.SettingsDefinitionPage })));
 const BarcodeStandardsPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.BarcodeStandardsPage })));
 const ParametersPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.ParametersPage })));
-const SmtpSettingsPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.SmtpSettingsPage })));
+const MailManagementPage = React.lazy(() => import("./erp/pageModules/mailManagementPage"));
 const StockListPage = React.lazy(() => import("./erp/pageModules/stockListPage").then((module) => ({ default: module.StockListPage })));
 const StockLocationListPage = React.lazy(() => import("./erp/pageModules/stockLocationPages").then((module) => ({ default: module.StockLocationListPage })));
 const StockEntryListPage = React.lazy(() => import("./erp/pageModules/stockEntryPages").then((module) => ({ default: module.StockEntryListPage })));
@@ -168,7 +168,8 @@ function ProtectedApp() {
         <Route path="/settings/procurement-types" element={withLazyPage(<SettingsDefinitionPage entityKey="procurement-types" />)} />
         <Route path="/settings/payment-terms" element={withLazyPage(<SettingsDefinitionPage entityKey="payment-terms" />)} />
         <Route path="/settings/parameters" element={withLazyPage(<ParametersPage />)} />
-        <Route path="/settings/smtp" element={withLazyPage(<SmtpSettingsPage />)} />
+        <Route path="/settings/mail-management" element={withLazyPage(<MailManagementPage />)} />
+        <Route path="/settings/smtp" element={<Navigate to="/settings/mail-management" replace />} />
 
         <Route path="/supplier/products" element={withLazyPage(<SupplierPortalProductListPage />)} />
         <Route path="/supplier/dashboard" element={withLazyPage(<SupplierDashboardPage />)} />
