@@ -226,3 +226,96 @@ export async function sendSmtpTestEmail({ toEmail }) {
     },
   });
 }
+
+export async function sendDirectEmail({
+  eventKey = "manual_email",
+  toEmails,
+  ccEmails = [],
+  bccEmails = [],
+  subject,
+  textBody,
+  htmlBody,
+  details = null,
+}) {
+  const settings = await getSmtpSettings();
+  if (!settings) {
+    return { sent: false, reason: "SMTP_NOT_CONFIGURED" };
+  }
+
+  const finalToEmails = Array.isArray(toEmails)
+    ? toEmails.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  const finalCcEmails = Array.isArray(ccEmails)
+    ? ccEmails.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  const finalBccEmails = Array.isArray(bccEmails)
+    ? bccEmails.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+
+  if (!finalToEmails.length || !String(subject || "").trim() || !String(textBody || "").trim() || !String(htmlBody || "").trim()) {
+    return { sent: false, reason: "INVALID_EMAIL_PAYLOAD" };
+  }
+
+  const transporter = createTransportFromSettings(settings);
+
+  try {
+    const info = await transporter.sendMail({
+      from: settings.fromName
+        ? `"${settings.fromName}" <${settings.fromEmail}>`
+        : settings.fromEmail,
+      to: finalToEmails,
+      cc: finalCcEmails.length ? finalCcEmails : undefined,
+      bcc: finalBccEmails.length ? finalBccEmails : undefined,
+      subject: String(subject || "").trim(),
+      text: String(textBody || "").trim(),
+      html: String(htmlBody || "").trim(),
+    });
+
+    const sent = Array.isArray(info?.accepted) && info.accepted.length > 0;
+    await recordEmailDeliveryLog({
+      eventKey,
+      scenarioId: null,
+      scenarioName: null,
+      templateId: null,
+      templateName: null,
+      toEmails: finalToEmails,
+      ccEmails: finalCcEmails,
+      bccEmails: finalBccEmails,
+      subject: String(subject || "").trim(),
+      status: sent ? "Basarili" : "Reddedildi",
+      messageId: info?.messageId || null,
+      errorMessage: sent ? null : "Mail alici tarafindan kabul edilmedi.",
+      attachmentCount: 0,
+      details: {
+        ...(details || {}),
+        accepted: info?.accepted || [],
+        rejected: info?.rejected || [],
+      },
+    });
+
+    return {
+      sent,
+      accepted: info?.accepted || [],
+      rejected: info?.rejected || [],
+      messageId: info?.messageId || null,
+    };
+  } catch (error) {
+    await recordEmailDeliveryLog({
+      eventKey,
+      scenarioId: null,
+      scenarioName: null,
+      templateId: null,
+      templateName: null,
+      toEmails: finalToEmails,
+      ccEmails: finalCcEmails,
+      bccEmails: finalBccEmails,
+      subject: String(subject || "").trim(),
+      status: "Hata",
+      messageId: null,
+      errorMessage: error?.message || "Mail gonderilemedi.",
+      attachmentCount: 0,
+      details: details || null,
+    });
+    throw error;
+  }
+}

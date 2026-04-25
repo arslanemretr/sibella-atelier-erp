@@ -516,6 +516,26 @@ CREATE TABLE IF NOT EXISTS email_delivery_logs (
 CREATE INDEX IF NOT EXISTS email_delivery_logs_created_at_idx
   ON email_delivery_logs (created_at DESC);
 
+CREATE TABLE IF NOT EXISTS report_schedules (
+  report_key TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  frequency TEXT NOT NULL DEFAULT 'monthly',
+  day_of_month INTEGER NOT NULL DEFAULT 2,
+  send_hour INTEGER NOT NULL DEFAULT 9,
+  send_minute INTEGER NOT NULL DEFAULT 0,
+  period_offset_months INTEGER NOT NULL DEFAULT -1,
+  recipient_emails TEXT,
+  subject_template TEXT,
+  html_template TEXT,
+  last_run_at TIMESTAMPTZ,
+  last_run_status TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ
+);
+
+ALTER TABLE report_schedules ADD COLUMN IF NOT EXISTS html_template TEXT;
+
 CREATE TABLE IF NOT EXISTS auth_sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

@@ -14,8 +14,8 @@ export const mainMenuItems = [
     children: [
       { key: "/pos/sessions", label: "Oturumlar" },
       { key: "/pos/store", label: "Pos Ekrani" },
-      { key: "/pos/orders", label: "Siparişler" },
-      { key: "/pos/returns", label: "İadeler" },
+      { key: "/pos/orders", label: "Siparisler" },
+      { key: "/pos/returns", label: "Iadeler" },
     ],
   },
   {
@@ -52,7 +52,15 @@ export const mainMenuItems = [
     label: "Tedarikci Portal",
     children: [
       { key: "/supplier-portal/delivery-lists", label: "Teslimat Listeleri" },
-      { key: "/supplier-portal/earnings", label: "Hakediş Yönetimi" },
+      { key: "/supplier-portal/earnings", label: "Hakedis Yonetimi" },
+    ],
+  },
+  {
+    key: "reports",
+    label: "Raporlar",
+    roles: ["Yonetici", "Muhasebe"],
+    children: [
+      { key: "/reports/consolidated-earnings", label: "Toplu Hakedis Raporu", roles: ["Yonetici", "Muhasebe"] },
     ],
   },
   {
@@ -91,8 +99,8 @@ export const sidebarGroups = [
         children: [
           { key: "/pos/sessions", label: "Oturumlar" },
           { key: "/pos/store", label: "Pos Ekrani" },
-          { key: "/pos/orders", label: "Siparişler" },
-          { key: "/pos/returns", label: "İadeler" },
+          { key: "/pos/orders", label: "Siparisler" },
+          { key: "/pos/returns", label: "Iadeler" },
         ],
       },
       {
@@ -129,7 +137,15 @@ export const sidebarGroups = [
         label: "Tedarikci Portal",
         children: [
           { key: "/supplier-portal/delivery-lists", label: "Teslimat Listeleri" },
-          { key: "/supplier-portal/earnings", label: "Hakediş Yönetimi" },
+          { key: "/supplier-portal/earnings", label: "Hakedis Yonetimi" },
+        ],
+      },
+      {
+        key: "reports-group",
+        label: "Raporlar",
+        roles: ["Yonetici", "Muhasebe"],
+        children: [
+          { key: "/reports/consolidated-earnings", label: "Toplu Hakedis Raporu", roles: ["Yonetici", "Muhasebe"] },
         ],
       },
       {
