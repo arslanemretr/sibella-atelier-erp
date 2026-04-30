@@ -157,7 +157,7 @@ export default function SupplierEarningsReportPage() {
   const [form] = Form.useForm();
   const [pageLoading, setPageLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
-  const [sending, setSending] = React.useState(false);
+  const [sendingMode, setSendingMode] = React.useState("");
   const [schedule, setSchedule] = React.useState(null);
   const [suppliers, setSuppliers] = React.useState([]);
   const [products, setProducts] = React.useState([]);
@@ -281,11 +281,11 @@ export default function SupplierEarningsReportPage() {
     }
   };
 
-  const handleSendNow = async () => {
+  const handleSendNow = async (mode = "supplier") => {
     try {
       const values = await form.validateFields();
-      if (!selectedSupplier?.email) {
-        message.warning("Secili tedarikcinin sistemde tanimli bir e-posta adresi bulunmuyor.");
+      if (!selectedSupplier?.id) {
+        message.warning("Rapor gonderimi icin once bir tedarikci secin.");
         return;
       }
       if (!currentSummary?.detailRows?.length && !Number(currentSummary?.earningsTotal || 0)) {
@@ -293,22 +293,47 @@ export default function SupplierEarningsReportPage() {
         return;
       }
 
-      setSending(true);
+      const manualRecipientEmails = parseEmailList(values.manualRecipientEmails);
+      const recipientEmails = mode === "manual"
+        ? manualRecipientEmails
+        : parseEmailList(selectedSupplier?.email);
+
+      if (mode === "manual" && !recipientEmails.length) {
+        message.warning("Elle gonderim icin en az bir mail adresi girin.");
+        return;
+      }
+
+      if (mode === "supplier" && !recipientEmails.length) {
+        message.warning("Secili tedarikcinin sistemde tanimli bir e-posta adresi bulunmuyor.");
+        return;
+      }
+
+      const invalidEmail = recipientEmails.find((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+      if (invalidEmail) {
+        message.warning(`Gecersiz mail adresi: ${invalidEmail}`);
+        return;
+      }
+
+      setSendingMode(mode);
       const payload = await sendSupplierEarningsReportNow({
-        toEmails: [selectedSupplier.email],
+        toEmails: recipientEmails,
         supplierId: selectedSupplier.id,
         subject: renderTemplateString(values.subjectTemplate, reportContext),
         htmlBody: renderedHtml,
         textBody: htmlToPlainText(renderedHtml),
         periodKey: currentSummary.periodKey,
       });
-      message.success(payload?.message || "Tedarikci hakedis raporu gonderildi.");
+      message.success(
+        payload?.message || (mode === "manual"
+          ? "Tedarikci hakedis raporu yazilan mail adresine gonderildi."
+          : "Tedarikci hakedis raporu gonderildi."),
+      );
     } catch (error) {
       if (!error?.errorFields) {
         message.error(error?.message || "Tedarikci hakedis raporu gonderilemedi.");
       }
     } finally {
-      setSending(false);
+      setSendingMode("");
     }
   };
 
@@ -319,15 +344,18 @@ export default function SupplierEarningsReportPage() {
           <div>
             <Title level={3} style={{ marginBottom: 6 }}>Tedarikci Hakedis Raporu</Title>
             <Text type="secondary">
-              Bu ekran, <strong>supplier/earnings</strong> gorunumundeki raporun tedarikcilere gidecek mail tasarimini yonetir. Otomatikte her tedarikciye kendi ozet bilgisi gidecek; <strong>Simdi Gonder</strong> secili tedarikciye test amaclidir.
+              Bu ekran, <strong>supplier/earnings</strong> gorunumundeki raporun tedarikcilere gidecek mail tasarimini yonetir. Otomatikte her tedarikciye kendi ozet bilgisi gidecek; <strong>Simdi Gonder</strong> secili tedarikciye, <strong>Elle Girilen Adrese Gonder</strong> ise yazdiginiz adrese test amaclidir.
             </Text>
           </div>
           <Space wrap>
             <Button icon={<ReloadOutlined />} loading={pageLoading} onClick={() => void refresh()}>
               Yenile
             </Button>
-            <Button icon={<MailOutlined />} loading={sending} onClick={() => void handleSendNow()}>
+            <Button icon={<MailOutlined />} loading={sendingMode === "supplier"} onClick={() => void handleSendNow("supplier")}>
               Simdi Gonder
+            </Button>
+            <Button icon={<MailOutlined />} loading={sendingMode === "manual"} onClick={() => void handleSendNow("manual")}>
+              Elle Girilen Adrese Gonder
             </Button>
             <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => void handleSave()}>
               Ayarlari Kaydet
@@ -387,6 +415,7 @@ export default function SupplierEarningsReportPage() {
                 <Descriptions.Item label="Alici modeli">Sistemdeki tedarikci e-postalari</Descriptions.Item>
                 <Descriptions.Item label="Secili tedarikci">{selectedSupplier?.company || "-"}</Descriptions.Item>
                 <Descriptions.Item label="Secili mail">{selectedSupplier?.email || "-"}</Descriptions.Item>
+                <Descriptions.Item label="Elle girilen mail">{form.getFieldValue("manualRecipientEmails") || "-"}</Descriptions.Item>
                 <Descriptions.Item label="Son durum">{schedule?.lastRunStatus || "Henuz calismadi"}</Descriptions.Item>
               </Descriptions>
             </Card>
@@ -428,6 +457,17 @@ export default function SupplierEarningsReportPage() {
               </Button>
             </Space>
           </div>
+          <Row gutter={[16, 0]} style={{ marginTop: 16 }}>
+            <Col xs={24} xl={16}>
+              <Form.Item
+                label="Elle Gonderim Mail Adresi"
+                name="manualRecipientEmails"
+                extra="Bu alan kayitli tedarikci mailinden bagimsizdir. Birden fazla adres icin virgul kullanabilirsiniz."
+              >
+                <Input placeholder="ornek@alanadi.com, ikinci@alanadi.com" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Card>
 
         <Row gutter={[16, 16]}>
