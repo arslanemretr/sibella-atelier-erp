@@ -64,6 +64,7 @@ const iconMap = {
   reports: menuIcon(ClipboardList),
   "reports-group": menuIcon(ClipboardList),
   "/reports/consolidated-earnings": menuIcon(HandCoins),
+  "/reports/supplier-earnings": menuIcon(HandCoins),
   settings: menuIcon(Settings2),
   "settings-group": menuIcon(Settings2),
   "/settings/users": menuIcon(Users),

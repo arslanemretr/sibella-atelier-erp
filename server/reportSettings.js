@@ -81,6 +81,88 @@ function getDefaultConsolidatedEarningsHtmlTemplate() {
 </div>`.trim();
 }
 
+function getDefaultSupplierEarningsHtmlTemplate() {
+  return `
+<div style="margin:0;padding:32px 20px;background:linear-gradient(180deg,#fff9f6 0%,#ffe8e0 100%);font-family:Arial,sans-serif;color:#43302c;">
+  <div style="max-width:820px;margin:0 auto;background:#ffffff;border:1px solid #f2d8d0;border-radius:28px;overflow:hidden;box-shadow:0 24px 60px rgba(216,109,91,0.16);">
+    <div style="padding:28px 32px 24px;background:linear-gradient(135deg,#f4a08d 0%,#d96f5d 100%);color:#ffffff;">
+      <table role="presentation" style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="vertical-align:top;">
+            <img src="{{logoUrl}}" alt="Sibella Atelier" style="height:54px;max-width:220px;object-fit:contain;display:block;filter:brightness(0) invert(1);" />
+            <div style="margin-top:18px;font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:0.88;">Sibella Atelier</div>
+            <h1 style="margin:10px 0 0;font-size:30px;line-height:1.2;font-weight:700;">Hakedis Raporunuz</h1>
+            <p style="margin:12px 0 0;font-size:14px;line-height:1.6;max-width:520px;opacity:0.95;">
+              Merhaba <strong>{{supplierName}}</strong>, {{periodLabel}} donemine ait satis ve hakedis ozetiniz asagida yer almaktadir.
+            </p>
+          </td>
+          <td style="width:170px;vertical-align:top;text-align:right;">
+            <div style="display:inline-block;padding:12px 14px;border-radius:18px;background:rgba(255,255,255,0.18);font-size:12px;line-height:1.5;text-align:left;">
+              <div style="opacity:0.8;text-transform:uppercase;letter-spacing:1px;">Olusturma</div>
+              <div style="margin-top:6px;font-size:14px;font-weight:700;">{{generatedAt}}</div>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="padding:28px 32px 32px;">
+      <table role="presentation" style="width:100%;border-collapse:separate;border-spacing:12px 12px;margin:0 0 18px;">
+        <tr>
+          <td style="width:50%;padding:18px 20px;border-radius:20px;background:#fff8ea;border:1px solid #f5dfb4;">
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.4px;color:#a07d2d;">Brut Satis</div>
+            <div style="margin-top:10px;font-size:28px;font-weight:700;color:#8d6820;">{{grossTotal}}</div>
+          </td>
+          <td style="width:50%;padding:18px 20px;border-radius:20px;background:#eef6ff;border:1px solid #cde1f8;">
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.4px;color:#5b7898;">Net Satis</div>
+            <div style="margin-top:10px;font-size:28px;font-weight:700;color:#365d86;">{{netSalesTotal}}</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="width:50%;padding:18px 20px;border-radius:20px;background:#fff4ef;border:1px solid #f5d2c8;">
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.4px;color:#a56b60;">Komisyon</div>
+            <div style="margin-top:10px;font-size:26px;font-weight:700;color:#c75f4d;">{{commissionTotal}}</div>
+            <div style="margin-top:6px;font-size:13px;color:#8b6b64;">Oran: {{commissionRate}}</div>
+          </td>
+          <td style="width:50%;padding:18px 20px;border-radius:20px;background:#edf8ef;border:1px solid #cde7d1;">
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.4px;color:#53795b;">Toplam Hakedis</div>
+            <div style="margin-top:10px;font-size:26px;font-weight:700;color:#2f7d46;">{{earningsTotal}}</div>
+            <div style="margin-top:6px;font-size:13px;color:#5f7f67;">Durum: {{status}}</div>
+          </td>
+        </tr>
+      </table>
+
+      <div style="margin:0 0 18px;padding:16px 18px;border-radius:18px;background:#fff6f2;border:1px dashed #ebb8aa;">
+        <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.4px;color:#a56b60;">Bilgilendirme</div>
+        <div style="margin-top:8px;font-size:14px;line-height:1.7;color:#654841;">{{statusMessage}}</div>
+      </div>
+
+      <div style="border:1px solid #f1dfd9;border-radius:22px;overflow:hidden;">
+        <table role="presentation" style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="background:#fff4ef;">
+              <th style="padding:14px 16px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:#8b6b64;">Urun</th>
+              <th style="padding:14px 16px;text-align:right;font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:#8b6b64;">Satis Adet</th>
+              <th style="padding:14px 16px;text-align:right;font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:#8b6b64;">Iade</th>
+              <th style="padding:14px 16px;text-align:right;font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:#8b6b64;">Net Adet</th>
+              <th style="padding:14px 16px;text-align:right;font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:#8b6b64;">Satis Tutari</th>
+              <th style="padding:14px 16px;text-align:right;font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:#8b6b64;">Hakedis</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{detailRowsHtml}}
+          </tbody>
+        </table>
+      </div>
+
+      <p style="margin:18px 0 0;font-size:12px;line-height:1.7;color:#8c7a76;">
+        Bu e-posta sistem tarafindan otomatik olusturulmustur. Rapor icerigi <strong>{{periodLabel}}</strong> donemine ait tedarikci bazli hakedis ozetidir.
+      </p>
+    </div>
+  </div>
+</div>`.trim();
+}
+
 function isLegacyConsolidatedTemplate(htmlTemplate) {
   const html = String(htmlTemplate || "");
   if (!html) {
@@ -108,6 +190,25 @@ const REPORT_DEFINITIONS = {
       recipientEmails: "",
       subjectTemplate: "Toplu Hakedis Raporu - {{periodLabel}}",
       htmlTemplate: getDefaultConsolidatedEarningsHtmlTemplate(),
+      lastRunAt: null,
+      lastRunStatus: "",
+      updatedAt: null,
+    },
+  },
+  "supplier-earnings": {
+    key: "supplier-earnings",
+    name: "Tedarikci Hakedis Raporu",
+    description: "Her tedarikciye supplier/earnings ozeti formatinda mail gonderimi icin kullanilir.",
+    defaultValues: {
+      enabled: false,
+      frequency: "monthly",
+      dayOfMonth: 2,
+      sendHour: 9,
+      sendMinute: 0,
+      periodOffsetMonths: -1,
+      recipientEmails: "",
+      subjectTemplate: "Hakedis Raporunuz - {{supplierName}} - {{periodLabel}}",
+      htmlTemplate: getDefaultSupplierEarningsHtmlTemplate(),
       lastRunAt: null,
       lastRunStatus: "",
       updatedAt: null,
@@ -308,6 +409,64 @@ export async function handleConsolidatedEarningsSendNow(req, res) {
     return res.status(500).json({
       ok: false,
       message: error?.message || "Toplu hakedis raporu gonderilemedi.",
+    });
+  }
+}
+
+export async function handleSupplierEarningsSendNow(req, res) {
+  const toEmails = Array.isArray(req.body?.toEmails) ? req.body.toEmails : [];
+  const subject = String(req.body?.subject || "").trim();
+  const htmlBody = String(req.body?.htmlBody || "").trim();
+  const textBody = String(req.body?.textBody || "").trim();
+  const periodKey = String(req.body?.periodKey || "").trim();
+  const supplierId = String(req.body?.supplierId || "").trim();
+
+  if (!toEmails.length || !subject || !htmlBody || !textBody || !periodKey || !supplierId) {
+    return res.status(400).json({
+      ok: false,
+      message: "Mail gonderimi icin alici, konu, icerik, donem ve tedarikci bilgisi zorunludur.",
+    });
+  }
+
+  const normalizedToEmails = parseEmailList(toEmails.join(","));
+  if (!normalizedToEmails.length) {
+    return res.status(400).json({
+      ok: false,
+      message: "Gecerli tedarikci mail adresi bulunamadi.",
+    });
+  }
+
+  try {
+    const result = await sendDirectEmail({
+      eventKey: "report_supplier_earnings_manual",
+      toEmails: normalizedToEmails,
+      subject,
+      textBody,
+      htmlBody,
+      details: {
+        reportKey: "supplier-earnings",
+        periodKey,
+        supplierId,
+      },
+    });
+
+    if (!result?.sent) {
+      return res.status(400).json({
+        ok: false,
+        message: "Mail gonderilemedi. SMTP ayarlarinizi kontrol edin.",
+      });
+    }
+
+    return res.json({
+      ok: true,
+      message: "Tedarikci hakedis raporu gonderildi.",
+      messageId: result.messageId,
+      accepted: result.accepted || [],
+    });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      message: error?.message || "Tedarikci hakedis raporu gonderilemedi.",
     });
   }
 }

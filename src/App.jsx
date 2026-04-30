@@ -16,6 +16,7 @@ const BarcodeStandardsPage = React.lazy(() => import("./erp/pageModules/settings
 const ParametersPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.ParametersPage })));
 const MailManagementPage = React.lazy(() => import("./erp/pageModules/mailManagementPage"));
 const ConsolidatedEarningsReportPage = React.lazy(() => import("./erp/pageModules/reportPages"));
+const SupplierEarningsReportPage = React.lazy(() => import("./erp/pageModules/supplierEarningsReportPage"));
 const StockListPage = React.lazy(() => import("./erp/pageModules/stockListPage").then((module) => ({ default: module.StockListPage })));
 const StockLocationListPage = React.lazy(() => import("./erp/pageModules/stockLocationPages").then((module) => ({ default: module.StockLocationListPage })));
 const StockEntryListPage = React.lazy(() => import("./erp/pageModules/stockEntryPages").then((module) => ({ default: module.StockEntryListPage })));
@@ -162,6 +163,7 @@ function ProtectedApp() {
         <Route path="/supplier-portal/delivery-lists/:deliveryId" element={withLazyPage(<SupplierPortalDeliveryEditorPage />)} />
         <Route path="/supplier-portal/earnings" element={withLazyPage(<SupplierEarningsManagementPage />)} />
         <Route path="/reports/consolidated-earnings" element={withRolePage(<ConsolidatedEarningsReportPage />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/reports/supplier-earnings" element={withRolePage(<SupplierEarningsReportPage />, authUser, "Yonetici", "Muhasebe")} />
 
         <Route path="/settings/users" element={<UserManagementPage />} />
         <Route path="/settings/categories" element={withLazyPage(<SettingsDefinitionPage entityKey="categories" />)} />

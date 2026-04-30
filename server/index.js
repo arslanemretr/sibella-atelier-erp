@@ -41,7 +41,7 @@ import {
   handleStockEntriesList,
   handleStockEntriesUpdate,
 } from "./operations.js";
-import { handleConsolidatedEarningsSendNow, handleReportScheduleGet, handleReportSchedulePut } from "./reportSettings.js";
+import { handleConsolidatedEarningsSendNow, handleReportScheduleGet, handleReportSchedulePut, handleSupplierEarningsSendNow } from "./reportSettings.js";
 import {
   handleContractsCreate,
   handleContractsDelete,
@@ -177,6 +177,7 @@ app.get("/api/settings/email-delivery-logs", requireRole("Yonetici"), handleEmai
 app.get("/api/reports/schedules/:reportKey", requireRole("Yonetici", "Muhasebe"), handleReportScheduleGet);
 app.put("/api/reports/schedules/:reportKey", requireRole("Yonetici", "Muhasebe"), handleReportSchedulePut);
 app.post("/api/reports/consolidated-earnings/send-now", requireRole("Yonetici", "Muhasebe"), handleConsolidatedEarningsSendNow);
+app.post("/api/reports/supplier-earnings/send-now", requireRole("Yonetici", "Muhasebe"), handleSupplierEarningsSendNow);
 app.get("/api/master-data/:entityKey", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleMasterDataList);
 app.post("/api/master-data/:entityKey", requireRole("Yonetici"), handleMasterDataCreate);
 app.put("/api/master-data/:entityKey/:id", requireRole("Yonetici"), handleMasterDataUpdate);

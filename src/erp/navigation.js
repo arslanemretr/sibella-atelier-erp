@@ -61,6 +61,7 @@ export const mainMenuItems = [
     roles: ["Yonetici", "Muhasebe"],
     children: [
       { key: "/reports/consolidated-earnings", label: "Toplu Hakedis Raporu", roles: ["Yonetici", "Muhasebe"] },
+      { key: "/reports/supplier-earnings", label: "Tedarikci Hakedis Raporu", roles: ["Yonetici", "Muhasebe"] },
     ],
   },
   {
@@ -146,6 +147,7 @@ export const sidebarGroups = [
         roles: ["Yonetici", "Muhasebe"],
         children: [
           { key: "/reports/consolidated-earnings", label: "Toplu Hakedis Raporu", roles: ["Yonetici", "Muhasebe"] },
+          { key: "/reports/supplier-earnings", label: "Tedarikci Hakedis Raporu", roles: ["Yonetici", "Muhasebe"] },
         ],
       },
       {

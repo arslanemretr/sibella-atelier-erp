@@ -17,3 +17,8 @@ export async function sendConsolidatedEarningsReportNow(values) {
   const payload = await requestJson("POST", "/api/reports/consolidated-earnings/send-now", values);
   return payload || {};
 }
+
+export async function sendSupplierEarningsReportNow(values) {
+  const payload = await requestJson("POST", "/api/reports/supplier-earnings/send-now", values);
+  return payload || {};
+}
