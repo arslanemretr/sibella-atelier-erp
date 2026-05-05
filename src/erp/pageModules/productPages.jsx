@@ -4,7 +4,7 @@ import { Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumbe
 import { AppstoreOutlined, BarsOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, LeftOutlined, PlusOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { listMasterDataFresh } from "../masterData";
-import { createProduct, deleteProduct, importProducts, listProductStockLocationsFresh, listProductsFresh, updateProduct } from "../productsData";
+import { createProduct, deleteProduct, getProductByIdFresh, importProducts, listProductStockLocationsFresh, listProductsFresh, updateProduct } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 import { getSystemParametersFresh } from "../systemParameters";
 
@@ -893,20 +893,24 @@ export function ProductEditorPage() {
         setPageLoading(true);
         const [
           nextSystemParameters,
-          products,
+          slimProducts,
           categories,
           collections,
           posCategories,
           suppliers,
           barcodeStandardList,
+          product,
         ] = await Promise.all([
           getSystemParametersFresh(),
-          listProductsFresh(),
+          // Navigasyon ve kod kontrolü için slim liste
+          listProductsFresh({ slim: true }),
           listMasterDataFresh("categories"),
           listMasterDataFresh("collections"),
           listMasterDataFresh("pos-categories"),
           listSuppliersFresh(),
           listMasterDataFresh("barcode-standards"),
+          // Edit modda tek ürünü tam veriyle çek; new modda null
+          isEditMode && productId ? getProductByIdFresh(productId) : Promise.resolve(null),
         ]);
 
         if (cancelled) {
@@ -914,7 +918,7 @@ export function ProductEditorPage() {
         }
 
         setSystemParameters(nextSystemParameters);
-        setProductList(products);
+        setProductList(slimProducts);
         setCategoryOptions(categories.map((item) => ({ value: item.id, label: item.fullPath })));
         setCollectionOptions(collections.map((item) => ({ value: item.id, label: item.name })));
         setPosCategoryOptions(posCategories.map((item) => ({ value: item.id, label: item.name })));
@@ -932,7 +936,6 @@ export function ProductEditorPage() {
           return;
         }
 
-        const product = products.find((item) => item.id === productId);
         if (!product) {
           message.error("Urun kaydi bulunamadi.");
           navigate("/products/list");

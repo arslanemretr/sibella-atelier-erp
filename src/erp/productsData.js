@@ -1,6 +1,6 @@
 import { listMasterData } from "./masterData";
 import { listSuppliers } from "./suppliersData";
-import { mutateResourceSync, requestCollection, requestCollectionSync, requestJsonSync } from "./apiClient";
+import { mutateResourceSync, requestCollection, requestCollectionSync, requestJson, requestJsonSync } from "./apiClient";
 
 function createId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -347,6 +347,11 @@ export function listProductsBySupplier(supplierId) {
 export function getProductById(productId) {
   const product = loadStore().find((item) => item.id === productId);
   return product ? enrichProduct(product) : null;
+}
+
+export async function getProductByIdFresh(productId) {
+  const data = await requestJson("GET", `/api/products/${encodeURIComponent(productId)}`);
+  return data?.item || null;
 }
 
 export function generateProductCodeForSupplier(supplierId, currentProductId) {

@@ -23,6 +23,7 @@ import {
   handleMasterDataUpdate,
   handleProductsCreate,
   handleProductsDelete,
+  handleProductsGet,
   handleProductsList,
   handleProductStockLocationBalances,
   handleProductsUpdate,
@@ -188,6 +189,7 @@ app.post("/api/suppliers", requireRole("Yonetici"), handleSuppliersCreate);
 app.put("/api/suppliers/:id", requireRole("Yonetici"), handleSuppliersUpdate);
 app.delete("/api/suppliers/:id", requireRole("Yonetici"), handleSuppliersDelete);
 app.get("/api/products", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleProductsList);
+app.get("/api/products/:id", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleProductsGet);
 app.get("/api/products/:id/stock-locations", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleProductStockLocationBalances);
 app.post("/api/products", requireRole("Yonetici", "Tedarikci"), handleProductsCreate);
 app.put("/api/products/:id", requireRole("Yonetici", "Tedarikci"), handleProductsUpdate);

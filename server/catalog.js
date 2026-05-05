@@ -700,6 +700,14 @@ export async function handleProductsList(req, res) {
   });
 }
 
+export async function handleProductsGet(req, res) {
+  const item = await getProductRow(req.params.id);
+  if (!item) {
+    return httpError(res, 404, "Urun bulunamadi.");
+  }
+  return res.json({ ok: true, item });
+}
+
 export async function handleProductsCreate(req, res) {
   try {
     const item = normalizeProduct(req.body || {});
