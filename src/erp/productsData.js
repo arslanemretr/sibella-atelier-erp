@@ -378,6 +378,17 @@ export function updateProduct(productId, values) {
   return enrichProduct(mutateResourceSync("PUT", `/api/products/${encodeURIComponent(productId)}`, values));
 }
 
+// Async versiyonlar — sync enrichProduct zincirini (138 istek) atlar
+export async function createProductAsync(values) {
+  const data = await requestJson("POST", "/api/products", values);
+  return data?.item || null;
+}
+
+export async function updateProductAsync(productId, values) {
+  const data = await requestJson("PUT", `/api/products/${encodeURIComponent(productId)}`, values);
+  return data?.item || null;
+}
+
 export function deleteProduct(productId) {
   const response = requestJsonSync("DELETE", `/api/products/${encodeURIComponent(productId)}`);
   if (!response.ok) {

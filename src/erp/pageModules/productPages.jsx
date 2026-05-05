@@ -4,7 +4,7 @@ import { Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumbe
 import { AppstoreOutlined, BarsOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, LeftOutlined, PlusOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { listMasterDataFresh } from "../masterData";
-import { createProduct, deleteProduct, getProductByIdFresh, importProducts, listProductsRawFresh, listProductStockLocationsFresh, listProductsFresh, updateProduct } from "../productsData";
+import { createProduct, createProductAsync, deleteProduct, getProductByIdFresh, importProducts, listProductsRawFresh, listProductStockLocationsFresh, listProductsFresh, updateProductAsync } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 import { getSystemParametersFresh } from "../systemParameters";
 
@@ -1024,9 +1024,11 @@ export function ProductEditorPage() {
           return;
         }
       }
-      const savedProduct = isEditMode ? updateProduct(productId, values) : createProduct(values);
+      const savedProduct = isEditMode
+        ? await updateProductAsync(productId, values)
+        : await createProductAsync(values);
       message.success(isEditMode ? "Urun guncellendi." : "Urun kaydedildi.");
-      navigate(`/products/${savedProduct.id}`);
+      navigate(`/products/${savedProduct?.id || productId}`);
     } catch {
       // form validation handles errors
     } finally {
