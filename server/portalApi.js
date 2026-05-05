@@ -133,9 +133,37 @@ function normalizeContract(values, existingContract) {
   };
 }
 
-async function listPosSalesRows() {
-  const saleRows = await sqlMany("SELECT * FROM pos_sales ORDER BY created_at DESC, sold_at DESC");
-  const lineRows = await sqlMany("SELECT * FROM pos_sale_lines ORDER BY sale_id ASC, sort_order ASC, id ASC");
+async function listPosSalesRows(filters = {}) {
+  const saleParams = [];
+  const saleWhere = [];
+  if (filters.sessionId) {
+    saleParams.push(filters.sessionId);
+    saleWhere.push(`session_id = $${saleParams.length}`);
+  }
+
+  const saleRows = await sqlMany(
+    `
+      SELECT *
+      FROM pos_sales
+      ${saleWhere.length ? `WHERE ${saleWhere.join(" AND ")}` : ""}
+      ORDER BY created_at DESC, sold_at DESC
+    `,
+    saleParams,
+  );
+  if (saleRows.length === 0) {
+    return [];
+  }
+
+  const saleIds = saleRows.map((row) => row.id);
+  const lineRows = await sqlMany(
+    `
+      SELECT *
+      FROM pos_sale_lines
+      WHERE sale_id = ANY($1::text[])
+      ORDER BY sale_id ASC, sort_order ASC, id ASC
+    `,
+    [saleIds],
+  );
   const linesBySaleId = new Map();
 
   lineRows.forEach((row) => {
@@ -541,7 +569,7 @@ export async function handlePosSessionsClose(req, res) {
 }
 
 export async function handlePosSalesList(req, res) {
-  const items = await listPosSalesRows();
+  const items = await listPosSalesRows({ sessionId: req.query?.sessionId || null });
   if (req.authUser?.role !== "Tedarikci") {
     return res.json({ ok: true, items });
   }

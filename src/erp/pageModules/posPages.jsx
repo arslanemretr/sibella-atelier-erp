@@ -5,15 +5,10 @@ import { BarcodeOutlined, CloseCircleOutlined, CloseOutlined, DeleteOutlined, Ed
 import dayjs from "dayjs";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
-import { buildPosProductCatalogFresh, closePosSession, createPosSale, createPosSession, createPosReturn, findProductByBarcode, getOpenPosSessionsFresh, listPosSalesFresh, listPosReturnsFresh, listPosSessionsFresh } from "../posData";
+import { buildPosProductCatalogFresh, createPosReturn, getOpenPosSessionsFresh, listPosSalesFresh, listPosReturnsFresh, listPosSessionsFresh } from "../posData";
 import { listStockLocationBalancesFresh, listStockLocationsFresh } from "../stockLocationsData";
 
 const { Title, Text } = Typography;
-
-function openDetailFromRow(setSelected, setOpen, record) {
-  setSelected(record);
-  setOpen(true);
-}
 
 function preventRowClick(event) {
   event.stopPropagation();
@@ -289,6 +284,7 @@ export function PosScreenPage() {
   const [posSales, setPosSales] = React.useState([]);
   const [posCategoryStateOptions, setPosCategoryStateOptions] = React.useState([{ id: "all", name: "Tumu", color: "#fee89a" }]);
   const [pageLoading, setPageLoading] = React.useState(false);
+  const [ordersLoading, setOrdersLoading] = React.useState(false);
   const [activeSessionId, setActiveSessionId] = React.useState();
   const [orderDraftsBySession, setOrderDraftsBySession] = React.useState(() => {
     if (typeof window === "undefined") {
@@ -393,16 +389,15 @@ export function PosScreenPage() {
   const refreshPosContext = React.useCallback(async () => {
     try {
       setPageLoading(true);
-      const [nextCatalog, nextSessions, nextSales, posCategories, nextStockLocations] = await Promise.all([
+      const [nextCatalog, nextSessions, posCategories, nextStockLocations] = await Promise.all([
         buildPosProductCatalogFresh(),
         getOpenPosSessionsFresh(),
-        listPosSalesFresh(),
         listMasterDataFresh("pos-categories"),
         listStockLocationsFresh(),
       ]);
       setCatalog(nextCatalog);
       setSessions(nextSessions);
-      setPosSales(nextSales);
+      setPosSales([]);
       setStockLocations(nextStockLocations);
       setStockBalancesByLocation({});
       setPosCategoryStateOptions([
@@ -437,19 +432,7 @@ export function PosScreenPage() {
   const activeOrderLines = activeOrder?.lines;
   const cart = activeOrderLines || [];
   const sessionOrders = posSales.filter((sale) => sale.sessionId === activeSessionId);
-  const posCategoryOptions = posCategoryStateOptions;
-  /*
-    { id: "all", name: "Tümü", color: "#fee89a" },
-    ...listMasterData("pos-categories")
-      .filter((item) => item.status === "Aktif")
-      .map((item, index) => ({
-        id: item.id,
-        name: item.name,
-        color: ["#fac898", "#f99aa0", "#ffd59e", "#b9edbe", "#ffe68f", "#b9ddff"][index % 6],
-      })),
-  ];
 
-  */
   React.useEffect(() => {
     if (!activeOrderStockLocationId || stockBalancesByLocation[activeOrderStockLocationId]) {
       return;
@@ -505,15 +488,18 @@ export function PosScreenPage() {
     [activeOrderStockLocationId, catalog, currentStockBalanceMap],
   );
 
-  const filteredCatalog = catalogWithAvailability.filter((product) => {
-    const matchesSearch =
-      !search.trim() ||
-      [product.name, product.code, product.barcode]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(search.trim().toLowerCase()));
-    const matchesCategory = activeCategory === "all" || product.posCategoryId === activeCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredCatalog = React.useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return catalogWithAvailability.filter((product) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        [product.name, product.code, product.barcode]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+      const matchesCategory = activeCategory === "all" || product.posCategoryId === activeCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [activeCategory, catalogWithAvailability, search]);
 
   const calculateOrderTotals = React.useCallback((order) => {
     const grossTotal = (order?.lines || []).reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
@@ -744,14 +730,14 @@ export function PosScreenPage() {
   };
 
   const handleBarcodeSubmit = () => {
-    const foundProduct = findProductByBarcode(barcodeValue);
+    const normalizedBarcode = String(barcodeValue || "").trim();
+    const foundProduct = catalogWithAvailability.find((item) => String(item.barcode || "").trim() === normalizedBarcode);
     if (!foundProduct) {
       message.warning("Barkoda ait ürün bulunamadı.");
       return;
     }
 
-    const product = catalogWithAvailability.find((item) => item.id === foundProduct.id) || foundProduct;
-    addProductToCart(product);
+    addProductToCart(foundProduct);
     setBarcodeValue("");
   };
 
@@ -884,10 +870,11 @@ export function PosScreenPage() {
   const handleCreateSession = async () => {
     try {
       const values = await sessionForm.validateFields();
-      const created = createPosSession({
+      const response = await requestJson("POST", "/api/pos-sessions", {
         ...values,
         openedAt: values.openedAt ? values.openedAt.toISOString() : new Date().toISOString(),
       });
+      const created = response?.item || response;
       setOpenSessionModalOpen(false);
       sessionForm.resetFields();
       await refreshPosContext();
@@ -997,6 +984,31 @@ export function PosScreenPage() {
       },
     });
   };
+
+  const loadSessionOrders = React.useCallback(async () => {
+    if (!activeSessionId) {
+      setPosSales([]);
+      return;
+    }
+
+    try {
+      setOrdersLoading(true);
+      const sales = await listPosSalesFresh(catalog, { sessionId: activeSessionId });
+      setPosSales(sales);
+    } catch (error) {
+      message.error(error?.message || "Tamamlanan siparişler yüklenemedi.");
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, [activeSessionId, catalog]);
+
+  React.useEffect(() => {
+    if (!ordersDrawerOpen) {
+      return;
+    }
+
+    void loadSessionOrders();
+  }, [loadSessionOrders, ordersDrawerOpen]);
 
   const actionMenu = {
     items: [
@@ -1235,7 +1247,9 @@ export function PosScreenPage() {
           </div>
 
             <div className="erp-pos-product-grid">
-              {filteredCatalog.map((product) => (
+              {pageLoading ? (
+                <div style={{ padding: 16 }}>Ürünler yükleniyor...</div>
+              ) : filteredCatalog.map((product) => (
                 <button key={product.id} type="button" className="erp-pos-product-card" onClick={() => addProductToCart(product)}>
                   <div className="erp-pos-product-image-wrap">
                     <img src={product.imageUrl} alt={product.name} className="erp-pos-product-image" />
@@ -1380,6 +1394,7 @@ export function PosScreenPage() {
               rowKey="id"
               pagination={false}
               size="small"
+              loading={ordersLoading}
               dataSource={sessionOrders}
               columns={[
                 { title: "Sipariş No", dataIndex: "receiptNo", key: "receiptNo" },

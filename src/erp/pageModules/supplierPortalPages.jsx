@@ -6,12 +6,12 @@ import { AppstoreOutlined, BarsOutlined, CheckOutlined, DeleteOutlined, Download
 import * as XLSX from "xlsx";
 import { getAuthUser } from "../../auth";
 import { listContractsFresh } from "../contractsData";
-import { completeDeliveryReceipt, createDeliveryList, createDeliveryPdf, deleteDeliveryList, getDeliveryListById, getNextDeliveryNoPreviewFresh, listDeliveryListsBySupplierFresh, listDeliveryListsFresh, updateDeliveryList } from "../deliveryListsData";
+import { completeDeliveryReceipt, createDeliveryPdf, deleteDeliveryList, getDeliveryListById, getNextDeliveryNoPreviewFresh, listDeliveryListsBySupplierFresh, listDeliveryListsFresh, updateDeliveryList } from "../deliveryListsData";
 import { listEarningsRecordsFresh } from "../earningsData";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
 import { listPosSalesFresh, listPosReturnsFresh } from "../posData";
-import { createProduct, listProductsFresh } from "../productsData";
+import { listProductsFresh } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 
 const { Title, Text } = Typography;
@@ -296,7 +296,6 @@ function buildEarningsSummary({ periodDate, products = [], sales = [], returns =
 }
 
 export function SupplierPortalEarningsPage() {
-  const navigate = useNavigate();
   const authUser = getAuthUser();
   const [periodDate, setPeriodDate] = React.useState(() => toPeriodDate(getDefaultEarningsPeriod()));
   const [pageLoading, setPageLoading] = React.useState(false);
@@ -408,7 +407,7 @@ export function SupplierPortalEarningsPage() {
         supplierId: resolvedSupplierId,
         earningsRecord: earningsRecordMap.get(getMonthKey(item)) || null,
       }));
-  }, [contracts, earningsRecordMap, periodDate, products, resolvedSupplierId, sales]);
+  }, [contracts, earningsRecordMap, periodDate, products, resolvedSupplierId, returns, sales]);
 
   const statusMeta = earningsStatusMetaMap[currentSummary.status] || earningsStatusMetaMap["Satis Yok"];
 
@@ -2150,7 +2149,7 @@ export function SupplierPortalDeliveryEditorPage() {
     setEditLine(null);
   };
 
-  const handlePromoteLineToProduct = () => {
+  const handlePromoteLineToProduct = async () => {
     if (!isAdminView || editIndex === null || !editLine || !targetSupplierId) {
       return;
     }
@@ -2165,77 +2164,75 @@ export function SupplierPortalDeliveryEditorPage() {
       return;
     }
 
-    const savedProduct = createProduct({
-      supplierId: targetSupplierId,
-      code: editLine.code,
-      name: editLine.name,
-      salePrice: editLine.salePrice,
-      saleCurrency: editLine.saleCurrency || "TRY",
-      cost: 0,
-      costCurrency: "TRY",
-      categoryId: editLine.categoryId || null,
-      collectionId: editLine.collectionId || null,
-      posCategoryId: null,
-      barcode: "",
-      supplierCode: editLine.code,
-      minStock: 0,
-      supplierLeadTime: 0,
-      productType: "konsinye",
-      salesTax: "%20",
-      image: editLine.image,
-      isForSale: true,
-      isForPurchase: true,
-      useInPos: true,
-      trackInventory: true,
-      status: "Aktif",
-      workflowStatus: "Onaylandi",
-      createdBy: authUser?.id || null,
-      notes: editLine.description || "",
-      features: [],
-    });
+    try {
+      setLoading(true);
+      const response = await requestJson("POST", "/api/products", {
+        supplierId: targetSupplierId,
+        code: editLine.code,
+        name: editLine.name,
+        salePrice: editLine.salePrice,
+        saleCurrency: editLine.saleCurrency || "TRY",
+        cost: 0,
+        costCurrency: "TRY",
+        categoryId: editLine.categoryId || null,
+        collectionId: editLine.collectionId || null,
+        posCategoryId: null,
+        barcode: "",
+        supplierCode: editLine.code,
+        minStock: 0,
+        supplierLeadTime: 0,
+        productType: "konsinye",
+        salesTax: "%20",
+        image: editLine.image,
+        isForSale: true,
+        isForPurchase: true,
+        useInPos: true,
+        trackInventory: true,
+        status: "Aktif",
+        workflowStatus: "Onaylandi",
+        createdBy: authUser?.id || null,
+        notes: editLine.description || "",
+        features: [],
+      });
+      const savedProduct = response?.item || response;
 
-    const currentLines = [...deliveryLines];
-    currentLines[editIndex] = {
-      ...currentLines[editIndex],
-      ...editLine,
-      productId: savedProduct.id,
-      isNewProduct: false,
-      code: savedProduct.code,
-      name: savedProduct.name,
-      categoryId: savedProduct.categoryId || editLine.categoryId || null,
-      categoryLabel: savedProduct.categoryLabel || categoryLabelMap[editLine.categoryId] || editLine.categoryLabel || "",
-      collectionId: savedProduct.collectionId || editLine.collectionId || null,
-      collectionLabel: savedProduct.collectionLabel || collectionLabelMap[editLine.collectionId] || editLine.collectionLabel || "",
-    };
-    setDeliveryLines(currentLines);
-    form.setFieldValue("lines", currentLines);
-    updateDeliveryList(deliveryId, {
-      ...form.getFieldsValue(),
-      supplierId: targetSupplierId,
-      supplierName: supplier?.company || "",
-      contactName: supplier?.contact || "",
-      supplierEmail: supplier?.email || "",
-      createdBy: targetRecord?.createdBy || authUser?.id || null,
-      status: form.getFieldValue("status") || targetRecord?.status || "Taslak",
-      lines: currentLines,
-    });
-    setEditOpen(false);
-    setEditIndex(null);
-    setEditLine(null);
-    setPromoteMode(false);
-    message.success("Satir urun kartina donusturuldu.");
-  };
-
-  const validateBeforeAction = async () => {
-    const values = await form.validateFields();
-    if (!deliveryLines.length) {
-      showCenteredWarning("Urun listesi bos olamaz.");
-      return null;
+      const currentLines = [...deliveryLines];
+      currentLines[editIndex] = {
+        ...currentLines[editIndex],
+        ...editLine,
+        productId: savedProduct.id,
+        isNewProduct: false,
+        code: savedProduct.code,
+        name: savedProduct.name,
+        categoryId: savedProduct.categoryId || editLine.categoryId || null,
+        categoryLabel: savedProduct.categoryLabel || categoryLabelMap[editLine.categoryId] || editLine.categoryLabel || "",
+        collectionId: savedProduct.collectionId || editLine.collectionId || null,
+        collectionLabel: savedProduct.collectionLabel || collectionLabelMap[editLine.collectionId] || editLine.collectionLabel || "",
+      };
+      setDeliveryLines(currentLines);
+      form.setFieldValue("lines", currentLines);
+      if (deliveryId) {
+        await requestJson("PUT", `/api/delivery-lists/${encodeURIComponent(deliveryId)}`, {
+          ...form.getFieldsValue(),
+          supplierId: targetSupplierId,
+          supplierName: supplier?.company || "",
+          contactName: supplier?.contact || "",
+          supplierEmail: supplier?.email || "",
+          createdBy: targetRecord?.createdBy || authUser?.id || null,
+          status: form.getFieldValue("status") || targetRecord?.status || "Taslak",
+          lines: currentLines,
+        });
+      }
+      setEditOpen(false);
+      setEditIndex(null);
+      setEditLine(null);
+      setPromoteMode(false);
+      message.success("Satir urun kartina donusturuldu.");
+    } catch (error) {
+      message.error(error?.message || "Urun karti olusturulamadi.");
+    } finally {
+      setLoading(false);
     }
-    return {
-      ...values,
-      lines: deliveryLines,
-    };
   };
 
   const handleSave = async (status, shouldDownloadPdf = false) => {
@@ -2330,6 +2327,7 @@ export function SupplierPortalDeliveryEditorPage() {
         <Card
           title="Teslimat Genel Bilgiler"
           className="erp-card-logo-divider"
+          loading={pageLoading}
           extra={(
             <Button
               type="text"
@@ -2563,7 +2561,7 @@ export function SupplierPortalDeliveryEditorPage() {
             <Space style={{ justifyContent: "flex-end", width: "100%" }}>
               <Button onClick={() => setEditOpen(false)}>Vazgec</Button>
               {isAdminView && promoteMode && editLine.isNewProduct && !editLine.productId ? (
-                <Button type="primary" onClick={handlePromoteLineToProduct}>Urun Olarak Kaydet</Button>
+                <Button type="primary" loading={loading} onClick={() => void handlePromoteLineToProduct()}>Urun Olarak Kaydet</Button>
               ) : (
                 <Button type="primary" onClick={handleSaveEditLine} disabled={isDeliveryLocked && !isAdminView}>Guncelle</Button>
               )}
@@ -2574,11 +2572,6 @@ export function SupplierPortalDeliveryEditorPage() {
     </Space>
   );
 }
-
-
-
-
-
 
 
 

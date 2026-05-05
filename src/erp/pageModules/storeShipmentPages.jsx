@@ -3,10 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AutoComplete, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Row, Select, Space, Table, Tag, Tooltip, Typography, Upload, message } from "antd";
 import { CheckOutlined, DeleteOutlined, EditOutlined, FilePdfOutlined, PlusCircleOutlined, PlusOutlined, SendOutlined, UploadOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
-import { listMasterData } from "../masterData";
-import { createProduct, listProductsFresh } from "../productsData";
-import { listSuppliers } from "../suppliersData";
-import { createStoreShipment, createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentById, listStoreShipmentsFresh, sendStoreShipment, updateStoreShipment } from "../storeShipmentsData";
+import { requestJson } from "../apiClient";
+import { listMasterDataFresh } from "../masterData";
+import { listProductsFresh } from "../productsData";
+import { listSuppliersFresh } from "../suppliersData";
+import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, listStoreShipmentsFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
 
 const { Title, Text } = Typography;
@@ -39,6 +40,18 @@ function buildDraftFromProduct(product) {
     quantity: 1,
     description: "",
   };
+}
+
+async function saveStoreShipmentPayload(shipmentId, payload) {
+  const response = shipmentId
+    ? await requestJson("PUT", `/api/store-shipments/${encodeURIComponent(shipmentId)}`, payload)
+    : await requestJson("POST", "/api/store-shipments", payload);
+  return response?.item || response;
+}
+
+async function sendStoreShipmentPayload(shipmentId) {
+  const response = await requestJson("POST", `/api/store-shipments/${encodeURIComponent(shipmentId)}/send`, {});
+  return response?.item || response;
 }
 
 export function StoreShipmentListPage() {
@@ -216,18 +229,22 @@ export function StoreShipmentEditorPage() {
     const loadEditor = async () => {
       try {
         setPageLoading(true);
-        const [storeRows, productRows] = await Promise.all([
+        const [storeRows, productRows, categoryRows, collectionRows, supplierRows, shipmentRows] = await Promise.all([
           listStoresFresh(),
           listProductsFresh(),
+          listMasterDataFresh("categories"),
+          listMasterDataFresh("collections"),
+          listSuppliersFresh(),
+          isEditMode ? listStoreShipmentsFresh() : Promise.resolve([]),
         ]);
         if (cancelled) {
           return;
         }
         setStores(storeRows);
         setProducts(productRows);
-        setCategories(listMasterData("categories"));
-        setCollections(listMasterData("collections"));
-        setSuppliers(listSuppliers());
+        setCategories(categoryRows);
+        setCollections(collectionRows);
+        setSuppliers(supplierRows);
 
         if (!isEditMode) {
           form.setFieldsValue({
@@ -242,7 +259,7 @@ export function StoreShipmentEditorPage() {
           return;
         }
 
-        const existing = getStoreShipmentById(shipmentId) || (await listStoreShipmentsFresh()).find((item) => item.id === shipmentId);
+        const existing = shipmentRows.find((item) => item.id === shipmentId);
         if (!existing) {
           message.error("Gonderi kaydi bulunamadi.");
           navigate("/stores/shipments");
@@ -356,7 +373,7 @@ export function StoreShipmentEditorPage() {
     setEditLine(null);
   };
 
-  const handlePromoteLineToProduct = () => {
+  const handlePromoteLineToProduct = async () => {
     if (editIndex === null || !editLine) {
       return;
     }
@@ -374,7 +391,8 @@ export function StoreShipmentEditorPage() {
     }
 
     try {
-      const savedProduct = createProduct({
+      setLoading(true);
+      const response = await requestJson("POST", "/api/products", {
         supplierId: promoteFields.supplierId || null,
         code: editLine.code,
         name: editLine.name,
@@ -403,6 +421,7 @@ export function StoreShipmentEditorPage() {
         notes: editLine.description || "",
         features: [],
       });
+      const savedProduct = response?.item || response;
 
       setProducts((current) => [...current, savedProduct]);
       const nextLines = [...shipmentLines];
@@ -424,6 +443,8 @@ export function StoreShipmentEditorPage() {
       message.success("Satir urun kartina donusturuldu.");
     } catch (error) {
       message.error(error?.message || "Urun karti olusturulamadi.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -447,7 +468,7 @@ export function StoreShipmentEditorPage() {
         ...values,
         status: statusOverride || values.status || "Taslak",
       };
-      const saved = isEditMode ? updateStoreShipment(shipmentId, payload) : createStoreShipment(payload);
+      const saved = await saveStoreShipmentPayload(isEditMode ? shipmentId : null, payload);
       message.success(isEditMode ? "Gonderi guncellendi." : "Gonderi kaydedildi.");
       navigate(`/stores/shipments/${saved.id}`);
     } catch (error) {
@@ -464,7 +485,7 @@ export function StoreShipmentEditorPage() {
       setLoading(true);
       const values = await validateBeforeSave();
       const payload = { ...values, status: "Hazirlandi" };
-      const saved = isEditMode ? updateStoreShipment(shipmentId, payload) : createStoreShipment(payload);
+      const saved = await saveStoreShipmentPayload(isEditMode ? shipmentId : null, payload);
       await createStoreShipmentPdf(saved);
       message.success("Gonderi hazirlandi ve PDF olusturuldu.");
       navigate(`/stores/shipments/${saved.id}`);
@@ -507,16 +528,16 @@ export function StoreShipmentEditorPage() {
       setLoading(true);
       if (!isEditMode) {
         const values = await validateBeforeSave();
-        const created = createStoreShipment({ ...values, status: "Hazirlandi" });
-        const sent = sendStoreShipment(created.id);
+        const created = await saveStoreShipmentPayload(null, { ...values, status: "Hazirlandi" });
+        const sent = await sendStoreShipmentPayload(created.id);
         message.success("Gonderi magazaya aktarildi.");
         navigate(`/stores/shipments/${sent.id}`);
         return;
       }
 
       const values = await validateBeforeSave();
-      updateStoreShipment(shipmentId, { ...values, status: "Hazirlandi" });
-      const sent = sendStoreShipment(shipmentId);
+      await saveStoreShipmentPayload(shipmentId, { ...values, status: "Hazirlandi" });
+      const sent = await sendStoreShipmentPayload(shipmentId);
       message.success("Gonderi magazaya aktarildi.");
       navigate(`/stores/shipments/${sent.id}`);
     } catch (error) {
@@ -854,7 +875,7 @@ export function StoreShipmentEditorPage() {
 
             <Space style={{ justifyContent: "flex-end", width: "100%" }}>
               {!editLine.productId ? (
-                <Button icon={<PlusCircleOutlined />} onClick={handlePromoteLineToProduct}>
+                <Button icon={<PlusCircleOutlined />} loading={loading} onClick={() => void handlePromoteLineToProduct()}>
                   Urun Olarak Ekle
                 </Button>
               ) : null}

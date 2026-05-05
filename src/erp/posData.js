@@ -59,7 +59,7 @@ function normalizeSession(values, existingSession) {
 function normalizeSale(values) {
   const lines = (values.lines || [])
     .filter((line) => line && line.productId && Number(line.quantity || 0) > 0)
-    .map((line, index) => ({
+    .map((line) => ({
       id: line.id || createId("posline"),
       productId: line.productId,
       quantity: Number(line.quantity || 0),
@@ -166,9 +166,10 @@ export function listPosSales() {
   return loadSales().map(enrichSale);
 }
 
-export async function listPosSalesFresh(productsOverride = null) {
+export async function listPosSalesFresh(productsOverride = null, options = {}) {
+  const query = options.sessionId ? `?sessionId=${encodeURIComponent(options.sessionId)}` : "";
   const [sales, products] = await Promise.all([
-    requestCollection("/api/pos-sales", seedSales()),
+    requestCollection(`/api/pos-sales${query}`, seedSales()),
     productsOverride ? Promise.resolve(productsOverride) : listProductsFresh(),
   ]);
   const productMap = Object.fromEntries(products.map((item) => [item.id, item]));
@@ -215,7 +216,7 @@ export function buildPosProductCatalog() {
 }
 
 export async function buildPosProductCatalogFresh() {
-  const products = await listProductsFresh();
+  const products = await requestCollection("/api/products", []);
   return products
     .filter((item) => item.useInPos && item.status === "Aktif")
     .map((item) => ({
