@@ -125,7 +125,7 @@ export function ProductListPage() {
     setTableLoading(true);
     try {
       const [productRows, categoryRows, collectionRows, supplierRows] = await Promise.all([
-        listProductsFresh(),
+        listProductsFresh({ slim: true }),
         listMasterDataFresh("categories"),
         listMasterDataFresh("collections"),
         listSuppliersFresh(),

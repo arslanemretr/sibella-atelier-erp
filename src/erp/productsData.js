@@ -320,9 +320,10 @@ export function listProducts() {
   return loadStore().map((product) => enrichProduct(product));
 }
 
-export async function listProductsFresh() {
+export async function listProductsFresh({ slim = false } = {}) {
+  const productsUrl = slim ? "/api/products?slim=true" : "/api/products";
   const [products, categories, collections, posCategories, suppliers] = await Promise.all([
-    requestCollection("/api/products", seedProducts()),
+    requestCollection(productsUrl, seedProducts()),
     requestCollection("/api/master-data/categories", []),
     requestCollection("/api/master-data/collections", []),
     requestCollection("/api/master-data/pos-categories", []),

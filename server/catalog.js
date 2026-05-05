@@ -367,10 +367,19 @@ async function getSupplierRow(supplierId) {
   return mapSupplierRow(await sqlOne("SELECT * FROM suppliers WHERE id = $1", [supplierId]));
 }
 
-async function listProductsRows() {
+// slim=true → image, features, notes hariç tutulur (liste ekranı için)
+async function listProductsRows({ slim = false } = {}) {
+  // slim modda image (base64 olabilir) ve büyük text alanları SELECT'ten çıkarılır
+  const selectCols = slim
+    ? `p.id, p.code, p.name, p.sale_price, p.sale_currency, p.cost, p.cost_currency,
+       p.category_id, p.collection_id, p.pos_category_id, p.supplier_id,
+       p.barcode, p.supplier_code, p.stock, p.product_type, p.status, p.workflow_status,
+       p.created_at, p.updated_at`
+    : `p.*`;
+
   const productRows = await sqlMany(`
     SELECT
-      p.*,
+      ${selectCols},
       COALESCE(stock_totals.total_stock, 0) AS total_stock,
       COALESCE(sale_totals.sold_quantity, 0) AS sold_quantity,
       COALESCE(return_totals.return_quantity, 0) AS return_quantity
@@ -392,17 +401,16 @@ async function listProductsRows() {
     ) return_totals ON return_totals.product_id = p.id
     ORDER BY p.created_at DESC, p.code ASC
   `);
-  const featureRows = await sqlMany("SELECT * FROM product_features ORDER BY product_id ASC, sort_order ASC, id ASC");
-  const featuresByProductId = new Map();
-  featureRows.forEach((row) => {
-    const items = featuresByProductId.get(row.product_id) || [];
-    items.push({
-      id: row.id,
-      name: row.name || "",
-      value: row.value || "",
+
+  let featuresByProductId = new Map();
+  if (!slim) {
+    const featureRows = await sqlMany("SELECT * FROM product_features ORDER BY product_id ASC, sort_order ASC, id ASC");
+    featureRows.forEach((row) => {
+      const items = featuresByProductId.get(row.product_id) || [];
+      items.push({ id: row.id, name: row.name || "", value: row.value || "" });
+      featuresByProductId.set(row.product_id, items);
     });
-    featuresByProductId.set(row.product_id, items);
-  });
+  }
 
   return productRows.map((row) => ({
     id: row.id,
@@ -418,25 +426,25 @@ async function listProductsRows() {
     supplierId: row.supplier_id || null,
     barcode: row.barcode || "",
     supplierCode: row.supplier_code || "",
-    minStock: Number(row.min_stock || 0),
-    supplierLeadTime: Number(row.supplier_lead_time || 0),
+    minStock: slim ? 0 : Number(row.min_stock || 0),
+    supplierLeadTime: slim ? 0 : Number(row.supplier_lead_time || 0),
     stock: Number(row.stock || 0),
     totalStock: Number((row.total_stock ?? row.stock) || 0),
     productType: row.product_type || "kendi",
-    salesTax: row.sales_tax || "%20",
-    image: row.image || "/products/baroque-necklace.svg",
-    isForSale: Boolean(row.is_for_sale),
-    isForPurchase: Boolean(row.is_for_purchase),
-    useInPos: Boolean(row.use_in_pos),
-    trackInventory: Boolean(row.track_inventory),
+    salesTax: slim ? "%20" : (row.sales_tax || "%20"),
+    image: slim ? null : (row.image || "/products/baroque-necklace.svg"),
+    isForSale: slim ? true : Boolean(row.is_for_sale),
+    isForPurchase: slim ? true : Boolean(row.is_for_purchase),
+    useInPos: slim ? true : Boolean(row.use_in_pos),
+    trackInventory: slim ? true : Boolean(row.track_inventory),
     status: row.status || "Aktif",
     workflowStatus: row.workflow_status || "Taslak",
-    createdBy: row.created_by || null,
-    notes: row.notes || "",
-    barcodeStandardId: row.barcode_standard_id || null,
+    createdBy: slim ? null : (row.created_by || null),
+    notes: slim ? "" : (row.notes || ""),
+    barcodeStandardId: slim ? null : (row.barcode_standard_id || null),
     soldQuantity: Number(row.sold_quantity || 0),
     returnQuantity: Number(row.return_quantity || 0),
-    features: featuresByProductId.get(row.id) || [],
+    features: slim ? [] : (featuresByProductId.get(row.id) || []),
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
   }));
@@ -684,10 +692,11 @@ export async function handleSuppliersDelete(req, res) {
   }
 }
 
-export async function handleProductsList(_req, res) {
+export async function handleProductsList(req, res) {
+  const slim = req.query.slim === "true";
   return res.json({
     ok: true,
-    items: await listProductsRows(),
+    items: await listProductsRows({ slim }),
   });
 }
 
