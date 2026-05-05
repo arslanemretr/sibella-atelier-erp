@@ -4,7 +4,7 @@ import { Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumbe
 import { AppstoreOutlined, BarsOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, LeftOutlined, PlusOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { listMasterDataFresh } from "../masterData";
-import { createProduct, deleteProduct, getProductByIdFresh, importProducts, listProductStockLocationsFresh, listProductsFresh, updateProduct } from "../productsData";
+import { createProduct, deleteProduct, getProductByIdFresh, importProducts, listProductsRawFresh, listProductStockLocationsFresh, listProductsFresh, updateProduct } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 import { getSystemParametersFresh } from "../systemParameters";
 
@@ -902,8 +902,8 @@ export function ProductEditorPage() {
           product,
         ] = await Promise.all([
           getSystemParametersFresh(),
-          // Navigasyon ve kod kontrolü için slim liste
-          listProductsFresh({ slim: true }),
+          // Navigasyon ve kod kontrolü için ham slim liste (enrichment yok, supplier tekrar çekilmez)
+          listProductsRawFresh(),
           listMasterDataFresh("categories"),
           listMasterDataFresh("collections"),
           listMasterDataFresh("pos-categories"),

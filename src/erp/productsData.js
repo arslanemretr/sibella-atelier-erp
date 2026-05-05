@@ -354,6 +354,11 @@ export async function getProductByIdFresh(productId) {
   return data?.item || null;
 }
 
+// Sadece ham slim veri — enrichment yok. Editor/navigasyon için kullanılır.
+export async function listProductsRawFresh() {
+  return requestCollection("/api/products?slim=true", []);
+}
+
 export function generateProductCodeForSupplier(supplierId, currentProductId) {
   const supplier = listSuppliers().find((item) => item.id === supplierId);
   const shortCode = String(supplier?.shortCode || "").trim().toUpperCase();
