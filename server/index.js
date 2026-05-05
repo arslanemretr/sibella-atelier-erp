@@ -17,6 +17,7 @@ import {
 } from "./auth.js";
 import {
   ensureBarcodeStandardsReady,
+  ensureProductIndexes,
   handleMasterDataCreate,
   handleMasterDataList,
   handleMasterDataUpdate,
@@ -135,6 +136,7 @@ void ensureDatabaseReady()
   .then(() => ensureStockLocationInSessions())
   .then(() => ensurePosReturnsReady())
   .then(() => ensureBarcodeStandardsReady())
+  .then(() => ensureProductIndexes())
   .then(() => migrateLegacyPasswords())
   .catch((error) => {
     console.error("Database init / auth migration hatasi:", error?.message || error);

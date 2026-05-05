@@ -23,6 +23,14 @@ async function ensureSupplierLogoColumn() {
   await ensureSupplierLogoColumnPromise;
 }
 
+export async function ensureProductIndexes() {
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_product_features_product_id ON product_features(product_id)");
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_pos_sale_lines_product_id ON pos_sale_lines(product_id)");
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_pos_return_lines_product_id ON pos_return_lines(product_id)");
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_stock_location_balances_product_id ON stock_location_balances(product_id)");
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at DESC)");
+}
+
 export async function ensureBarcodeStandardsReady() {
   await sqlExec("ALTER TABLE barcode_standards ADD COLUMN IF NOT EXISTS standard_prefix TEXT DEFAULT '111'");
   await sqlExec("ALTER TABLE barcode_standards ADD COLUMN IF NOT EXISTS supplier_id TEXT REFERENCES suppliers(id)");
@@ -435,8 +443,75 @@ async function listProductsRows() {
 }
 
 async function getProductRow(productId) {
-  const items = await listProductsRows();
-  return items.find((item) => item.id === productId) || null;
+  const rows = await sqlMany(`
+    SELECT
+      p.*,
+      COALESCE(stock_totals.total_stock, 0) AS total_stock,
+      COALESCE(sale_totals.sold_quantity, 0) AS sold_quantity,
+      COALESCE(return_totals.return_quantity, 0) AS return_quantity
+    FROM products p
+    LEFT JOIN (
+      SELECT product_id, SUM(quantity) AS total_stock
+      FROM stock_location_balances
+      GROUP BY product_id
+    ) stock_totals ON stock_totals.product_id = p.id
+    LEFT JOIN (
+      SELECT product_id, SUM(quantity) AS sold_quantity
+      FROM pos_sale_lines
+      GROUP BY product_id
+    ) sale_totals ON sale_totals.product_id = p.id
+    LEFT JOIN (
+      SELECT product_id, SUM(quantity) AS return_quantity
+      FROM pos_return_lines
+      GROUP BY product_id
+    ) return_totals ON return_totals.product_id = p.id
+    WHERE p.id = $1
+  `, [productId]);
+
+  const row = rows[0];
+  if (!row) return null;
+
+  const featureRows = await sqlMany(
+    "SELECT * FROM product_features WHERE product_id = $1 ORDER BY sort_order ASC, id ASC",
+    [productId]
+  );
+
+  return {
+    id: row.id,
+    code: row.code || "",
+    name: row.name || "",
+    salePrice: Number(row.sale_price || 0),
+    saleCurrency: row.sale_currency || "TRY",
+    cost: Number(row.cost || 0),
+    costCurrency: row.cost_currency || "TRY",
+    categoryId: row.category_id || null,
+    collectionId: row.collection_id || null,
+    posCategoryId: row.pos_category_id || null,
+    supplierId: row.supplier_id || null,
+    barcode: row.barcode || "",
+    supplierCode: row.supplier_code || "",
+    minStock: Number(row.min_stock || 0),
+    supplierLeadTime: Number(row.supplier_lead_time || 0),
+    stock: Number(row.stock || 0),
+    totalStock: Number((row.total_stock ?? row.stock) || 0),
+    productType: row.product_type || "kendi",
+    salesTax: row.sales_tax || "%20",
+    image: row.image || "/products/baroque-necklace.svg",
+    isForSale: Boolean(row.is_for_sale),
+    isForPurchase: Boolean(row.is_for_purchase),
+    useInPos: Boolean(row.use_in_pos),
+    trackInventory: Boolean(row.track_inventory),
+    status: row.status || "Aktif",
+    workflowStatus: row.workflow_status || "Taslak",
+    createdBy: row.created_by || null,
+    notes: row.notes || "",
+    barcodeStandardId: row.barcode_standard_id || null,
+    soldQuantity: Number(row.sold_quantity || 0),
+    returnQuantity: Number(row.return_quantity || 0),
+    features: featureRows.map((f) => ({ id: f.id, name: f.name || "", value: f.value || "" })),
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+  };
 }
 
 function normalizeProduct(values, existingRecord) {
