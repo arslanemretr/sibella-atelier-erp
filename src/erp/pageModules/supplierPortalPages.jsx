@@ -312,7 +312,7 @@ export function SupplierPortalEarningsPage() {
       try {
         setPageLoading(true);
         const [suppliers, nextProducts, nextSales, nextReturns, nextContracts, nextRecords] = await Promise.all([
-          listSuppliersFresh(),
+          listSuppliersFresh({ slim: true }),
           listProductsFresh({ slim: true }),
           listPosSalesFresh(),
           listPosReturnsFresh(),
@@ -1066,7 +1066,7 @@ export function SupplierPortalProductEditorPage() {
           listProductsRawFresh(),
           listMasterDataFresh("categories"),
           listMasterDataFresh("collections"),
-          listSuppliersFresh(),
+          listSuppliersFresh({ slim: true }),
         ]);
 
         if (cancelled) {
@@ -1272,7 +1272,7 @@ export function SupplierDeliveryListsPage() {
   const refreshRecords = React.useCallback(async () => {
     try {
       setTableLoading(true);
-      const [deliveries, suppliers] = await Promise.all([listDeliveryListsFresh(), listSuppliersFresh()]);
+      const [deliveries, suppliers] = await Promise.all([listDeliveryListsFresh(), listSuppliersFresh({ slim: true })]);
       setRecords(deliveries);
       setSupplierOptions(suppliers.map((item) => ({ value: item.id, label: item.company })));
     } catch (error) {
@@ -1837,7 +1837,7 @@ export function SupplierPortalDeliveryEditorPage() {
         const [categories, collections, suppliers, products, deliveries] = await Promise.all([
           listMasterDataFresh("categories"),
           listMasterDataFresh("collections"),
-          listSuppliersFresh(),
+          listSuppliersFresh({ slim: true }),
           listProductsRawFresh(),
           listDeliveryListsFresh(),
         ]);

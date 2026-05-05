@@ -381,6 +381,55 @@ async function getDeliveryRow(deliveryId) {
   return (await listDeliveryRows()).find((item) => item.id === deliveryId) || null;
 }
 
+function mapDeliveryLineRow(row) {
+  return {
+    id: row.id,
+    productId: row.product_id || null,
+    isNewProduct: Boolean(row.is_new_product),
+    image: row.image || "",
+    name: row.name || "",
+    code: row.code || "",
+    salePrice: Number(row.sale_price || 0),
+    saleCurrency: row.sale_currency || "TRY",
+    quantity: Number(row.quantity || 0),
+    description: row.description || "",
+    categoryId: row.category_id || null,
+    categoryLabel: row.category_label || "",
+    collectionId: row.collection_id || null,
+    collectionLabel: row.collection_label || "",
+  };
+}
+
+async function getDeliveryRowDirect(deliveryId) {
+  const schemaInfo = await ensureDeliveryLineSchema();
+  const deliveryRows = await sqlMany("SELECT * FROM delivery_lists WHERE id = $1 LIMIT 1", [deliveryId]);
+  if (!deliveryRows[0]) return null;
+  const row = deliveryRows[0];
+  const lineRows = await sqlMany(
+    schemaInfo.hasDeliveryId
+      ? "SELECT * FROM delivery_lines WHERE delivery_list_id = $1 OR delivery_id = $1 ORDER BY sort_order ASC, id ASC"
+      : "SELECT * FROM delivery_lines WHERE delivery_list_id = $1 ORDER BY sort_order ASC, id ASC",
+    [deliveryId],
+  );
+  return {
+    id: row.id,
+    deliveryNo: row.delivery_no || "",
+    supplierId: row.supplier_id || null,
+    supplierName: row.supplier_name || "",
+    contactName: row.contact_name || "",
+    supplierEmail: row.supplier_email || "",
+    date: row.date || "",
+    shippingMethod: row.shipping_method || "Kargo",
+    trackingNo: row.tracking_no || "",
+    note: row.note || "",
+    status: row.status || "Taslak",
+    createdBy: row.created_by || null,
+    lines: lineRows.map(mapDeliveryLineRow),
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+  };
+}
+
 function normalizeDelivery(values, existingRecord) {
   const deliveryId = existingRecord?.id || createId("dlv");
   return {
@@ -656,7 +705,7 @@ export async function handleDeliveryListsCreate(req, res) {
       VALUES ($1,$2,$3,$4,$5,$6,$7::date,$8,$9,$10,$11,$12,$13::timestamptz,$14::timestamptz)
     `, [item.id, item.deliveryNo, item.supplierId, item.supplierName, item.contactName, item.supplierEmail, item.date || null, item.shippingMethod, item.trackingNo, item.note, item.status, item.createdBy, item.createdAt, item.updatedAt]);
     await replaceDeliveryLines(item);
-    return res.status(201).json({ ok: true, item: await getDeliveryRow(item.id) });
+    return res.status(201).json({ ok: true, item: await getDeliveryRowDirect(item.id) });
   } catch (error) {
     console.error("handleDeliveryListsCreate hatasi:", error?.message, error?.stack);
     return httpError(res, 400, error?.message || "Teslimat kaydi olusturulamadi.");
@@ -664,7 +713,7 @@ export async function handleDeliveryListsCreate(req, res) {
 }
 
 export async function handleDeliveryListsUpdate(req, res) {
-  const existing = await getDeliveryRow(req.params.id);
+  const existing = await getDeliveryRowDirect(req.params.id);
   if (!existing) {
     return httpError(res, 404, "Teslimat kaydi bulunamadi.");
   }
@@ -679,7 +728,7 @@ export async function handleDeliveryListsUpdate(req, res) {
     if (Array.isArray(req.body?.lines)) {
       await replaceDeliveryLines(item);
     }
-    return res.json({ ok: true, item: await getDeliveryRow(item.id) });
+    return res.json({ ok: true, item: await getDeliveryRowDirect(item.id) });
   } catch (error) {
     console.error("handleDeliveryListsUpdate hatasi:", error?.message, error?.stack);
     return httpError(res, 400, error?.message || "Teslimat kaydi guncellenemedi.");
@@ -687,7 +736,7 @@ export async function handleDeliveryListsUpdate(req, res) {
 }
 
 export async function handleDeliveryLineCreate(req, res) {
-  const existing = await getDeliveryRow(req.params.id);
+  const existing = await getDeliveryRowDirect(req.params.id);
   if (!existing) return httpError(res, 404, "Teslimat kaydi bulunamadi.");
   try {
     const schemaInfo = await ensureDeliveryLineSchema();
@@ -714,7 +763,7 @@ export async function handleDeliveryLineCreate(req, res) {
           Number(body.quantity || 0), body.description || "", sortOrder,
           body.categoryId || null, body.categoryLabel || "", body.collectionId || null, body.collectionLabel || ""]);
     }
-    return res.status(201).json({ ok: true, item: await getDeliveryRow(existing.id) });
+    return res.status(201).json({ ok: true, item: await getDeliveryRowDirect(existing.id) });
   } catch (error) {
     console.error("handleDeliveryLineCreate hatasi:", error?.message);
     return httpError(res, 400, error?.message || "Satir eklenemedi.");
@@ -724,14 +773,14 @@ export async function handleDeliveryLineCreate(req, res) {
 export async function handleDeliveryLineDelete(req, res) {
   try {
     await sqlExec("DELETE FROM delivery_lines WHERE id = $1 AND delivery_list_id = $2", [req.params.lineId, req.params.id]);
-    return res.json({ ok: true, item: await getDeliveryRow(req.params.id) });
+    return res.json({ ok: true, item: await getDeliveryRowDirect(req.params.id) });
   } catch (error) {
     return httpError(res, 400, error?.message || "Satir silinemedi.");
   }
 }
 
 export async function handleDeliveryListsComplete(req, res) {
-  const existing = await getDeliveryRow(req.params.id);
+  const existing = await getDeliveryRowDirect(req.params.id);
   if (!existing) {
     return httpError(res, 404, "Teslimat kaydi bulunamadi.");
   }
@@ -774,7 +823,7 @@ export async function handleDeliveryListsComplete(req, res) {
         WHERE id=$1
       `, [existing.id, "Tamamlandi", timestamp]);
     });
-    return res.json({ ok: true, item: await getDeliveryRow(existing.id) });
+    return res.json({ ok: true, item: await getDeliveryRowDirect(existing.id) });
   } catch (error) {
     return httpError(res, 400, error?.message || "Teslimat stoğa aktarilamadi.");
   }
