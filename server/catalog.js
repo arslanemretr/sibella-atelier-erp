@@ -363,15 +363,25 @@ async function listProductsRows() {
   const productRows = await sqlMany(`
     SELECT
       p.*,
-      COALESCE(stock_totals.total_stock, 0) AS total_stock
+      COALESCE(stock_totals.total_stock, 0) AS total_stock,
+      COALESCE(sale_totals.sold_quantity, 0) AS sold_quantity,
+      COALESCE(return_totals.return_quantity, 0) AS return_quantity
     FROM products p
     LEFT JOIN (
-      SELECT
-        product_id,
-        SUM(quantity) AS total_stock
+      SELECT product_id, SUM(quantity) AS total_stock
       FROM stock_location_balances
       GROUP BY product_id
     ) stock_totals ON stock_totals.product_id = p.id
+    LEFT JOIN (
+      SELECT product_id, SUM(quantity) AS sold_quantity
+      FROM pos_sale_lines
+      GROUP BY product_id
+    ) sale_totals ON sale_totals.product_id = p.id
+    LEFT JOIN (
+      SELECT product_id, SUM(quantity) AS return_quantity
+      FROM pos_return_lines
+      GROUP BY product_id
+    ) return_totals ON return_totals.product_id = p.id
     ORDER BY p.created_at DESC, p.code ASC
   `);
   const featureRows = await sqlMany("SELECT * FROM product_features ORDER BY product_id ASC, sort_order ASC, id ASC");
@@ -416,6 +426,8 @@ async function listProductsRows() {
     createdBy: row.created_by || null,
     notes: row.notes || "",
     barcodeStandardId: row.barcode_standard_id || null,
+    soldQuantity: Number(row.sold_quantity || 0),
+    returnQuantity: Number(row.return_quantity || 0),
     features: featuresByProductId.get(row.id) || [],
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
