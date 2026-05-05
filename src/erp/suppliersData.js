@@ -1,5 +1,5 @@
 import { listMasterData } from "./masterData";
-import { mutateResourceSync, requestCollection, requestCollectionSync, requestJsonSync } from "./apiClient";
+import { mutateResourceSync, requestCollection, requestCollectionSync, requestJson, requestJsonSync } from "./apiClient";
 
 function createId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -126,9 +126,10 @@ export function listSuppliers() {
   return loadStore().map(enrichSupplier);
 }
 
-export async function listSuppliersFresh() {
+export async function listSuppliersFresh({ slim = false } = {}) {
+  const suppliersUrl = slim ? "/api/suppliers?slim=true" : "/api/suppliers";
   const [suppliers, procurementTypes, paymentTerms] = await Promise.all([
-    requestCollection("/api/suppliers", seedSuppliers()),
+    requestCollection(suppliersUrl, seedSuppliers()),
     requestCollection("/api/master-data/procurement-types", []),
     requestCollection("/api/master-data/payment-terms", []),
   ]);
@@ -150,6 +151,11 @@ export async function listSuppliersFresh() {
 
 export function getSupplierById(supplierId) {
   return loadStore().find((item) => item.id === supplierId) || null;
+}
+
+export async function getSupplierByIdFresh(supplierId) {
+  const data = await requestJson("GET", `/api/suppliers/${encodeURIComponent(supplierId)}`);
+  return data?.item || null;
 }
 
 export function createSupplier(values) {

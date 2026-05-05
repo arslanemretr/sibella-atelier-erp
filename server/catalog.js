@@ -356,10 +356,33 @@ async function getMasterDataRow(entityKey, recordId) {
   return config.mapRow(await sqlOne(`SELECT * FROM ${config.table} WHERE id = $1`, [recordId]));
 }
 
-async function listSuppliersRows() {
+async function listSuppliersRows({ slim = false } = {}) {
   await ensureSupplierLogoColumn();
-  const rows = await sqlMany("SELECT * FROM suppliers ORDER BY created_at DESC, company ASC");
-  return rows.map(mapSupplierRow);
+  // slim modda logo (base64 olabilir) ve büyük alanlar hariç tutulur
+  const selectCols = slim
+    ? "id, short_code, company, contact, email, phone, city, procurement_type_id, payment_term_id, status, created_at, updated_at"
+    : "*";
+  const rows = await sqlMany(`SELECT ${selectCols} FROM suppliers ORDER BY created_at DESC, company ASC`);
+  return rows.map((row) => ({
+    id: row.id,
+    shortCode: row.short_code || "",
+    company: row.company || "",
+    logo: slim ? "" : (row.logo || ""),
+    contact: row.contact || "",
+    email: row.email || "",
+    phone: row.phone || "",
+    city: row.city || "",
+    iban: slim ? "" : (row.iban || ""),
+    taxNumber: slim ? "" : (row.tax_number || ""),
+    taxOffice: slim ? "" : (row.tax_office || ""),
+    address: slim ? "" : (row.address || ""),
+    procurementTypeId: row.procurement_type_id || null,
+    paymentTermId: row.payment_term_id || null,
+    status: row.status || "Aktif",
+    note: slim ? "" : (row.note || ""),
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+  }));
 }
 
 async function getSupplierRow(supplierId) {
@@ -625,11 +648,20 @@ export async function handleMasterDataUpdate(req, res) {
   }
 }
 
-export async function handleSuppliersList(_req, res) {
+export async function handleSuppliersList(req, res) {
+  const slim = req.query.slim === "true";
   return res.json({
     ok: true,
-    items: await listSuppliersRows(),
+    items: await listSuppliersRows({ slim }),
   });
+}
+
+export async function handleSuppliersGet(req, res) {
+  const item = await getSupplierRow(req.params.id);
+  if (!item) {
+    return httpError(res, 404, "Tedarikci bulunamadi.");
+  }
+  return res.json({ ok: true, item });
 }
 
 export async function handleSuppliersCreate(req, res) {

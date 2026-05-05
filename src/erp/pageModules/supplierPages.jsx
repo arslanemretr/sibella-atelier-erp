@@ -7,8 +7,8 @@ import { listContractsFresh } from "../contractsData";
 import { listEarningsRecordsFresh, upsertEarningsRecord } from "../earningsData";
 import { createMasterData, listMasterDataFresh } from "../masterData";
 import { listPosSalesFresh, listPosReturnsFresh } from "../posData";
-import { listProductsFresh } from "../productsData";
-import { createSupplier, deleteSupplier, listSuppliersFresh, updateSupplier } from "../suppliersData";
+import { listProductsRawFresh } from "../productsData";
+import { createSupplier, deleteSupplier, getSupplierByIdFresh, listSuppliersFresh, updateSupplier } from "../suppliersData";
 
 const { Title, Text } = Typography;
 
@@ -56,7 +56,7 @@ export function SupplierListPage() {
     try {
       setTableLoading(true);
       const [nextSuppliers, procurementTypes, paymentTerms] = await Promise.all([
-        listSuppliersFresh(),
+        listSuppliersFresh({ slim: true }),
         listMasterDataFresh("procurement-types"),
         listMasterDataFresh("payment-terms"),
       ]);
@@ -423,11 +423,12 @@ export function SupplierEditorPage() {
     const loadSupplierEditor = async () => {
       try {
         setPageLoading(true);
-        const [suppliers, products, procurementTypes, paymentTerms] = await Promise.all([
-          listSuppliersFresh(),
-          listProductsFresh(),
+        const [suppliers, products, procurementTypes, paymentTerms, supplier] = await Promise.all([
+          listSuppliersFresh({ slim: true }),
+          listProductsRawFresh(),
           listMasterDataFresh("procurement-types"),
           listMasterDataFresh("payment-terms"),
+          isEditMode && supplierId ? getSupplierByIdFresh(supplierId) : Promise.resolve(null),
         ]);
 
         if (cancelled) {
@@ -451,7 +452,6 @@ export function SupplierEditorPage() {
           return;
         }
 
-        const supplier = suppliers.find((item) => item.id === supplierId);
         if (!supplier) {
           message.error("Tedarikci kaydi bulunamadi.");
           navigate("/purchasing/suppliers");
@@ -899,8 +899,8 @@ export function SupplierEarningsManagementPage() {
     try {
       setPageLoading(true);
       const [suppliers, products, sales, returns, contracts, earningsRecords] = await Promise.all([
-        listSuppliersFresh(),
-        listProductsFresh(),
+        listSuppliersFresh({ slim: true }),
+        listProductsRawFresh(),
         listPosSalesFresh(),
         listPosReturnsFresh(),
         listContractsFresh(),

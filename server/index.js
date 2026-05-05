@@ -29,6 +29,7 @@ import {
   handleProductsUpdate,
   handleSuppliersCreate,
   handleSuppliersDelete,
+  handleSuppliersGet,
   handleSuppliersList,
   handleSuppliersUpdate,
 } from "./catalog.js";
@@ -185,6 +186,7 @@ app.get("/api/master-data/:entityKey", requireRole("Yonetici", "Magaza", "Muhase
 app.post("/api/master-data/:entityKey", requireRole("Yonetici"), handleMasterDataCreate);
 app.put("/api/master-data/:entityKey/:id", requireRole("Yonetici"), handleMasterDataUpdate);
 app.get("/api/suppliers", requireRole("Yonetici", "Muhasebe", "Tedarikci"), handleSuppliersList);
+app.get("/api/suppliers/:id", requireRole("Yonetici", "Muhasebe", "Tedarikci"), handleSuppliersGet);
 app.post("/api/suppliers", requireRole("Yonetici"), handleSuppliersCreate);
 app.put("/api/suppliers/:id", requireRole("Yonetici"), handleSuppliersUpdate);
 app.delete("/api/suppliers/:id", requireRole("Yonetici"), handleSuppliersDelete);
