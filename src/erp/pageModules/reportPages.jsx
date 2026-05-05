@@ -14,7 +14,7 @@ import {
   getThirdFridayAfterPeriodEnd,
 } from "../earningsReportUtils";
 import { listPosSalesFresh, listPosReturnsFresh } from "../posData";
-import { listProductsFresh } from "../productsData";
+import { listProductsRawFresh } from "../productsData";
 import { getReportSchedule, sendConsolidatedEarningsReportNow, updateReportSchedule } from "../reportsData";
 import { listSuppliersFresh } from "../suppliersData";
 
@@ -153,7 +153,7 @@ export default function ConsolidatedEarningsReportPage() {
       const [{ item }, suppliers, products, sales, returns, contracts, earningsRecords] = await Promise.all([
         getReportSchedule(REPORT_KEY),
         listSuppliersFresh(),
-        listProductsFresh(),
+        listProductsRawFresh(),
         listPosSalesFresh(),
         listPosReturnsFresh(),
         listContractsFresh(),

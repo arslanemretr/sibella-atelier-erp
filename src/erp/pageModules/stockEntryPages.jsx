@@ -5,7 +5,7 @@ import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutli
 import * as XLSX from "xlsx";
 import { createStockEntry, listStockEntriesFresh, updateStockEntry } from "../stockEntriesData";
 import { listSuppliersFresh } from "../suppliersData";
-import { listProductsFresh } from "../productsData";
+import { listProductsRawFresh } from "../productsData";
 
 const { Title, Text } = Typography;
 
@@ -54,7 +54,7 @@ export function StockEntryEditorPage() {
         setPageLoading(true);
         const [suppliers, nextProducts, entries] = await Promise.all([
           listSuppliersFresh(),
-          listProductsFresh(),
+          listProductsRawFresh(),
           listStockEntriesFresh(),
         ]);
 
@@ -357,7 +357,7 @@ export function StockEntryListPage() {
       setTableLoading(true);
       const [suppliers, products, nextEntries] = await Promise.all([
         listSuppliersFresh(),
-        listProductsFresh(),
+        listProductsRawFresh(),
         listStockEntriesFresh(),
       ]);
       setSupplierOptions(suppliers.map((item) => ({ value: item.id, label: item.company })));

@@ -11,7 +11,7 @@ import { listEarningsRecordsFresh } from "../earningsData";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
 import { listPosSalesFresh, listPosReturnsFresh } from "../posData";
-import { listProductsFresh } from "../productsData";
+import { listProductsFresh, listProductsRawFresh } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 
 const { Title, Text } = Typography;
@@ -313,7 +313,7 @@ export function SupplierPortalEarningsPage() {
         setPageLoading(true);
         const [suppliers, nextProducts, nextSales, nextReturns, nextContracts, nextRecords] = await Promise.all([
           listSuppliersFresh(),
-          listProductsFresh(),
+          listProductsFresh({ slim: true }),
           listPosSalesFresh(),
           listPosReturnsFresh(),
           listContractsFresh(),
@@ -698,7 +698,7 @@ export function SupplierPortalProductListPage() {
     try {
       setTableLoading(true);
       const [nextProducts, categories, collections] = await Promise.all([
-        listProductsFresh(),
+        listProductsFresh({ slim: true }),
         listMasterDataFresh("categories"),
         listMasterDataFresh("collections"),
       ]);
@@ -1063,7 +1063,7 @@ export function SupplierPortalProductEditorPage() {
       try {
         setPageLoading(true);
         const [products, categories, collections, suppliers] = await Promise.all([
-          listProductsFresh(),
+          listProductsRawFresh(),
           listMasterDataFresh("categories"),
           listMasterDataFresh("collections"),
           listSuppliersFresh(),
@@ -1838,7 +1838,7 @@ export function SupplierPortalDeliveryEditorPage() {
           listMasterDataFresh("categories"),
           listMasterDataFresh("collections"),
           listSuppliersFresh(),
-          listProductsFresh(),
+          listProductsRawFresh(),
           listDeliveryListsFresh(),
         ]);
 

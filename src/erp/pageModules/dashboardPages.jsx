@@ -46,7 +46,7 @@ import {
 import { getAuthUser } from "../../auth";
 import { fetchDashboardSummary } from "../dashboardApi";
 import { listDeliveryListsBySupplierFresh, listDeliveryListsFresh } from "../deliveryListsData";
-import { listProductsFresh } from "../productsData";
+import { listProductsRawFresh } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 
 const { Title, Text } = Typography;
@@ -654,7 +654,7 @@ export function SupplierDashboardPage() {
         setPageLoading(true);
         const [suppliers, nextProducts, allDeliveries] = await Promise.all([
           listSuppliersFresh(),
-          listProductsFresh(),
+          listProductsRawFresh(),
           authUser?.supplierId ? listDeliveryListsBySupplierFresh(authUser.supplierId) : listDeliveryListsFresh(),
         ]);
         if (cancelled) return;

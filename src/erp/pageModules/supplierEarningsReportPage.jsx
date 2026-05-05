@@ -5,7 +5,7 @@ import { EyeOutlined, MailOutlined, ReloadOutlined, SaveOutlined } from "@ant-de
 import { listContractsFresh } from "../contractsData";
 import { listEarningsRecordsFresh } from "../earningsData";
 import { listPosSalesFresh, listPosReturnsFresh } from "../posData";
-import { listProductsFresh } from "../productsData";
+import { listProductsRawFresh } from "../productsData";
 import { getReportSchedule, sendSupplierEarningsReportNow, updateReportSchedule } from "../reportsData";
 import {
   addSupplierMonths,
@@ -177,7 +177,7 @@ export default function SupplierEarningsReportPage() {
       const [{ item }, nextSuppliers, nextProducts, nextSales, nextReturns, nextContracts, nextRecords] = await Promise.all([
         getReportSchedule(REPORT_KEY),
         listSuppliersFresh(),
-        listProductsFresh(),
+        listProductsRawFresh(),
         listPosSalesFresh(),
         listPosReturnsFresh(),
         listContractsFresh(),

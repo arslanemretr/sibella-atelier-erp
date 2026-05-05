@@ -5,7 +5,7 @@ import { CheckOutlined, DeleteOutlined, EditOutlined, FilePdfOutlined, PlusCircl
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
-import { listProductsFresh } from "../productsData";
+import { listProductsRawFresh } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, listStoreShipmentsFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
@@ -231,7 +231,7 @@ export function StoreShipmentEditorPage() {
         setPageLoading(true);
         const [storeRows, productRows, categoryRows, collectionRows, supplierRows, shipmentRows] = await Promise.all([
           listStoresFresh(),
-          listProductsFresh(),
+          listProductsRawFresh(),
           listMasterDataFresh("categories"),
           listMasterDataFresh("collections"),
           listSuppliersFresh(),

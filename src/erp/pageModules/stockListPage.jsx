@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Card, Descriptions, Drawer, Input, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DownloadOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
-import { listProductsFresh } from "../productsData";
+import { listProductsRawFresh } from "../productsData";
 import { listStockMovementsFresh } from "../stockMovementsData";
 
 const { Title, Text } = Typography;
@@ -92,7 +92,7 @@ export function StockListPage() {
     try {
       const [movementRows, products] = await Promise.all([
         listStockMovementsFresh(),
-        listProductsFresh(),
+        listProductsRawFresh(),
       ]);
 
       const productMap = new Map(products.map((item) => [item.id, item]));

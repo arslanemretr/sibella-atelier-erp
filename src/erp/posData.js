@@ -1,4 +1,4 @@
-import { getProductById, listProducts, listProductsFresh } from "./productsData";
+import { getProductById, listProducts, listProductsRawFresh } from "./productsData";
 import { mutateResourceSync, requestCollection, requestCollectionSync } from "./apiClient";
 
 function createId(prefix) {
@@ -170,7 +170,7 @@ export async function listPosSalesFresh(productsOverride = null, options = {}) {
   const query = options.sessionId ? `?sessionId=${encodeURIComponent(options.sessionId)}` : "";
   const [sales, products] = await Promise.all([
     requestCollection(`/api/pos-sales${query}`, seedSales()),
-    productsOverride ? Promise.resolve(productsOverride) : listProductsFresh(),
+    productsOverride ? Promise.resolve(productsOverride) : listProductsRawFresh(),
   ]);
   const productMap = Object.fromEntries(products.map((item) => [item.id, item]));
 

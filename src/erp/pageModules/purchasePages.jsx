@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Modal, Row, Select, Space, Table, Typography, message } from "antd";
 import { listMasterDataFresh } from "../masterData";
-import { listProductsFresh } from "../productsData";
+import { listProductsFresh, listProductsRawFresh } from "../productsData";
 import { createPurchase, listPurchasesFresh, updatePurchase } from "../purchasesData";
 import { listSuppliersFresh } from "../suppliersData";
 
@@ -51,7 +51,7 @@ export function PurchaseListPage() {
         listSuppliersFresh(),
         listMasterDataFresh("procurement-types"),
         listMasterDataFresh("payment-terms"),
-        listProductsFresh(),
+        listProductsFresh({ slim: true }),
       ]);
       const purchaseRows = await listPurchasesFresh({
         suppliers,
@@ -346,7 +346,7 @@ export function PurchaseEditorPage() {
           listSuppliersFresh(),
           listMasterDataFresh("procurement-types"),
           listMasterDataFresh("payment-terms"),
-          listProductsFresh(),
+          listProductsFresh({ slim: true }),
           listPurchasesFresh(),
         ]);
 
