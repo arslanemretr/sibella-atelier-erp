@@ -51,6 +51,7 @@ async function ensureDeliveryLineSchema() {
       await sqlExec("ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS category_label TEXT");
       await sqlExec("ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS collection_id TEXT");
       await sqlExec("ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS collection_label TEXT");
+      await sqlExec("ALTER TABLE delivery_lines ADD COLUMN IF NOT EXISTS barcode_standard_id TEXT");
 
       const hasDeliveryId = await columnExists("delivery_lines", "delivery_id");
       deliveryLineSchemaInfo = {
@@ -443,6 +444,7 @@ function mapDeliveryLineRow(row) {
     categoryLabel: row.category_label || "",
     collectionId: row.collection_id || null,
     collectionLabel: row.collection_label || "",
+    barcodeStandardId: row.barcode_standard_id || null,
   };
 }
 
@@ -528,27 +530,17 @@ async function replaceDeliveryLines(record) {
         INSERT INTO delivery_lines (
           id, delivery_id, delivery_list_id, product_id, is_new_product, image, name, code,
           sale_price, sale_currency, quantity, description, sort_order, category_id, category_label,
-          collection_id, collection_label
+          collection_id, collection_label, barcode_standard_id
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
       `, [
-        line.id,
-        record.id,
-        record.id,
-        line.productId,
-        line.isNewProduct,
-        line.image,
-        line.name,
-        line.code,
-        line.salePrice,
-        line.saleCurrency,
-        line.quantity,
-        line.description,
-        index + 1,
-        line.categoryId,
-        line.categoryLabel || "",
-        line.collectionId,
-        line.collectionLabel || "",
+        line.id, record.id, record.id,
+        line.productId, line.isNewProduct, line.image,
+        line.name, line.code, line.salePrice, line.saleCurrency,
+        line.quantity, line.description, index + 1,
+        line.categoryId, line.categoryLabel || "",
+        line.collectionId, line.collectionLabel || "",
+        line.barcodeStandardId || null,
       ]);
       continue;
     }
@@ -557,26 +549,17 @@ async function replaceDeliveryLines(record) {
       INSERT INTO delivery_lines (
         id, delivery_list_id, product_id, is_new_product, image, name, code,
         sale_price, sale_currency, quantity, description, sort_order, category_id, category_label,
-        collection_id, collection_label
+        collection_id, collection_label, barcode_standard_id
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
     `, [
-      line.id,
-      record.id,
-      line.productId,
-      line.isNewProduct,
-      line.image,
-      line.name,
-      line.code,
-      line.salePrice,
-      line.saleCurrency,
-      line.quantity,
-      line.description,
-      index + 1,
-      line.categoryId,
-      line.categoryLabel || "",
-      line.collectionId,
-      line.collectionLabel || "",
+      line.id, record.id,
+      line.productId, line.isNewProduct, line.image,
+      line.name, line.code, line.salePrice, line.saleCurrency,
+      line.quantity, line.description, index + 1,
+      line.categoryId, line.categoryLabel || "",
+      line.collectionId, line.collectionLabel || "",
+      line.barcodeStandardId || null,
     ]);
   }
 }

@@ -1892,6 +1892,7 @@ export function SupplierPortalDeliveryEditorPage() {
   const [supplier, setSupplier] = React.useState(null);
   const [categoryOptions, setCategoryOptions] = React.useState([]);
   const [collectionOptions, setCollectionOptions] = React.useState([]);
+  const [barcodeStandardOptions, setBarcodeStandardOptions] = React.useState([]);
   const [supplierProducts, setSupplierProducts] = React.useState([]);
   const [lineDraft, setLineDraft] = React.useState({
     productId: undefined,
@@ -1951,9 +1952,10 @@ export function SupplierPortalDeliveryEditorPage() {
 
       try {
         setPageLoading(true);
-        const [categories, collections, supplierResult, products, loadedRecord] = await Promise.all([
+        const [categories, collections, barcodeStandards, supplierResult, products, loadedRecord] = await Promise.all([
           listMasterDataFresh("categories"),
           listMasterDataFresh("collections"),
+          listMasterDataFresh("barcode-standards"),
           // Tedarikçi görünümünde tek kayıt çek; admin görünümünde tüm liste gerekir
           isAdminView ? listSuppliersFresh({ slim: true }) : getSupplierByIdFresh(supplierId),
           listProductsRawFresh(),
@@ -1976,6 +1978,11 @@ export function SupplierPortalDeliveryEditorPage() {
           collections
             .map((item) => ({ value: item.id, label: item.name || item.id }))
             .sort((a, b) => a.label.localeCompare(b.label, "tr")),
+        );
+        setBarcodeStandardOptions(
+          (barcodeStandards || [])
+            .filter((item) => item.status === "Aktif")
+            .map((item) => ({ value: item.id, label: item.name || item.id })),
         );
 
         const resolvedSupplierId = isAdminView ? (loadedRecord?.supplierId || null) : supplierId;
@@ -2257,6 +2264,7 @@ export function SupplierPortalDeliveryEditorPage() {
       quantity: Number(editLine.quantity || 0),
       categoryLabel: categoryLabelMap[editLine.categoryId] || editLine.categoryLabel || "",
       collectionLabel: collectionLabelMap[editLine.collectionId] || editLine.collectionLabel || "",
+      barcodeStandardId: editLine.barcodeStandardId || null,
     };
     setDeliveryLines(currentLines);
     form.setFieldValue("lines", currentLines);
@@ -2293,6 +2301,7 @@ export function SupplierPortalDeliveryEditorPage() {
         categoryId: editLine.categoryId || null,
         collectionId: editLine.collectionId || null,
         posCategoryId: null,
+        barcodeStandardId: editLine.barcodeStandardId || null,
         barcode: "",
         supplierCode: editLine.code,
         minStock: 0,
@@ -2627,7 +2636,7 @@ export function SupplierPortalDeliveryEditorPage() {
       <Drawer
         title="Teslimat Satiri Duzenle"
         placement="right"
-        width={440}
+        width={480}
         open={editOpen}
         onClose={() => {
           setEditOpen(false);
@@ -2636,8 +2645,8 @@ export function SupplierPortalDeliveryEditorPage() {
         }}
       >
         {editLine ? (
-          <Space direction="vertical" size={16} style={{ width: "100%" }}>
-            <div className="erp-product-preview" style={{ minHeight: 220 }} onClick={() => (!isDeliveryLocked || isAdminView) && editImageInputRef.current?.click()} role="button" tabIndex={0}>
+          <Space direction="vertical" size={14} style={{ width: "100%" }}>
+            <div className="erp-product-preview" style={{ minHeight: 200 }} onClick={() => (!isDeliveryLocked || isAdminView) && editImageInputRef.current?.click()} role="button" tabIndex={0}>
               <img src={editLine.image || "/products/baroque-necklace.svg"} alt="Urun gorseli" className="erp-product-image-large" />
             </div>
             <input
@@ -2651,29 +2660,83 @@ export function SupplierPortalDeliveryEditorPage() {
                 event.target.value = "";
               }}
             />
-            <Button onClick={() => editImageInputRef.current?.click()} disabled={isDeliveryLocked && !isAdminView}>Gorsel Degistir</Button>
-            <div>
-              <Text strong>Urun Adi</Text>
-              <Input disabled value={editLine.name} />
-            </div>
-            <div>
-              <Text strong>Urun Kodu</Text>
-              <Input disabled value={editLine.code} />
-            </div>
-            <Row gutter={12}>
+            <Button size="small" onClick={() => editImageInputRef.current?.click()} disabled={isDeliveryLocked && !isAdminView}>Gorsel Degistir</Button>
+
+            <Row gutter={[12, 8]}>
+              <Col span={24}>
+                <Text strong>Urun Adi</Text>
+                <Input
+                  value={editLine.name}
+                  disabled={isDeliveryLocked && !isAdminView}
+                  onChange={(e) => setEditLine((cur) => ({ ...cur, name: e.target.value }))}
+                />
+              </Col>
+              <Col span={24}>
+                <Text strong>Urun Kodu</Text>
+                <Input
+                  value={editLine.code}
+                  disabled={isDeliveryLocked && !isAdminView}
+                  onChange={(e) => setEditLine((cur) => ({ ...cur, code: e.target.value }))}
+                />
+              </Col>
               <Col span={12}>
                 <Text strong>Satis Fiyati</Text>
-                <InputNumber disabled style={{ width: "100%" }} min={0} value={editLine.salePrice} addonAfter="TRY" />
+                <InputNumber
+                  style={{ width: "100%" }}
+                  min={0}
+                  value={editLine.salePrice}
+                  disabled={isDeliveryLocked && !isAdminView}
+                  addonAfter="TRY"
+                  onChange={(value) => setEditLine((cur) => ({ ...cur, salePrice: value ?? 0 }))}
+                />
               </Col>
               <Col span={12}>
                 <Text strong>Teslim Adedi</Text>
-                <InputNumber disabled={isDeliveryLocked && !isAdminView} style={{ width: "100%" }} min={1} value={editLine.quantity} onChange={(value) => setEditLine((current) => ({ ...current, quantity: value || 1 }))} />
+                <InputNumber
+                  style={{ width: "100%" }}
+                  min={1}
+                  value={editLine.quantity}
+                  disabled={isDeliveryLocked && !isAdminView}
+                  onChange={(value) => setEditLine((cur) => ({ ...cur, quantity: value || 1 }))}
+                />
+              </Col>
+              <Col span={24}>
+                <Text strong>Kategori</Text>
+                <Select
+                  style={{ width: "100%" }}
+                  allowClear
+                  placeholder="Kategori seciniz"
+                  value={editLine.categoryId || undefined}
+                  options={categoryOptions}
+                  disabled={isDeliveryLocked && !isAdminView}
+                  onChange={(value) => setEditLine((cur) => ({ ...cur, categoryId: value || null }))}
+                  showSearch
+                  filterOption={(input, option) => String(option?.label || "").toLowerCase().includes(input.toLowerCase())}
+                />
+              </Col>
+              <Col span={24}>
+                <Text strong>Barkod Kategorisi</Text>
+                <Select
+                  style={{ width: "100%" }}
+                  allowClear
+                  placeholder="Barkod kategorisi seciniz"
+                  value={editLine.barcodeStandardId || undefined}
+                  options={barcodeStandardOptions}
+                  disabled={isDeliveryLocked && !isAdminView}
+                  onChange={(value) => setEditLine((cur) => ({ ...cur, barcodeStandardId: value || null }))}
+                />
+              </Col>
+              <Col span={24}>
+                <Text strong>Aciklama</Text>
+                <Input.TextArea
+                  rows={3}
+                  value={editLine.description}
+                  disabled={isDeliveryLocked && !isAdminView}
+                  onChange={(e) => setEditLine((cur) => ({ ...cur, description: e.target.value }))}
+                />
               </Col>
             </Row>
-            <div>
-              <Text strong>Aciklama</Text>
-              <Input.TextArea disabled={isDeliveryLocked && !isAdminView} rows={4} value={editLine.description} onChange={(event) => setEditLine((current) => ({ ...current, description: event.target.value }))} />
-            </div>
+
             <Space style={{ justifyContent: "flex-end", width: "100%" }}>
               <Button onClick={() => setEditOpen(false)}>Vazgec</Button>
               {isAdminView && promoteMode && editLine.isNewProduct && !editLine.productId ? (
