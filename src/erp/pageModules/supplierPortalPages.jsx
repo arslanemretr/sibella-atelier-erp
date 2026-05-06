@@ -12,7 +12,7 @@ import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
 import { listPosSalesFresh, listPosReturnsFresh } from "../posData";
 import { listProductsFresh, listProductsRawFresh } from "../productsData";
-import { listSuppliersFresh } from "../suppliersData";
+import { getSupplierByIdFresh, listSuppliersFresh } from "../suppliersData";
 
 const { Title, Text } = Typography;
 
@@ -1550,6 +1550,71 @@ export function SupplierPortalDeliveryListPage() {
   const [search, setSearch] = React.useState("");
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedRecord, setSelectedRecord] = React.useState(null);
+  const [newModalOpen, setNewModalOpen] = React.useState(false);
+  const [newModalLoading, setNewModalLoading] = React.useState(false);
+  const [newModalSaving, setNewModalSaving] = React.useState(false);
+  const [newModalMeta, setNewModalMeta] = React.useState({ deliveryNo: "", supplierName: "", contactName: "", supplierEmail: "", shortCode: "" });
+  const [newForm] = Form.useForm();
+
+  const handleOpenNewModal = React.useCallback(async () => {
+    if (!supplierId) { message.error("Tedarikci eslesmesi bulunamadi."); return; }
+    setNewModalOpen(true);
+    setNewModalLoading(true);
+    newForm.resetFields();
+    try {
+      const [supplier, deliveryNo] = await Promise.all([
+        getSupplierByIdFresh(supplierId),
+        getNextDeliveryNoPreviewFresh(supplierId),
+      ]);
+      setNewModalMeta({
+        deliveryNo: deliveryNo || "",
+        supplierName: supplier?.company || "",
+        contactName: supplier?.contact || "",
+        supplierEmail: supplier?.email || authUser?.email || "",
+        shortCode: supplier?.shortCode || "",
+      });
+      newForm.setFieldsValue({
+        date: new Date().toISOString().slice(0, 10),
+        shippingMethod: "Kargo",
+        trackingNo: "",
+        note: "",
+      });
+    } catch {
+      message.error("Teslimat bilgileri yuklenemedi.");
+      setNewModalOpen(false);
+    } finally {
+      setNewModalLoading(false);
+    }
+  }, [authUser?.email, newForm, supplierId]);
+
+  const handleNewModalSave = async () => {
+    try {
+      const values = await newForm.validateFields();
+      setNewModalSaving(true);
+      const result = await requestJson("POST", "/api/delivery-lists", {
+        deliveryNo: newModalMeta.deliveryNo,
+        supplierId,
+        supplierName: newModalMeta.supplierName,
+        contactName: newModalMeta.contactName,
+        supplierEmail: newModalMeta.supplierEmail,
+        date: values.date,
+        shippingMethod: values.shippingMethod || "Kargo",
+        trackingNo: values.trackingNo || "",
+        note: values.note || "",
+        status: "Taslak",
+        lines: [],
+        createdBy: authUser?.id || null,
+      });
+      const savedId = result?.item?.id || result?.id;
+      if (!savedId) throw new Error("Teslimat kaydedilemedi.");
+      setNewModalOpen(false);
+      navigate(`/supplier/deliveries/${savedId}`);
+    } catch (error) {
+      if (!error?.errorFields) message.error(error?.message || "Teslimat olusturulamadi.");
+    } finally {
+      setNewModalSaving(false);
+    }
+  };
 
   const handleDeleteRecord = async (record) => {
     try {
@@ -1705,7 +1770,7 @@ export function SupplierPortalDeliveryListPage() {
       <Card bordered={false} className="erp-list-toolbar-card">
         <div className="erp-list-toolbar erp-product-toolbar-single">
           <Space wrap className="erp-product-toolbar-actions">
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/supplier/deliveries/new")}>Yeni Teslimat</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => void handleOpenNewModal()}>Yeni Teslimat</Button>
           </Space>
           <div className="erp-product-toolbar-search">
             <Input
@@ -1754,6 +1819,58 @@ export function SupplierPortalDeliveryListPage() {
           </Descriptions>
         ) : null}
       </Drawer>
+
+      <Modal
+        title="Yeni Teslimat"
+        open={newModalOpen}
+        onCancel={() => { if (!newModalSaving) { setNewModalOpen(false); newForm.resetFields(); } }}
+        onOk={() => void handleNewModalSave()}
+        okText="Kaydet ve Devam Et"
+        cancelText="Vazgeç"
+        confirmLoading={newModalSaving}
+        centered
+        width={600}
+        destroyOnClose
+      >
+        {newModalLoading ? (
+          <div style={{ textAlign: "center", padding: "32px 0" }}>
+            <Text type="secondary">Yükleniyor...</Text>
+          </div>
+        ) : (
+          <Space direction="vertical" size={16} style={{ width: "100%", paddingTop: 8 }}>
+            <Descriptions column={2} size="small" bordered>
+              <Descriptions.Item label="Teslimat Kodu">{newModalMeta.deliveryNo || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Firma">{newModalMeta.supplierName || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Yetkili Kişi">{newModalMeta.contactName || "-"}</Descriptions.Item>
+              <Descriptions.Item label="E-posta">{newModalMeta.supplierEmail || "-"}</Descriptions.Item>
+            </Descriptions>
+            <Form form={newForm} layout="vertical">
+              <Row gutter={[12, 0]}>
+                <Col xs={24} sm={12}>
+                  <Form.Item name="date" label="Tarih" rules={[{ required: true, message: "Tarih zorunludur." }]}>
+                    <Input type="date" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item name="shippingMethod" label="Gönderim Şekli">
+                    <Select options={["Kargo", "Elden Teslim"].map((v) => ({ value: v, label: v }))} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item name="trackingNo" label="Kargo Takip Kodu">
+                    <Input placeholder="Takip kodu (opsiyonel)" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item name="note" label="Not">
+                    <Input placeholder="Not (opsiyonel)" />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Form>
+          </Space>
+        )}
+      </Modal>
     </Space>
   );
 }
@@ -1762,7 +1879,7 @@ export function SupplierPortalDeliveryEditorPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { deliveryId: deliveryIdParam } = useParams();
-  const [deliveryId, setDeliveryId] = React.useState(deliveryIdParam || null);
+  const [deliveryId, setDeliveryId] = React.useState((deliveryIdParam && deliveryIdParam !== "new") ? deliveryIdParam : null);
   const authUser = getAuthUser();
   const isAdminView = location.pathname.startsWith("/supplier-portal/");
   const supplierId = authUser?.supplierId || null;
@@ -1834,10 +1951,11 @@ export function SupplierPortalDeliveryEditorPage() {
 
       try {
         setPageLoading(true);
-        const [categories, collections, suppliers, products, loadedRecord] = await Promise.all([
+        const [categories, collections, supplierResult, products, loadedRecord] = await Promise.all([
           listMasterDataFresh("categories"),
           listMasterDataFresh("collections"),
-          listSuppliersFresh({ slim: true }),
+          // Tedarikçi görünümünde tek kayıt çek; admin görünümünde tüm liste gerekir
+          isAdminView ? listSuppliersFresh({ slim: true }) : getSupplierByIdFresh(supplierId),
           listProductsRawFresh(),
           isEditMode ? getDeliveryListByIdFresh(deliveryId) : Promise.resolve(null),
         ]);
@@ -1845,6 +1963,9 @@ export function SupplierPortalDeliveryEditorPage() {
         if (cancelled) {
           return;
         }
+
+        // supplierResult: admin → dizi, supplier → tek obje
+        const suppliers = isAdminView ? (supplierResult || []) : (supplierResult ? [supplierResult] : []);
 
         setCategoryOptions(
           categories
@@ -1877,12 +1998,8 @@ export function SupplierPortalDeliveryEditorPage() {
         };
 
         if (!isEditMode) {
-          if (isAdminView) {
-            navigate("/supplier-portal/delivery-lists", { replace: true });
-            return;
-          }
-          form.setFieldsValue(baseValues);
-          setDeliveryLines([]);
+          // Yeni teslimat artık modal üzerinden oluşturuluyor; direkt /new erişimini listeye yönlendir
+          navigate(isAdminView ? "/supplier-portal/delivery-lists" : "/supplier/deliveries", { replace: true });
           return;
         }
 

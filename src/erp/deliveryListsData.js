@@ -157,7 +157,7 @@ export function getNextDeliveryNoPreview(supplierId) {
 }
 
 export async function getNextDeliveryNoPreviewFresh(supplierId, supplierShortCode) {
-  const records = await requestCollection("/api/delivery-lists", seedDeliveryLists());
+  const records = await requestCollection("/api/delivery-lists?slim=true", seedDeliveryLists());
   let resolvedCode = supplierShortCode;
   if (!resolvedCode) {
     const suppliers = await listSuppliersFresh({ slim: true });
