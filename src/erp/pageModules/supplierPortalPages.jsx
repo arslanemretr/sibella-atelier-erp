@@ -6,7 +6,7 @@ import { AppstoreOutlined, BarsOutlined, CheckOutlined, DeleteOutlined, Download
 import * as XLSX from "xlsx";
 import { getAuthUser } from "../../auth";
 import { listContractsFresh } from "../contractsData";
-import { completeDeliveryReceipt, createDeliveryPdf, deleteDeliveryList, getDeliveryListById, getNextDeliveryNoPreviewFresh, listDeliveryListsBySupplierFresh, listDeliveryListsFresh, updateDeliveryList } from "../deliveryListsData";
+import { completeDeliveryReceipt, createDeliveryPdf, deleteDeliveryList, getDeliveryListById, getDeliveryListByIdFresh, getNextDeliveryNoPreviewFresh, listDeliveryListsBySupplierFresh, listDeliveryListsFresh, updateDeliveryList } from "../deliveryListsData";
 import { listEarningsRecordsFresh } from "../earningsData";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
@@ -1272,7 +1272,7 @@ export function SupplierDeliveryListsPage() {
   const refreshRecords = React.useCallback(async () => {
     try {
       setTableLoading(true);
-      const [deliveries, suppliers] = await Promise.all([listDeliveryListsFresh(), listSuppliersFresh({ slim: true })]);
+      const [deliveries, suppliers] = await Promise.all([listDeliveryListsFresh({ slim: true }), listSuppliersFresh({ slim: true })]);
       setRecords(deliveries);
       setSupplierOptions(suppliers.map((item) => ({ value: item.id, label: item.company })));
     } catch (error) {
@@ -1834,12 +1834,12 @@ export function SupplierPortalDeliveryEditorPage() {
 
       try {
         setPageLoading(true);
-        const [categories, collections, suppliers, products, deliveries] = await Promise.all([
+        const [categories, collections, suppliers, products, loadedRecord] = await Promise.all([
           listMasterDataFresh("categories"),
           listMasterDataFresh("collections"),
           listSuppliersFresh({ slim: true }),
           listProductsRawFresh(),
-          listDeliveryListsFresh(),
+          isEditMode ? getDeliveryListByIdFresh(deliveryId) : Promise.resolve(null),
         ]);
 
         if (cancelled) {
@@ -1857,7 +1857,6 @@ export function SupplierPortalDeliveryEditorPage() {
             .sort((a, b) => a.label.localeCompare(b.label, "tr")),
         );
 
-        const loadedRecord = isEditMode ? deliveries.find((item) => item.id === deliveryId) || null : null;
         const resolvedSupplierId = isAdminView ? (loadedRecord?.supplierId || null) : supplierId;
         const resolvedSupplier = suppliers.find((item) => item.id === resolvedSupplierId) || null;
         setTargetRecord(loadedRecord);
@@ -1870,7 +1869,7 @@ export function SupplierPortalDeliveryEditorPage() {
           contactName: resolvedSupplier?.contact || "",
           supplierEmail: resolvedSupplier?.email || authUser?.email || "",
           date: new Date().toISOString().slice(0, 10),
-          deliveryNo: resolvedSupplierId ? await getNextDeliveryNoPreviewFresh(resolvedSupplierId) : "",
+          deliveryNo: resolvedSupplierId ? await getNextDeliveryNoPreviewFresh(resolvedSupplierId, resolvedSupplier?.shortCode) : "",
           shippingMethod: "Kargo",
           trackingNo: "",
           status: "Taslak",

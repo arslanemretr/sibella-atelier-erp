@@ -26,6 +26,12 @@ export async function ensureStockLocationInSessions() {
   }
 }
 
+export async function ensureDeliveryIndexes() {
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_delivery_lines_delivery_list_id ON delivery_lines(delivery_list_id)");
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_delivery_lists_created_at ON delivery_lists(created_at DESC)");
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_delivery_lists_supplier_id ON delivery_lists(supplier_id)");
+}
+
 async function columnExists(tableName, columnName) {
   const rows = await sqlMany(
     `SELECT 1 AS found
@@ -326,8 +332,49 @@ function normalizePosSale(values) {
   };
 }
 
-async function listDeliveryRows() {
+async function listDeliveryRows({ slim = false } = {}) {
   const schemaInfo = await ensureDeliveryLineSchema();
+
+  if (slim) {
+    // Slim mode: satır içeriklerini (base64 görseller dahil) çekmez, sadece sayı döner
+    const deliveryRows = await sqlMany(`
+      SELECT d.*,
+        COALESCE(lc.cnt, 0) AS line_count,
+        COALESCE(lc.total_qty, 0) AS total_quantity,
+        COALESCE(lc.total_amt, 0) AS total_amount
+      FROM delivery_lists d
+      LEFT JOIN (
+        SELECT COALESCE(delivery_list_id, delivery_id) AS dlv_id,
+          COUNT(*) AS cnt,
+          SUM(COALESCE(quantity, 0)) AS total_qty,
+          SUM(COALESCE(quantity, 0) * COALESCE(sale_price, 0)) AS total_amt
+        FROM delivery_lines
+        GROUP BY COALESCE(delivery_list_id, delivery_id)
+      ) lc ON lc.dlv_id = d.id
+      ORDER BY d.created_at DESC, d.date DESC
+    `);
+    return deliveryRows.map((row) => ({
+      id: row.id,
+      deliveryNo: row.delivery_no || "",
+      supplierId: row.supplier_id || null,
+      supplierName: row.supplier_name || "",
+      contactName: row.contact_name || "",
+      supplierEmail: row.supplier_email || "",
+      date: row.date || "",
+      shippingMethod: row.shipping_method || "Kargo",
+      trackingNo: row.tracking_no || "",
+      note: row.note || "",
+      status: row.status || "Taslak",
+      createdBy: row.created_by || null,
+      lines: [],
+      lineCount: Number(row.line_count || 0),
+      totalQuantity: Number(row.total_quantity || 0),
+      totalAmount: Number(row.total_amount || 0),
+      createdAt: row.created_at || null,
+      updatedAt: row.updated_at || null,
+    }));
+  }
+
   const deliveryRows = await sqlMany("SELECT * FROM delivery_lists ORDER BY created_at DESC, date DESC");
   const lineRows = await sqlMany(
     schemaInfo.hasDeliveryId
@@ -339,42 +386,31 @@ async function listDeliveryRows() {
   lineRows.forEach((row) => {
     const relatedDeliveryId = row.delivery_list_id || row.delivery_id || null;
     const items = linesByDeliveryId.get(relatedDeliveryId) || [];
-    items.push({
-      id: row.id,
-      productId: row.product_id || null,
-      isNewProduct: Boolean(row.is_new_product),
-      image: row.image || "",
-      name: row.name || "",
-      code: row.code || "",
-      salePrice: Number(row.sale_price || 0),
-      saleCurrency: row.sale_currency || "TRY",
-      quantity: Number(row.quantity || 0),
-      description: row.description || "",
-      categoryId: row.category_id || null,
-      categoryLabel: row.category_label || "",
-      collectionId: row.collection_id || null,
-      collectionLabel: row.collection_label || "",
-    });
+    items.push(mapDeliveryLineRow(row));
     linesByDeliveryId.set(relatedDeliveryId, items);
   });
 
-  return deliveryRows.map((row) => ({
-    id: row.id,
-    deliveryNo: row.delivery_no || "",
-    supplierId: row.supplier_id || null,
-    supplierName: row.supplier_name || "",
-    contactName: row.contact_name || "",
-    supplierEmail: row.supplier_email || "",
-    date: row.date || "",
-    shippingMethod: row.shipping_method || "Kargo",
-    trackingNo: row.tracking_no || "",
-    note: row.note || "",
-    status: row.status || "Taslak",
-    createdBy: row.created_by || null,
-    lines: linesByDeliveryId.get(row.id) || [],
-    createdAt: row.created_at || null,
-    updatedAt: row.updated_at || null,
-  }));
+  return deliveryRows.map((row) => {
+    const lines = linesByDeliveryId.get(row.id) || [];
+    return {
+      id: row.id,
+      deliveryNo: row.delivery_no || "",
+      supplierId: row.supplier_id || null,
+      supplierName: row.supplier_name || "",
+      contactName: row.contact_name || "",
+      supplierEmail: row.supplier_email || "",
+      date: row.date || "",
+      shippingMethod: row.shipping_method || "Kargo",
+      trackingNo: row.tracking_no || "",
+      note: row.note || "",
+      status: row.status || "Taslak",
+      createdBy: row.created_by || null,
+      lines,
+      lineCount: lines.length,
+      createdAt: row.created_at || null,
+      updatedAt: row.updated_at || null,
+    };
+  });
 }
 
 async function getDeliveryRow(deliveryId) {
@@ -690,8 +726,15 @@ export async function handlePosSalesCreate(req, res) {
   }
 }
 
-export async function handleDeliveryListsList(_req, res) {
-  return res.json({ ok: true, items: await listDeliveryRows() });
+export async function handleDeliveryListsList(req, res) {
+  const slim = req.query.slim === "true"; // varsayılan full
+  return res.json({ ok: true, items: await listDeliveryRows({ slim }) });
+}
+
+export async function handleDeliveryListsGet(req, res) {
+  const item = await getDeliveryRowDirect(req.params.id);
+  if (!item) return httpError(res, 404, "Teslimat kaydi bulunamadi.");
+  return res.json({ ok: true, item });
 }
 
 export async function handleDeliveryListsCreate(req, res) {

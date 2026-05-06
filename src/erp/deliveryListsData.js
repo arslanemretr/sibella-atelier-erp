@@ -1,5 +1,5 @@
 import { getProductById, listProductsFresh } from "./productsData";
-import { mutateResourceSync, requestCollection, requestCollectionSync } from "./apiClient";
+import { mutateResourceSync, requestCollection, requestCollectionSync, requestJson } from "./apiClient";
 import { getSupplierById, listSuppliers, listSuppliersFresh } from "./suppliersData";
 import { jsPDF, ensurePdfFont, drawPdfLogo, drawDeliveryTableHeader, formatPdfDate, formatPdfMoney } from "./pdfUtils";
 
@@ -109,29 +109,28 @@ export function listDeliveryLists() {
   return loadStore().map(enrichRecord);
 }
 
-export async function listDeliveryListsFresh() {
-  const [records, suppliers] = await Promise.all([
-    requestCollection("/api/delivery-lists", seedDeliveryLists()),
-    listSuppliersFresh(),
-  ]);
-  const supplierMap = Object.fromEntries(suppliers.map((supplier) => [supplier.id, supplier]));
+export async function listDeliveryListsFresh({ slim = false } = {}) {
+  const url = slim ? "/api/delivery-lists?slim=true" : "/api/delivery-lists";
+  const records = await requestCollection(url, seedDeliveryLists());
 
   return records.map((record) => {
-    const supplier = supplierMap[record.supplierId];
-    const totalQuantity = (record.lines || []).reduce((sum, line) => sum + Number(line.quantity || 0), 0);
-    const totalAmount = (record.lines || []).reduce((sum, line) => sum + Number(line.quantity || 0) * Number(line.salePrice || 0), 0);
+    const totalQuantity = record.totalQuantity ?? (record.lines || []).reduce((sum, line) => sum + Number(line.quantity || 0), 0);
+    const totalAmount = record.totalAmount ?? (record.lines || []).reduce((sum, line) => sum + Number(line.quantity || 0) * Number(line.salePrice || 0), 0);
 
     return {
       ...record,
-      supplierName: record.supplierName || supplier?.company || "-",
-      contactName: record.contactName || supplier?.contact || "-",
       totalQuantity,
       totalAmount,
       totalAmountDisplay: formatMoney(totalAmount, "TRY"),
       statusLabel: record.status || "Taslak",
-      lineCount: record.lines?.length || 0,
+      lineCount: record.lineCount ?? record.lines?.length ?? 0,
     };
   });
+}
+
+export async function getDeliveryListByIdFresh(deliveryId) {
+  const data = await requestJson("GET", `/api/delivery-lists/${encodeURIComponent(deliveryId)}`);
+  return data?.item || null;
 }
 
 export function listDeliveryListsBySupplier(supplierId) {
@@ -141,7 +140,7 @@ export function listDeliveryListsBySupplier(supplierId) {
 }
 
 export async function listDeliveryListsBySupplierFresh(supplierId) {
-  const records = await listDeliveryListsFresh();
+  const records = await listDeliveryListsFresh({ slim: true });
   return records.filter((item) => item.supplierId === supplierId);
 }
 
@@ -157,11 +156,14 @@ export function getNextDeliveryNoPreview(supplierId) {
   return getNextDeliveryNo(loadStore(), supplierId);
 }
 
-export async function getNextDeliveryNoPreviewFresh(supplierId) {
+export async function getNextDeliveryNoPreviewFresh(supplierId, supplierShortCode) {
   const records = await requestCollection("/api/delivery-lists", seedDeliveryLists());
-  const suppliers = await listSuppliersFresh();
-  const supplier = suppliers.find((item) => item.id === supplierId);
-  const supplierCode = (supplier?.shortCode || "GENL").toUpperCase();
+  let resolvedCode = supplierShortCode;
+  if (!resolvedCode) {
+    const suppliers = await listSuppliersFresh({ slim: true });
+    resolvedCode = suppliers.find((item) => item.id === supplierId)?.shortCode || "";
+  }
+  const supplierCode = (resolvedCode || "GENL").toUpperCase();
   const nextNumber = records.filter((item) => item.supplierId === supplierId).length + 1;
   return `TES-${supplierCode}-${String(nextNumber).padStart(4, "0")}`;
 }

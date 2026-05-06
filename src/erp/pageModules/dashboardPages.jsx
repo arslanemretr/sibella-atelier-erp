@@ -653,9 +653,9 @@ export function SupplierDashboardPage() {
       try {
         setPageLoading(true);
         const [suppliers, nextProducts, allDeliveries] = await Promise.all([
-          listSuppliersFresh(),
+          listSuppliersFresh({ slim: true }),
           listProductsRawFresh(),
-          authUser?.supplierId ? listDeliveryListsBySupplierFresh(authUser.supplierId) : listDeliveryListsFresh(),
+          authUser?.supplierId ? listDeliveryListsBySupplierFresh(authUser.supplierId) : listDeliveryListsFresh({ slim: true }),
         ]);
         if (cancelled) return;
 
