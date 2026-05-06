@@ -337,6 +337,9 @@ async function listDeliveryRows({ slim = false } = {}) {
 
   if (slim) {
     // Slim mode: satır içeriklerini (base64 görseller dahil) çekmez, sadece sayı döner
+    const idCol = schemaInfo.hasDeliveryId
+      ? "COALESCE(delivery_list_id, delivery_id)"
+      : "delivery_list_id";
     const deliveryRows = await sqlMany(`
       SELECT d.*,
         COALESCE(lc.cnt, 0) AS line_count,
@@ -344,12 +347,12 @@ async function listDeliveryRows({ slim = false } = {}) {
         COALESCE(lc.total_amt, 0) AS total_amount
       FROM delivery_lists d
       LEFT JOIN (
-        SELECT COALESCE(delivery_list_id, delivery_id) AS dlv_id,
+        SELECT ${idCol} AS dlv_id,
           COUNT(*) AS cnt,
           SUM(COALESCE(quantity, 0)) AS total_qty,
           SUM(COALESCE(quantity, 0) * COALESCE(sale_price, 0)) AS total_amt
         FROM delivery_lines
-        GROUP BY COALESCE(delivery_list_id, delivery_id)
+        GROUP BY ${idCol}
       ) lc ON lc.dlv_id = d.id
       ORDER BY d.created_at DESC, d.date DESC
     `);
