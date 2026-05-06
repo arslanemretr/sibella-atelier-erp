@@ -49,7 +49,7 @@ export function listContracts() {
 export async function listContractsFresh() {
   const [contracts, suppliers] = await Promise.all([
     requestCollection("/api/contracts", seedContracts()),
-    listSuppliersFresh(),
+    listSuppliersFresh({ slim: true }),
   ]);
   const supplierMap = Object.fromEntries(suppliers.map((supplier) => [supplier.id, supplier.company]));
   return contracts.map((record) => ({

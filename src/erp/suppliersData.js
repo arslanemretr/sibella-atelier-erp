@@ -128,6 +128,23 @@ export function listSuppliers() {
 
 export async function listSuppliersFresh({ slim = false } = {}) {
   const suppliersUrl = slim ? "/api/suppliers?slim=true" : "/api/suppliers";
+
+  // slim modda tedarikçi listesi yeterli; etiket alanları gerekmez, master-data çekilmez
+  if (slim) {
+    const suppliers = await requestCollection(suppliersUrl, seedSuppliers());
+    return suppliers.map((supplier) => ({
+      ...supplier,
+      procurementTypeLabel: "-",
+      paymentTermLabel: "-",
+      initials: supplier.company
+        .split(" ")
+        .slice(0, 2)
+        .map((part) => part[0] || "")
+        .join("")
+        .toUpperCase(),
+    }));
+  }
+
   const [suppliers, procurementTypes, paymentTerms] = await Promise.all([
     requestCollection(suppliersUrl, seedSuppliers()),
     requestCollection("/api/master-data/procurement-types", []),

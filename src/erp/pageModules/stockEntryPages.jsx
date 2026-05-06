@@ -53,7 +53,7 @@ export function StockEntryEditorPage() {
       try {
         setPageLoading(true);
         const [suppliers, nextProducts, entries] = await Promise.all([
-          listSuppliersFresh(),
+          listSuppliersFresh({ slim: true }),
           listProductsRawFresh(),
           listStockEntriesFresh(),
         ]);
@@ -356,7 +356,7 @@ export function StockEntryListPage() {
     try {
       setTableLoading(true);
       const [suppliers, products, nextEntries] = await Promise.all([
-        listSuppliersFresh(),
+        listSuppliersFresh({ slim: true }),
         listProductsRawFresh(),
         listStockEntriesFresh(),
       ]);

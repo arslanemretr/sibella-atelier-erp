@@ -234,7 +234,7 @@ export function StoreShipmentEditorPage() {
           listProductsRawFresh(),
           listMasterDataFresh("categories"),
           listMasterDataFresh("collections"),
-          listSuppliersFresh(),
+          listSuppliersFresh({ slim: true }),
           isEditMode ? listStoreShipmentsFresh() : Promise.resolve([]),
         ]);
         if (cancelled) {

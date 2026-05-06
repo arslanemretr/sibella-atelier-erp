@@ -554,7 +554,7 @@ export function BarcodeStandardsPage() {
       setLoading(true);
       const [items, supplierList] = await Promise.all([
         listMasterDataFresh("barcode-standards"),
-        listSuppliersFresh(),
+        listSuppliersFresh({ slim: true }),
       ]);
       setRecords(items);
       setSuppliers(supplierList);

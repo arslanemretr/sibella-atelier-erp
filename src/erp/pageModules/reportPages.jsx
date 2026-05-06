@@ -152,7 +152,7 @@ export default function ConsolidatedEarningsReportPage() {
       setPageLoading(true);
       const [{ item }, suppliers, products, sales, returns, contracts, earningsRecords] = await Promise.all([
         getReportSchedule(REPORT_KEY),
-        listSuppliersFresh(),
+        listSuppliersFresh({ slim: true }),
         listProductsRawFresh(),
         listPosSalesFresh(),
         listPosReturnsFresh(),

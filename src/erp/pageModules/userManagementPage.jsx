@@ -37,7 +37,7 @@ function UserManagementPage() {
     try {
       const [nextUsers, suppliers] = await Promise.all([
         listUsersFresh(),
-        listSuppliersFresh(),
+        listSuppliersFresh({ slim: true }),
       ]);
       setUsers(nextUsers);
       setSupplierOptions(suppliers.map((item) => ({ value: item.id, label: item.company })));

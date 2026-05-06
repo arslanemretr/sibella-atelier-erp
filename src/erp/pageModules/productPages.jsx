@@ -128,7 +128,7 @@ export function ProductListPage() {
         listProductsFresh({ slim: true }),
         listMasterDataFresh("categories"),
         listMasterDataFresh("collections"),
-        listSuppliersFresh(),
+        listSuppliersFresh({ slim: true }),
       ]);
 
       setProducts(productRows);
@@ -232,7 +232,7 @@ export function ProductListPage() {
     try {
       const [posCategories, suppliers] = await Promise.all([
         listMasterDataFresh("pos-categories"),
-        listSuppliersFresh(),
+        listSuppliersFresh({ slim: true }),
       ]);
 
       const categoryRows = [
@@ -907,7 +907,7 @@ export function ProductEditorPage() {
           listMasterDataFresh("categories"),
           listMasterDataFresh("collections"),
           listMasterDataFresh("pos-categories"),
-          listSuppliersFresh(),
+          listSuppliersFresh({ slim: true }),
           listMasterDataFresh("barcode-standards"),
           // Edit modda tek ürünü tam veriyle çek; new modda null
           isEditMode && productId ? getProductByIdFresh(productId) : Promise.resolve(null),

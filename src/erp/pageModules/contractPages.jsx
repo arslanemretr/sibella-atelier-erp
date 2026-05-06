@@ -42,7 +42,7 @@ export function ContractsPage() {
       setTableLoading(true);
       const [contracts, suppliers] = await Promise.all([
         listContractsFresh(),
-        listSuppliersFresh(),
+        listSuppliersFresh({ slim: true }),
       ]);
       setRecords(contracts);
       setSupplierOptions(
