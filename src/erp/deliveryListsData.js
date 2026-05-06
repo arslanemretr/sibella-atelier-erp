@@ -180,7 +180,7 @@ export function deleteDeliveryList(deliveryListId) {
   return mutateResourceSync("DELETE", `/api/delivery-lists/${encodeURIComponent(deliveryListId)}`);
 }
 
-export async function createDeliveryPdf(recordOrId) {
+export async function createDeliveryPdf(recordOrId, supplierData = null) {
   const deliveryRecord =
     typeof recordOrId === "string"
       ? enrichRecord(getDeliveryListById(recordOrId))
@@ -209,7 +209,7 @@ export async function createDeliveryPdf(recordOrId) {
   currentY += 8;
 
   doc.setFontSize(11);
-  const supplier = listSuppliers().find((item) => item.id === deliveryRecord.supplierId);
+  const supplier = supplierData || listSuppliers().find((item) => item.id === deliveryRecord.supplierId);
   const headerRows = [
     `Teslimat Kodu: ${deliveryRecord.deliveryNo}`,
     `Tedarikci Firma: ${deliveryRecord.supplierName}`,

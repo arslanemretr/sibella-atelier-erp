@@ -1318,7 +1318,7 @@ export function SupplierDeliveryListsPage() {
       }
     } else {
       updatedRecord = updateDeliveryList(recordId, { ...record, status });
-      if (status === "Onaylandi") await createDeliveryPdf(updatedRecord);
+      if (status === "Onaylandi") await createDeliveryPdf(updatedRecord, { contact: updatedRecord.contactName, email: updatedRecord.supplierEmail });
     }
     refreshRecords();
     message.success(status === "Tamamlandi" ? "Teslimat tamamlandi ve stok hareketlerine aktarildi." : `Teslimat durumu "${status}" olarak guncellendi.`);
@@ -2388,7 +2388,7 @@ export function SupplierPortalDeliveryEditorPage() {
       }
 
       if (shouldDownloadPdf || status === "Onay Bekleniyor") {
-        await createDeliveryPdf(savedRecord);
+        await createDeliveryPdf(savedRecord, supplier);
       }
       message.success(status === "Onay Bekleniyor" ? "Teslimat onaya gonderildi." : "Teslimat kaydedildi.");
       navigate(isAdminView ? `/supplier-portal/delivery-lists/${savedRecord.id}` : `/supplier/deliveries/${savedRecord.id}`);
