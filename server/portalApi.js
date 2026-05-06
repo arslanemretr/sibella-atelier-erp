@@ -332,6 +332,13 @@ function normalizePosSale(values) {
   };
 }
 
+function toIsoDate(val) {
+  if (!val) return "";
+  // PostgreSQL date kolonu Date nesnesi veya ISO string olarak gelebilir
+  // Her iki durumda da "YYYY-MM-DD" döner
+  return String(val instanceof Date ? val.toISOString() : val).slice(0, 10);
+}
+
 async function listDeliveryRows({ slim = false } = {}) {
   const schemaInfo = await ensureDeliveryLineSchema();
 
@@ -363,7 +370,7 @@ async function listDeliveryRows({ slim = false } = {}) {
       supplierName: row.supplier_name || "",
       contactName: row.contact_name || "",
       supplierEmail: row.supplier_email || "",
-      date: row.date || "",
+      date: toIsoDate(row.date),
       shippingMethod: row.shipping_method || "Kargo",
       trackingNo: row.tracking_no || "",
       note: row.note || "",
@@ -402,7 +409,7 @@ async function listDeliveryRows({ slim = false } = {}) {
       supplierName: row.supplier_name || "",
       contactName: row.contact_name || "",
       supplierEmail: row.supplier_email || "",
-      date: row.date || "",
+      date: toIsoDate(row.date),
       shippingMethod: row.shipping_method || "Kargo",
       trackingNo: row.tracking_no || "",
       note: row.note || "",
@@ -457,7 +464,7 @@ async function getDeliveryRowDirect(deliveryId) {
     supplierName: row.supplier_name || "",
     contactName: row.contact_name || "",
     supplierEmail: row.supplier_email || "",
-    date: row.date || "",
+    date: toIsoDate(row.date),
     shippingMethod: row.shipping_method || "Kargo",
     trackingNo: row.tracking_no || "",
     note: row.note || "",
