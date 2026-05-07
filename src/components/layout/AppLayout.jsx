@@ -44,7 +44,7 @@ const AppLayout = ({ children }) => {
             background: 'transparent',
             borderRadius: '8px',
             boxShadow: 'none',
-            overflow: 'auto'
+            overflow: isTabletOrMobile ? 'visible' : 'auto',
           }}
         >
           {children}

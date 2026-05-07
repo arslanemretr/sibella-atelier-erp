@@ -358,16 +358,16 @@ async function getMasterDataRow(entityKey, recordId) {
 
 async function listSuppliersRows({ slim = false } = {}) {
   await ensureSupplierLogoColumn();
-  // slim modda logo (base64 olabilir) ve büyük alanlar hariç tutulur
+  // slim modda base64 logo ve hassas alanlar hariç tutulur; URL tabanlı logo dahil edilir
   const selectCols = slim
-    ? "id, short_code, company, contact, email, phone, city, procurement_type_id, payment_term_id, status, created_at, updated_at"
+    ? "id, short_code, company, logo, contact, email, phone, city, procurement_type_id, payment_term_id, status, created_at, updated_at"
     : "*";
   const rows = await sqlMany(`SELECT ${selectCols} FROM suppliers ORDER BY created_at DESC, company ASC`);
   return rows.map((row) => ({
     id: row.id,
     shortCode: row.short_code || "",
     company: row.company || "",
-    logo: slim ? "" : (row.logo || ""),
+    logo: slim ? (String(row.logo || "").startsWith("data:") ? "" : (row.logo || "")) : (row.logo || ""),
     contact: row.contact || "",
     email: row.email || "",
     phone: row.phone || "",

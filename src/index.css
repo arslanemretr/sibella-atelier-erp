@@ -1445,8 +1445,7 @@ html, body {
   }
 
   .erp-app-content {
-    overflow-y: visible !important;
-    overflow-x: hidden !important;
+    overflow: visible !important;
     flex: none !important;
     min-height: 0 !important;
   }

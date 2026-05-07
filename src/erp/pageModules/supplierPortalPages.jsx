@@ -57,8 +57,8 @@ function formatDisplayMoney(value, currency = "TRY") {
   return new Intl.NumberFormat("tr-TR", {
     style: "currency",
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(Number(value || 0));
 }
 
@@ -481,16 +481,14 @@ export function SupplierPortalEarningsPage() {
           <Title level={3} style={{ marginBottom: 6 }}>Hakediş Özeti</Title>
           <Text type="secondary">Konsinye stok satışlarına göre dönem bazlı hakediş tutarlarınızı buradan takip edebilirsiniz.</Text>
         </div>
-        <Space wrap className="erp-page-intro-actions">
-          <Button icon={<DownloadOutlined />} onClick={handleExportHistory}>Geçmiş Excel</Button>
-        </Space>
+        <Space wrap className="erp-page-intro-actions" />
       </div>
 
       <Card bordered={false} className="erp-list-toolbar-card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <Space wrap>
             <Button onClick={() => setPeriodDate((current) => addMonths(current, -1))}>← Önceki Ay</Button>
-            <Tag color="blue" style={{ padding: "6px 12px", fontSize: 14 }}>{formatPeriodBadge(periodDate)}</Tag>
+            <Tag color="blue" style={{ padding: "8px 18px", fontSize: 18, fontWeight: 700, lineHeight: 1.4 }}>{formatPeriodBadge(periodDate)}</Tag>
             <Button onClick={() => setPeriodDate((current) => addMonths(current, 1))}>Sonraki Ay →</Button>
           </Space>
           {isCurrentPeriod(periodDate) ? <Tag color="gold">Dönem henüz tamamlanmadı</Tag> : null}
@@ -1791,7 +1789,6 @@ export function SupplierPortalDeliveryListPage() {
           columns={columns}
           dataSource={filteredRecords}
           pagination={false}
-          scroll={{ x: 1360 }}
           locale={{ emptyText: "Henuz teslimat kaydiniz bulunmuyor." }}
           onRow={(record) => ({
             onClick: () => openDetailFromRow(setSelectedRecord, setDetailOpen, record),
