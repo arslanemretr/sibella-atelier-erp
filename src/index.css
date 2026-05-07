@@ -519,7 +519,7 @@ html, body {
 
 .erp-pos-shell {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 1fr 380px;
   gap: 16px;
   height: calc(100vh - 130px);
 }
@@ -1242,11 +1242,11 @@ html, body {
   }
 
   .erp-pos-left {
-    order: 2;
+    order: 1;
   }
 
   .erp-pos-right {
-    order: 1;
+    order: 2;
   }
 
   .erp-pos-toolbar {
@@ -1375,7 +1375,7 @@ html, body {
   }
 
   .erp-pos-shell {
-    grid-template-columns: 300px 1fr;
+    grid-template-columns: 1fr 340px;
   }
 
   .erp-pos-product-grid {
@@ -1385,7 +1385,7 @@ html, body {
 
 @media (min-width: 1440px) {
   .erp-pos-shell {
-    grid-template-columns: 340px 1fr;
+    grid-template-columns: 1fr 420px;
   }
 
   .erp-pos-product-grid {

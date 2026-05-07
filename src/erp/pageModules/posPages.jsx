@@ -1071,6 +1071,59 @@ export function PosScreenPage() {
       {activeSession ? (
       <div className="erp-pos-shell">
         <div className="erp-pos-left">
+          <div className="erp-pos-toolbar">
+            <Input
+              prefix={<SearchOutlined />}
+              placeholder="Ürün ara..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="erp-pos-search"
+            />
+            <Input
+              prefix={<BarcodeOutlined />}
+              placeholder="Barkod"
+              value={barcodeValue}
+              onChange={(event) => setBarcodeValue(event.target.value)}
+              onPressEnter={handleBarcodeSubmit}
+              className="erp-pos-barcode"
+            />
+            <Dropdown menu={actionMenu} trigger={["click"]} placement="bottomRight">
+              <Button icon={<MenuOutlined />} className="erp-pos-menu-btn" />
+            </Dropdown>
+          </div>
+
+          <div className="erp-pos-category-row">
+            {posCategoryStateOptions.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                className={`erp-pos-category-chip ${activeCategory === category.id ? "is-selected" : ""}`}
+                style={{ background: category.color }}
+                onClick={() => setActiveCategory(category.id)}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+
+          <div className="erp-pos-product-grid">
+            {catalogLoading ? (
+              <div style={{ padding: 16, gridColumn: "1 / -1", color: "#888" }}>Ürünler yükleniyor...</div>
+            ) : filteredCatalog.map((product) => (
+              <button key={product.id} type="button" className="erp-pos-product-card" onClick={() => addProductToCart(product)}>
+                <div className="erp-pos-product-image-wrap">
+                  <img src={product.imageUrl} alt={product.name} className="erp-pos-product-image" />
+                </div>
+                <div className="erp-pos-product-name">{product.code}-{product.name}</div>
+                <div className="erp-pos-product-name" style={{ fontSize: 12, opacity: 0.75 }}>
+                  {activeOrderStockLocationId ? `Stok: ${product.quantityAvailable}` : "Depo yeri yok"}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="erp-pos-right">
           <div className="erp-pos-order-header">
             <div className="erp-pos-order-header-main">
               <div className="erp-pos-session-info">
@@ -1177,7 +1230,7 @@ export function PosScreenPage() {
                 setCustomerModalOpen(true);
               }}
               >
-                Musteri
+                Müşteri
               </Button>
               <Button onClick={() => {
                 noteForm.setFieldsValue({ note: activeOrder?.note || "" });
@@ -1214,59 +1267,6 @@ export function PosScreenPage() {
               Odeme
             </Button>
           </div>
-        </div>
-
-        <div className="erp-pos-right">
-          <div className="erp-pos-toolbar">
-            <Input
-              prefix={<SearchOutlined />}
-              placeholder="Ürün ara..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="erp-pos-search"
-            />
-            <Input
-              prefix={<BarcodeOutlined />}
-              placeholder="Barkod"
-              value={barcodeValue}
-              onChange={(event) => setBarcodeValue(event.target.value)}
-              onPressEnter={handleBarcodeSubmit}
-              className="erp-pos-barcode"
-            />
-            <Dropdown menu={actionMenu} trigger={["click"]} placement="bottomRight">
-              <Button icon={<MenuOutlined />} className="erp-pos-menu-btn" />
-            </Dropdown>
-          </div>
-
-          <div className="erp-pos-category-row">
-            {posCategoryStateOptions.map((category) => (
-              <button
-                key={category.id}
-                type="button"
-                className={`erp-pos-category-chip ${activeCategory === category.id ? "is-selected" : ""}`}
-                style={{ background: category.color }}
-                onClick={() => setActiveCategory(category.id)}
-              >
-                {category.name}
-              </button>
-            ))}
-          </div>
-
-            <div className="erp-pos-product-grid">
-              {catalogLoading ? (
-                <div style={{ padding: 16, gridColumn: "1 / -1", color: "#888" }}>Ürünler yükleniyor...</div>
-              ) : filteredCatalog.map((product) => (
-                <button key={product.id} type="button" className="erp-pos-product-card" onClick={() => addProductToCart(product)}>
-                  <div className="erp-pos-product-image-wrap">
-                    <img src={product.imageUrl} alt={product.name} className="erp-pos-product-image" />
-                  </div>
-                  <div className="erp-pos-product-name">{product.code}-{product.name}</div>
-                  <div className="erp-pos-product-name" style={{ fontSize: 12, opacity: 0.75 }}>
-                    {activeOrderStockLocationId ? `Stok: ${product.quantityAvailable}` : "Depo yeri yok"}
-                  </div>
-                </button>
-              ))}
-            </div>
         </div>
       </div>
       ) : null}
