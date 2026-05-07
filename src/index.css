@@ -521,7 +521,7 @@ html, body {
   display: grid;
   grid-template-columns: 36% 1fr;
   gap: 16px;
-  min-height: calc(100vh - 180px);
+  height: calc(100vh - 180px);
 }
 
 .erp-pos-left,
@@ -581,9 +581,9 @@ html, body {
 }
 
 .erp-pos-order-list {
-  flex: 1 1 auto;
-  min-height: 260px;
-  overflow: auto;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .erp-pos-active-order-banner {
@@ -691,10 +691,16 @@ html, body {
   width: 100%;
   height: 72px;
   border-radius: 12px;
-  background: #6d4b67;
-  border-color: #6d4b67;
+  background: #f38b7a;
+  border-color: #f38b7a;
   font-size: 28px;
   font-weight: 700;
+}
+
+.erp-pos-pay-btn.ant-btn:hover,
+.erp-pos-pay-btn.ant-btn:focus {
+  background: #e5705e !important;
+  border-color: #e5705e !important;
 }
 
 .erp-pos-toolbar {
@@ -711,7 +717,7 @@ html, body {
 
 .erp-pos-search .ant-input-affix-wrapper,
 .erp-pos-barcode .ant-input-affix-wrapper {
-  min-height: 48px;
+  height: 48px;
   border-radius: 12px;
 }
 
@@ -719,13 +725,10 @@ html, body {
   width: 128px;
 }
 
-.erp-pos-user-avatar {
-  background: #1677ff;
-}
-
-.erp-pos-menu-btn {
-  min-width: 48px;
-  min-height: 48px;
+.erp-pos-menu-btn.ant-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
 }
 
 .erp-pos-category-row {
@@ -755,7 +758,10 @@ html, body {
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   padding: 0 12px 12px;
-  overflow: auto;
+  overflow-y: auto;
+  flex: 1 1 0;
+  min-height: 0;
+  align-content: start;
 }
 
 .erp-pos-product-card {
@@ -1231,7 +1237,8 @@ html, body {
 
   .erp-pos-shell {
     grid-template-columns: 1fr;
-    min-height: auto;
+    height: auto;
+    min-height: 100dvh;
   }
 
   .erp-pos-left {

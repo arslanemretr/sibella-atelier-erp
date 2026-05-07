@@ -1,7 +1,7 @@
 ﻿import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Avatar, Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
-import { BarcodeOutlined, CloseCircleOutlined, CloseOutlined, DeleteOutlined, EditOutlined, FilterOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { BarcodeOutlined, CloseCircleOutlined, CloseOutlined, DeleteOutlined, EditOutlined, FilterOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
@@ -1226,7 +1226,6 @@ export function PosScreenPage() {
               onPressEnter={handleBarcodeSubmit}
               className="erp-pos-barcode"
             />
-            <Avatar className="erp-pos-user-avatar" icon={<UserOutlined />} />
             <Dropdown menu={actionMenu} trigger={["click"]} placement="bottomRight">
               <Button icon={<MenuOutlined />} className="erp-pos-menu-btn" />
             </Dropdown>
