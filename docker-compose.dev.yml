@@ -1,0 +1,35 @@
+services:
+  db:
+    extends:
+      file: docker-compose.yml
+      service: db
+
+  api:
+    extends:
+      file: docker-compose.yml
+      service: api
+    environment:
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://postgres:change-me@db:5432/erpsibella}
+
+  web-dev:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - erpsibella_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "8080:5173"
+    environment:
+      VITE_API_PROXY: "http://api:4001"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    name: ${POSTGRES_VOLUME_NAME:-erpsibella_postgres_data}
+  app_assets:
+    name: ${APP_ASSETS_VOLUME_NAME:-erpsibella_app_assets}
+  erpsibella_node_modules:
