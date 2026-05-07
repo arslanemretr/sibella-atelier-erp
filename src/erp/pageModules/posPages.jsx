@@ -1114,9 +1114,12 @@ export function PosScreenPage() {
                 <div className="erp-pos-product-image-wrap">
                   <img src={product.imageUrl} alt={product.name} className="erp-pos-product-image" />
                 </div>
-                <div className="erp-pos-product-name">{product.code}-{product.name}</div>
-                <div className="erp-pos-product-name" style={{ fontSize: 12, opacity: 0.75 }}>
-                  {activeOrderStockLocationId ? `Stok: ${product.quantityAvailable}` : "Depo yeri yok"}
+                <div className="erp-pos-product-info">
+                  <div className="erp-pos-product-code">{product.code}</div>
+                  <div className="erp-pos-product-name-text">{product.name}</div>
+                  <div className="erp-pos-product-stock">
+                    {activeOrderStockLocationId ? `Stok: ${product.quantityAvailable}` : "—"}
+                  </div>
                 </div>
               </button>
             ))}
@@ -1135,13 +1138,14 @@ export function PosScreenPage() {
             </div>
             <div className="erp-pos-session-tabs">
               {openDraftOrders.length > 0 ? openDraftOrders.map((order) => (
-                <Button
+                <button
                   key={order.id}
-                  type={activeOrder?.id === order.id ? "primary" : "default"}
+                  type="button"
+                  className={`erp-pos-tab-btn ${activeOrder?.id === order.id ? "is-active" : ""}`}
                   onClick={() => setActiveOrderIdBySession((prev) => ({ ...prev, [activeSessionId]: order.id }))}
                 >
-                  {order.title}
-                </Button>
+                  {order.title.split("-").pop() || order.title}
+                </button>
               )) : (
                 <Button type="primary" onClick={() => setOpenSessionModalOpen(true)}>Sipariş Aç</Button>
               )}
@@ -1152,28 +1156,21 @@ export function PosScreenPage() {
             {activeOrder ? (
               <div className="erp-pos-active-order-banner">
                 <div className="erp-pos-active-order-banner-row">
-                  <div>
-                    <Text strong>{getOrderDisplayTitle(activeOrder)}</Text>
-                    <Text type="secondary">{activeOrder.note || "Siparis acik, urun eklemeye hazir."}</Text>
-                  </div>
-                  <Space wrap>
-                    <Button onClick={() => {
+                  <Text strong style={{ fontSize: 13 }}>{getOrderDisplayTitle(activeOrder)}</Text>
+                  <div className="erp-pos-banner-actions">
+                    <Button size="small" onClick={() => {
                       discountForm.setFieldsValue({
                         discountType: activeOrder.discountType || "amount",
                         discountValue: activeOrder.discountValue || 0,
                       });
                       setDiscountModalOpen(true);
-                    }}
-                    >
+                    }}>
                       İndirim
                     </Button>
-                    <Button
-                      onClick={handleCloseOrderButton}
-                      disabled={activeOrder?.id === openDraftOrders[0]?.id}
-                    >
-                      Sipariş Kapat
+                    <Button size="small" onClick={handleCloseOrderButton} disabled={activeOrder?.id === openDraftOrders[0]?.id}>
+                      Kapat
                     </Button>
-                  </Space>
+                  </div>
                 </div>
               </div>
             ) : null}
@@ -1224,47 +1221,49 @@ export function PosScreenPage() {
           </div>
 
           <div className="erp-pos-bottom-actions">
-            <Space className="erp-pos-mini-actions">
-              <Button onClick={() => {
+            <div className="erp-pos-mini-actions">
+              <Button block onClick={() => {
                 customerForm.setFieldsValue({ customerName: activeOrder?.customerName || "" });
                 setCustomerModalOpen(true);
-              }}
-              >
-                Müşteri
-              </Button>
-              <Button onClick={() => {
+              }}>Müşteri</Button>
+              <Button block onClick={() => {
                 noteForm.setFieldsValue({ note: activeOrder?.note || "" });
                 setNoteModalOpen(true);
-              }}
-              >
-                Not
-              </Button>
-            </Space>
-
-            <div className="erp-pos-keypad-display">
-              <Text type="secondary">
-                {selectedCartLineId
-                  ? `Secili satir: ${(cart.find((item) => item.productId === selectedCartLineId)?.name) || "-"}`
-                  : "Secili satir yok"}
-              </Text>
-              <Text strong>{keypadMode === "price" ? "Fiyat" : "Miktar"}: {keypadInput || "-"}</Text>
+              }}>Not</Button>
             </div>
 
-            <div className="erp-pos-keypad">
-              {["1", "2", "3", "Miktar", "4", "5", "6", "%", "7", "8", "9", "Fiyat", "+/-", "0", ",", "?"].map((label) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => handleKeypadPress(label)}
-                  className={`erp-pos-key ${(label === "Miktar" && keypadMode === "quantity") || (label === "Fiyat" && keypadMode === "price") ? "is-active" : ""}`}
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="erp-pos-value-row">
+              {selectedCartLineId ? (
+                <>
+                  <span className="erp-pos-value-label">
+                    {cart.find((item) => item.productId === selectedCartLineId)?.name || "-"}
+                  </span>
+                  <InputNumber
+                    className="erp-pos-value-input"
+                    value={keypadInput !== "" ? Number(keypadInput.replace(",", ".")) : undefined}
+                    onChange={(val) => {
+                      const str = val != null ? String(val) : "";
+                      setKeypadInput(str);
+                      if (str) updateCartLineValue(selectedCartLineId, str, keypadMode);
+                    }}
+                    placeholder={keypadMode === "price" ? "Fiyat gir" : "Miktar gir"}
+                    min={0}
+                    precision={keypadMode === "price" ? 2 : 0}
+                  />
+                </>
+              ) : (
+                <span className="erp-pos-value-empty">Listeden ürün seçin</span>
+              )}
+            </div>
+
+            <div className="erp-pos-action-btns">
+              <button type="button" className={`erp-pos-action-btn ${keypadMode === "quantity" ? "is-active" : ""}`} onClick={() => handleKeypadPress("Miktar")}>Miktar</button>
+              <button type="button" className="erp-pos-action-btn" onClick={() => handleKeypadPress("%")}>% İndirim</button>
+              <button type="button" className={`erp-pos-action-btn ${keypadMode === "price" ? "is-active" : ""}`} onClick={() => handleKeypadPress("Fiyat")}>Fiyat</button>
             </div>
 
             <Button type="primary" size="large" className="erp-pos-pay-btn" onClick={openPaymentModal}>
-              Odeme
+              Ödeme
             </Button>
           </div>
         </div>

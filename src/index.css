@@ -575,9 +575,35 @@ html, body {
 }
 
 .erp-pos-session-tabs .ant-btn {
-  min-height: 44px;
-  min-width: 78px;
+  min-height: 40px;
+  min-width: 72px;
   white-space: nowrap;
+}
+
+.erp-pos-tab-btn {
+  height: 40px;
+  min-width: 56px;
+  padding: 0 14px;
+  border: 1px solid #dbe3ec;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.erp-pos-tab-btn:hover {
+  border-color: #f38b7a;
+  color: #f38b7a;
+}
+
+.erp-pos-tab-btn.is-active {
+  background: #f38b7a;
+  border-color: #f38b7a;
+  color: #fff;
 }
 
 .erp-pos-order-list {
@@ -587,25 +613,22 @@ html, body {
 }
 
 .erp-pos-active-order-banner {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid #edf1f5;
   background: #f8fbff;
 }
 
 .erp-pos-active-order-banner-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 }
 
-.erp-pos-active-order-banner-row > div:first-child {
+.erp-pos-banner-actions {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .erp-pos-order-item {
@@ -644,6 +667,9 @@ html, body {
 .erp-pos-summary-total {
   margin-bottom: 0;
   font-size: 20px;
+  padding-top: 6px;
+  border-top: 1px solid #edf1f5;
+  color: #f38b7a;
 }
 
 .erp-pos-bottom-actions {
@@ -652,39 +678,72 @@ html, body {
 }
 
 .erp-pos-mini-actions {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.erp-pos-keypad {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
-  overflow: hidden;
-  border-radius: 12px;
-  border: 1px solid #dbe3ec;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
   margin-bottom: 8px;
 }
 
-.erp-pos-key {
-  min-height: 52px;
-  border: 0;
-  border-right: 1px solid #dbe3ec;
-  border-bottom: 1px solid #dbe3ec;
-  background: #fff;
-  font-size: 16px;
+.erp-pos-value-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  min-height: 44px;
+}
+
+.erp-pos-value-label {
+  flex: 1;
+  font-size: 13px;
   font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.erp-pos-value-empty {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.erp-pos-value-input {
+  width: 110px !important;
+  flex-shrink: 0;
+}
+
+.erp-pos-action-btns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.erp-pos-action-btn {
+  height: 52px;
+  border: 1px solid #dbe3ec;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 14px;
+  font-weight: 700;
+  color: #475569;
   cursor: pointer;
+  transition: all 0.15s;
 }
 
-.erp-pos-key.is-active {
+.erp-pos-action-btn:hover {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+}
+
+.erp-pos-action-btn.is-active {
   background: #ebf8ff;
-}
-
-.erp-pos-keypad .erp-pos-key:nth-child(4n) {
-  border-right: 0;
+  border-color: #1677ff;
+  color: #1677ff;
 }
 
 .erp-pos-pay-btn.ant-btn {
@@ -786,14 +845,48 @@ html, body {
 .erp-pos-product-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
-.erp-pos-product-name {
-  padding: 8px 10px 10px;
-  font-size: 13px;
+.erp-pos-product-card:hover {
+  border-color: #f38b7a;
+  box-shadow: 0 2px 10px rgba(243, 139, 122, 0.25);
+  transform: translateY(-1px);
+}
+
+.erp-pos-product-card:active {
+  transform: scale(0.97);
+  box-shadow: none;
+}
+
+.erp-pos-product-info {
+  padding: 6px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.erp-pos-product-code {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.erp-pos-product-name-text {
+  font-size: 12px;
   font-weight: 600;
   color: #0f172a;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.erp-pos-product-stock {
+  font-size: 11px;
+  color: #94a3b8;
   line-height: 1.3;
 }
 
@@ -1489,9 +1582,18 @@ html, body {
   justify-content: center;
 }
 
+.erp-pos-order-item {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.erp-pos-order-item:hover {
+  background: #f8fafc;
+}
+
 .erp-pos-order-item.is-selected {
-  border-color: #1677ff;
-  background: #f0f7ff;
+  border-color: #f38b7a;
+  background: #fff5f3;
 }
 
 .erp-pos-keypad-display {
