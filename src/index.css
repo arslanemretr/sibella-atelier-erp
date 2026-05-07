@@ -829,17 +829,21 @@ html, body {
   border: 1px solid #d7dde5;
   border-radius: 10px;
   background: #fff;
-  overflow: hidden;
+  overflow: visible;
   text-align: left;
   cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
 .erp-pos-product-image-wrap {
-  aspect-ratio: 1 / 1;
+  height: 120px;
+  flex-shrink: 0;
   background: #faf7ef;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  border-radius: 10px 10px 0 0;
 }
 
 .erp-pos-product-image {
