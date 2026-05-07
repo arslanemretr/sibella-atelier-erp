@@ -635,21 +635,45 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 12px;
   border-bottom: 1px solid #edf1f5;
+  min-height: 44px;
 }
 
-.erp-pos-order-item-head,
+.erp-pos-order-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.erp-pos-order-item-head .ant-typography {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
 .erp-pos-order-item-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.erp-pos-order-item-actions .ant-typography {
+  white-space: nowrap;
+  min-width: 72px;
+  text-align: right;
 }
 
 .erp-pos-order-index {
   font-weight: 700;
   color: #0f172a;
+  flex-shrink: 0;
+  min-width: 16px;
 }
 
 .erp-pos-summary {
@@ -772,6 +796,7 @@ html, body {
 
 .erp-pos-search {
   flex: 1 1 auto;
+  min-width: 0;
 }
 
 .erp-pos-search .ant-input-affix-wrapper,
@@ -781,12 +806,15 @@ html, body {
 }
 
 .erp-pos-barcode {
-  width: 128px;
+  width: 200px;
+  flex-shrink: 0;
 }
 
 .erp-pos-menu-btn.ant-btn {
   width: 48px;
   height: 48px;
+  min-width: 48px;
+  flex-shrink: 0;
   border-radius: 12px;
 }
 
@@ -798,14 +826,16 @@ html, body {
 }
 
 .erp-pos-category-chip {
-  min-width: 144px;
-  min-height: 72px;
+  min-width: 90px;
+  min-height: 52px;
+  padding: 0 16px;
   border: 0;
-  border-radius: 12px;
-  font-size: 16px;
+  border-radius: 10px;
+  font-size: 14px;
   font-weight: 600;
   color: #111827;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .erp-pos-category-chip.is-selected {

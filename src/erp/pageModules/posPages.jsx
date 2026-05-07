@@ -1188,13 +1188,17 @@ export function PosScreenPage() {
                 >
                   <div className="erp-pos-order-item-head">
                     <span className="erp-pos-order-index">{index + 1}</span>
-                    <Text>{item.code}-{item.name}</Text>
+                    <Text style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+                      {item.code}-{item.name}
+                    </Text>
                   </div>
                   <div className="erp-pos-order-item-actions">
                     <Button size="small" onClick={() => updateCartQuantity(item.productId, -1)}>-</Button>
-                    <Text strong>{item.quantity}</Text>
+                    <Text strong style={{ minWidth: 16, textAlign: "center" }}>{item.quantity}</Text>
                     <Button size="small" onClick={() => updateCartQuantity(item.productId, 1)}>+</Button>
-                    <Text strong>{formatMovementMoney(item.lineTotal)}</Text>
+                    <Text strong style={{ whiteSpace: "nowrap", minWidth: 72, textAlign: "right", fontSize: 13 }}>
+                      {formatMovementMoney(item.lineTotal)}
+                    </Text>
                   </div>
                 </div>
               ))
