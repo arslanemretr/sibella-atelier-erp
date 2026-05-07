@@ -8,5 +8,9 @@ export default defineConfig({
     proxy: {
       "/api": process.env.VITE_API_PROXY || "http://localhost:4001",
     },
+    watch: {
+      usePolling: true,
+      interval: 300,
+    },
   },
 })
