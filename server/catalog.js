@@ -391,14 +391,21 @@ async function getSupplierRow(supplierId) {
 }
 
 // slim=true → image, features, notes hariç tutulur (liste ekranı için)
-async function listProductsRows({ slim = false } = {}) {
-  // slim modda image (base64 olabilir) ve büyük text alanları SELECT'ten çıkarılır
-  const selectCols = slim
-    ? `p.id, p.code, p.name, p.sale_price, p.sale_currency, p.cost, p.cost_currency,
+// catalog=true → slim gibi ama image dahil, useInPos/isForSale/trackInventory dahil (POS ekranı için)
+async function listProductsRows({ slim = false, catalog = false } = {}) {
+  // catalog modu: slim + image + pos alanları (features/notes hariç)
+  const selectCols = catalog
+    ? `p.id, p.code, p.name, p.sale_price, p.sale_currency, p.image,
        p.category_id, p.collection_id, p.pos_category_id, p.supplier_id,
        p.barcode, p.supplier_code, p.stock, p.product_type, p.status, p.workflow_status,
+       p.use_in_pos, p.is_for_sale, p.track_inventory, p.sales_tax,
        p.created_at, p.updated_at`
-    : `p.*`;
+    : slim
+      ? `p.id, p.code, p.name, p.sale_price, p.sale_currency, p.cost, p.cost_currency,
+         p.category_id, p.collection_id, p.pos_category_id, p.supplier_id,
+         p.barcode, p.supplier_code, p.stock, p.product_type, p.status, p.workflow_status,
+         p.created_at, p.updated_at`
+      : `p.*`;
 
   const productRows = await sqlMany(`
     SELECT
@@ -426,7 +433,7 @@ async function listProductsRows({ slim = false } = {}) {
   `);
 
   let featuresByProductId = new Map();
-  if (!slim) {
+  if (!slim && !catalog) {
     const featureRows = await sqlMany("SELECT * FROM product_features ORDER BY product_id ASC, sort_order ASC, id ASC");
     featureRows.forEach((row) => {
       const items = featuresByProductId.get(row.product_id) || [];
@@ -435,39 +442,40 @@ async function listProductsRows({ slim = false } = {}) {
     });
   }
 
+  const isReduced = slim || catalog;
   return productRows.map((row) => ({
     id: row.id,
     code: row.code || "",
     name: row.name || "",
     salePrice: Number(row.sale_price || 0),
     saleCurrency: row.sale_currency || "TRY",
-    cost: Number(row.cost || 0),
-    costCurrency: row.cost_currency || "TRY",
+    cost: isReduced ? 0 : Number(row.cost || 0),
+    costCurrency: isReduced ? "TRY" : (row.cost_currency || "TRY"),
     categoryId: row.category_id || null,
     collectionId: row.collection_id || null,
     posCategoryId: row.pos_category_id || null,
     supplierId: row.supplier_id || null,
     barcode: row.barcode || "",
     supplierCode: row.supplier_code || "",
-    minStock: slim ? 0 : Number(row.min_stock || 0),
-    supplierLeadTime: slim ? 0 : Number(row.supplier_lead_time || 0),
+    minStock: isReduced ? 0 : Number(row.min_stock || 0),
+    supplierLeadTime: isReduced ? 0 : Number(row.supplier_lead_time || 0),
     stock: Number(row.stock || 0),
     totalStock: Number((row.total_stock ?? row.stock) || 0),
     productType: row.product_type || "kendi",
     salesTax: slim ? "%20" : (row.sales_tax || "%20"),
     image: slim ? null : (row.image || "/products/baroque-necklace.svg"),
-    isForSale: slim ? true : Boolean(row.is_for_sale),
-    isForPurchase: slim ? true : Boolean(row.is_for_purchase),
-    useInPos: slim ? true : Boolean(row.use_in_pos),
-    trackInventory: slim ? true : Boolean(row.track_inventory),
+    isForSale: isReduced ? true : Boolean(row.is_for_sale),
+    isForPurchase: isReduced ? true : Boolean(row.is_for_purchase),
+    useInPos: isReduced ? Boolean(row.use_in_pos ?? true) : Boolean(row.use_in_pos),
+    trackInventory: isReduced ? true : Boolean(row.track_inventory),
     status: row.status || "Aktif",
     workflowStatus: row.workflow_status || "Taslak",
-    createdBy: slim ? null : (row.created_by || null),
-    notes: slim ? "" : (row.notes || ""),
-    barcodeStandardId: slim ? null : (row.barcode_standard_id || null),
+    createdBy: isReduced ? null : (row.created_by || null),
+    notes: isReduced ? "" : (row.notes || ""),
+    barcodeStandardId: isReduced ? null : (row.barcode_standard_id || null),
     soldQuantity: Number(row.sold_quantity || 0),
     returnQuantity: Number(row.return_quantity || 0),
-    features: slim ? [] : (featuresByProductId.get(row.id) || []),
+    features: isReduced ? [] : (featuresByProductId.get(row.id) || []),
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
   }));
@@ -726,9 +734,10 @@ export async function handleSuppliersDelete(req, res) {
 
 export async function handleProductsList(req, res) {
   const slim = req.query.slim === "true";
+  const catalog = req.query.catalog === "true";
   return res.json({
     ok: true,
-    items: await listProductsRows({ slim }),
+    items: await listProductsRows({ slim, catalog }),
   });
 }
 

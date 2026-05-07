@@ -1,4 +1,4 @@
-import { getProductById, listProducts, listProductsRawFresh } from "./productsData";
+import { getProductById, listProducts } from "./productsData";
 import { mutateResourceSync, requestCollection, requestCollectionSync } from "./apiClient";
 
 function createId(prefix) {
@@ -168,19 +168,20 @@ export function listPosSales() {
 
 export async function listPosSalesFresh(productsOverride = null, options = {}) {
   const query = options.sessionId ? `?sessionId=${encodeURIComponent(options.sessionId)}` : "";
-  const [sales, products] = await Promise.all([
-    requestCollection(`/api/pos-sales${query}`, seedSales()),
-    productsOverride ? Promise.resolve(productsOverride) : listProductsRawFresh(),
-  ]);
-  const productMap = Object.fromEntries(products.map((item) => [item.id, item]));
+  // Backend artık satır bazında product_name / product_code JOIN ile döndürüyor.
+  // productsOverride yalnızca ek enrichment (görsel vb.) için kullanılır.
+  const sales = await requestCollection(`/api/pos-sales${query}`, seedSales());
+  const productMap = productsOverride
+    ? Object.fromEntries(productsOverride.map((item) => [item.id, item]))
+    : {};
 
   return sales.map((sale) => {
     const lines = (sale.lines || []).map((line) => {
       const product = productMap[line.productId];
       return {
         ...line,
-        productCode: product?.code || "-",
-        productName: product?.name || "-",
+        productCode: product?.code || line.productCode || "-",
+        productName: product?.name || line.productName || "-",
         lineTotalDisplay: formatMoney(line.lineTotal),
         unitPriceDisplay: formatMoney(line.unitPrice),
       };
@@ -216,7 +217,8 @@ export function buildPosProductCatalog() {
 }
 
 export async function buildPosProductCatalogFresh() {
-  const products = await requestCollection("/api/products", []);
+  // catalog=true: slim gibi ama image dahil; features/notes/cost alanları hariç
+  const products = await requestCollection("/api/products?catalog=true", []);
   return products
     .filter((item) => item.useInPos && item.status === "Aktif")
     .map((item) => ({

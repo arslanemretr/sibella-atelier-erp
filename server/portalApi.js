@@ -164,10 +164,11 @@ async function listPosSalesRows(filters = {}) {
   const saleIds = saleRows.map((row) => row.id);
   const lineRows = await sqlMany(
     `
-      SELECT *
-      FROM pos_sale_lines
-      WHERE sale_id = ANY($1::text[])
-      ORDER BY sale_id ASC, sort_order ASC, id ASC
+      SELECT psl.*, p.name AS product_name, p.code AS product_code
+      FROM pos_sale_lines psl
+      LEFT JOIN products p ON p.id = psl.product_id
+      WHERE psl.sale_id = ANY($1::text[])
+      ORDER BY psl.sale_id ASC, psl.sort_order ASC, psl.id ASC
     `,
     [saleIds],
   );
@@ -178,6 +179,8 @@ async function listPosSalesRows(filters = {}) {
     items.push({
       id: row.id,
       productId: row.product_id || null,
+      productName: row.product_name || "-",
+      productCode: row.product_code || "-",
       quantity: Number(row.quantity || 0),
       unitPrice: Number(row.unit_price || 0),
       lineTotal: Number(row.line_total || 0),
@@ -909,6 +912,13 @@ export async function ensurePosReturnsReady() {
       sort_order INTEGER
     )
   `);
+}
+
+export async function ensurePosSalesIndexes() {
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_pos_sales_created_at ON pos_sales(created_at DESC)");
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_pos_sales_sold_at ON pos_sales(sold_at DESC)");
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_pos_sales_session_id ON pos_sales(session_id)");
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_pos_sale_lines_sale_id ON pos_sale_lines(sale_id)");
 }
 
 async function listPosReturnsRows() {
