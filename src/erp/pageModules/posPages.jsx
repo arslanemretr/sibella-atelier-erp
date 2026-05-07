@@ -284,6 +284,7 @@ export function PosScreenPage() {
   const [posSales, setPosSales] = React.useState([]);
   const [posCategoryStateOptions, setPosCategoryStateOptions] = React.useState([{ id: "all", name: "Tumu", color: "#fee89a" }]);
   const [pageLoading, setPageLoading] = React.useState(false);
+  const [catalogLoading, setCatalogLoading] = React.useState(false);
   const [ordersLoading, setOrdersLoading] = React.useState(false);
   const [activeSessionId, setActiveSessionId] = React.useState();
   const [orderDraftsBySession, setOrderDraftsBySession] = React.useState(() => {
@@ -388,14 +389,13 @@ export function PosScreenPage() {
 
   const refreshPosContext = React.useCallback(async () => {
     try {
+      // Faz 1: Oturum + kategori + stok yerleri — hızlı, ekranı hemen açar
       setPageLoading(true);
-      const [nextCatalog, nextSessions, posCategories, nextStockLocations] = await Promise.all([
-        buildPosProductCatalogFresh(),
+      const [nextSessions, posCategories, nextStockLocations] = await Promise.all([
         getOpenPosSessionsFresh(),
         listMasterDataFresh("pos-categories"),
         listStockLocationsFresh(),
       ]);
-      setCatalog(nextCatalog);
       setSessions(nextSessions);
       setPosSales([]);
       setStockLocations(nextStockLocations);
@@ -411,10 +411,17 @@ export function PosScreenPage() {
           })),
       ]);
       setActiveSessionId((prev) => prev || nextSessions[0]?.id);
+      setPageLoading(false); // Ekranı göster — katalog henüz yüklenmedi
+
+      // Faz 2: Ürün kataloğu arka planda yüklenir (büyük payload, ayrı beklenir)
+      setCatalogLoading(true);
+      const nextCatalog = await buildPosProductCatalogFresh();
+      setCatalog(nextCatalog);
     } catch (error) {
       message.error(error?.message || "POS verileri yuklenemedi.");
     } finally {
       setPageLoading(false);
+      setCatalogLoading(false);
     }
   }, []);
 
@@ -1246,8 +1253,8 @@ export function PosScreenPage() {
           </div>
 
             <div className="erp-pos-product-grid">
-              {pageLoading ? (
-                <div style={{ padding: 16 }}>Ürünler yükleniyor...</div>
+              {catalogLoading ? (
+                <div style={{ padding: 16, gridColumn: "1 / -1", color: "#888" }}>Ürünler yükleniyor...</div>
               ) : filteredCatalog.map((product) => (
                 <button key={product.id} type="button" className="erp-pos-product-card" onClick={() => addProductToCart(product)}>
                   <div className="erp-pos-product-image-wrap">
