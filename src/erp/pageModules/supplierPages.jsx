@@ -60,7 +60,13 @@ export function SupplierListPage() {
         listMasterDataFresh("procurement-types"),
         listMasterDataFresh("payment-terms"),
       ]);
-      setSuppliers(nextSuppliers);
+      const procurementMap = Object.fromEntries(procurementTypes.map((item) => [item.id, item.name]));
+      const paymentMap = Object.fromEntries(paymentTerms.map((item) => [item.id, item.name]));
+      setSuppliers(nextSuppliers.map((supplier) => ({
+        ...supplier,
+        procurementTypeLabel: procurementMap[supplier.procurementTypeId] || "-",
+        paymentTermLabel: paymentMap[supplier.paymentTermId] || "-",
+      })));
       setProcurementOptions([{ value: "all", label: "Tumu" }, ...procurementTypes.map((item) => ({
         value: item.id,
         label: item.name,
