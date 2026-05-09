@@ -707,7 +707,6 @@ export function SupplierDashboardPage() {
   const totalProductVariety = React.useMemo(() => new Set(products.map((p) => String(p.code || "").trim()).filter(Boolean)).size, [products]);
   const outOfStockCount = React.useMemo(() => products.filter((p) => Number(p.stock || 0) === 0).length, [products]);
   const waitingDeliveries = React.useMemo(() => deliveries.filter((d) => d.status === "Onay Bekleniyor").length, [deliveries]);
-  const totalDeliveries = deliveries.length;
   const supplierVisual = supplier?.logo || supplier?.image || supplier?.photo || supplier?.avatar || "";
 
   const earningsSummaries = React.useMemo(() => {
@@ -728,7 +727,6 @@ export function SupplierDashboardPage() {
     { title: "Toplam Stok Adet", value: totalStockQty, description: "Stokta olan toplam ürün sayısı", accentClass: "erp-metric-accent-amber", onClick: () => navigate("/supplier/products", { state: { dashboardFilter: "in-stock" } }) },
     { title: "Stok Biten Ürünler", value: outOfStockCount, description: "Stok sayısı 0 olan ürün sayısı", accentClass: "erp-metric-accent-red", onClick: () => navigate("/supplier/products", { state: { dashboardFilter: "out-of-stock" } }) },
     { title: "Onay Bekleyen Teslimat", value: waitingDeliveries, description: "Onay bekleyen teslimat kayıtları", accentClass: "erp-metric-accent-gold", onClick: () => navigate("/supplier/deliveries", { state: { dashboardFilter: "pending-approval" } }) },
-    { title: "Toplam Teslimatlar", value: totalDeliveries, description: "Tüm teslimat kayıtları", accentClass: "erp-metric-accent-blue", onClick: () => navigate("/supplier/deliveries") },
   ];
 
   return (
