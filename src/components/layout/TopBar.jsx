@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Layout, Button, Avatar, Dropdown, Space } from "antd";
-import { MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined, UserOutlined } from "@ant-design/icons";
+import { MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined } from "@ant-design/icons";
 import { filterNavigationItems, mainMenuItems, supplierMainMenuItems } from "../../erp/navigation";
 import { getAuthUser, logoutUser, onAuthChange } from "../../auth";
 import logo from "../../assets/logo.png";
@@ -47,13 +47,9 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
 
   const userMenu = {
     items: [
-      { key: "profile", label: "Kullanici Tercihleri" },
       { key: "logout", label: "Cikis Yap" },
     ],
     onClick: async ({ key }) => {
-      if (key === "profile") {
-        navigate(authUser?.role === "Tedarikci" ? "/supplier/dashboard" : "/settings/users");
-      }
       if (key === "logout") {
         await logoutUser();
         navigate("/login", { replace: true });
@@ -125,7 +121,6 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
       ) : null}
 
       <Space size={isTabletOrMobile ? "middle" : "large"} className="erp-topbar-right">
-        <BellOutlined style={{ fontSize: 18, color: "#595959" }} />
         <Dropdown menu={userMenu} placement="bottomRight">
           <Space style={{ cursor: "pointer" }} className="erp-topbar-user">
             <Avatar icon={<UserOutlined />} />

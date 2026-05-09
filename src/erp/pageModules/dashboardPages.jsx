@@ -44,10 +44,14 @@ import {
   YAxis,
 } from "recharts";
 import { getAuthUser } from "../../auth";
+import { listContractsFresh } from "../contractsData";
 import { fetchDashboardSummary } from "../dashboardApi";
 import { listDeliveryListsBySupplierFresh, listDeliveryListsFresh } from "../deliveryListsData";
+import { listEarningsRecordsFresh } from "../earningsData";
+import { buildAdminEarningsList, formatMoney as formatEarningsMoney, EARNINGS_STATUS_META } from "../earningsReportUtils";
+import { listPosSalesFresh, listPosReturnsFresh } from "../posData";
 import { listProductsRawFresh } from "../productsData";
-import { listSuppliersFresh } from "../suppliersData";
+import { getSupplierByIdFresh, listSuppliersFresh } from "../suppliersData";
 
 const { Title, Text } = Typography;
 
@@ -644,7 +648,12 @@ export function SupplierDashboardPage() {
   const authUser = getAuthUser();
   const [supplier, setSupplier] = React.useState(null);
   const [products, setProducts] = React.useState([]);
+  const [allProducts, setAllProducts] = React.useState([]);
   const [deliveries, setDeliveries] = React.useState([]);
+  const [sales, setSales] = React.useState([]);
+  const [returns, setReturns] = React.useState([]);
+  const [contracts, setContracts] = React.useState([]);
+  const [earningsRecords, setEarningsRecords] = React.useState([]);
   const [pageLoading, setPageLoading] = React.useState(false);
 
   React.useEffect(() => {
@@ -652,27 +661,40 @@ export function SupplierDashboardPage() {
     const loadDashboard = async () => {
       try {
         setPageLoading(true);
-        const [suppliers, nextProducts, allDeliveries] = await Promise.all([
+        const [suppliers, nextProducts, allDeliveries, nextSales, nextReturns, nextContracts, nextEarningsRecords] = await Promise.all([
           listSuppliersFresh({ slim: true }),
           listProductsRawFresh(),
           authUser?.supplierId ? listDeliveryListsBySupplierFresh(authUser.supplierId) : listDeliveryListsFresh({ slim: true }),
+          listPosSalesFresh(),
+          listPosReturnsFresh(),
+          listContractsFresh(),
+          listEarningsRecordsFresh(),
         ]);
         if (cancelled) return;
 
         const normalizedAuthEmail = String(authUser?.email || "").trim().toLowerCase();
         const normalizedAuthName = String(authUser?.fullName || "").trim().toLowerCase();
-        const resolvedSupplier =
+        const slimSupplier =
           suppliers.find((item) => item.id === authUser?.supplierId) ||
           suppliers.find((item) => normalizedAuthEmail && String(item.email || "").trim().toLowerCase() === normalizedAuthEmail) ||
           suppliers.find((item) => normalizedAuthName && String(item.contact || "").trim().toLowerCase() === normalizedAuthName) ||
           null;
-        const resolvedSupplierId = resolvedSupplier?.id || authUser?.supplierId || null;
+        const resolvedSupplierId = slimSupplier?.id || authUser?.supplierId || null;
 
-        setSupplier(resolvedSupplier);
+        // Logo için tam veriyi çek (slim modda base64 logo kırpılır)
+        const fullSupplier = resolvedSupplierId ? await getSupplierByIdFresh(resolvedSupplierId) : null;
+        if (cancelled) return;
+
+        setSupplier(fullSupplier || slimSupplier);
+        setAllProducts(nextProducts);
         setProducts(resolvedSupplierId ? nextProducts.filter((item) => item.supplierId === resolvedSupplierId) : []);
         setDeliveries(resolvedSupplierId ? allDeliveries.filter((item) => item.supplierId === resolvedSupplierId) : []);
+        setSales(nextSales || []);
+        setReturns(nextReturns || []);
+        setContracts(nextContracts || []);
+        setEarningsRecords(nextEarningsRecords || []);
       } catch {
-        if (!cancelled) { setSupplier(null); setProducts([]); setDeliveries([]); }
+        if (!cancelled) { setSupplier(null); setProducts([]); setAllProducts([]); setDeliveries([]); }
       } finally {
         if (!cancelled) setPageLoading(false);
       }
@@ -682,17 +704,28 @@ export function SupplierDashboardPage() {
   }, [authUser?.email, authUser?.fullName, authUser?.supplierId]);
 
   const totalStockQty = React.useMemo(() => products.reduce((sum, p) => sum + Number(p.stock || 0), 0), [products]);
-  const totalStockValue = React.useMemo(() => products.reduce((sum, p) => sum + Number(p.stock || 0) * Number(p.salePrice || 0), 0), [products]);
   const totalProductVariety = React.useMemo(() => new Set(products.map((p) => String(p.code || "").trim()).filter(Boolean)).size, [products]);
   const outOfStockCount = React.useMemo(() => products.filter((p) => Number(p.stock || 0) === 0).length, [products]);
   const waitingDeliveries = React.useMemo(() => deliveries.filter((d) => d.status === "Onay Bekleniyor").length, [deliveries]);
   const totalDeliveries = deliveries.length;
   const supplierVisual = supplier?.logo || supplier?.image || supplier?.photo || supplier?.avatar || "";
 
+  const earningsSummaries = React.useMemo(() => {
+    if (!supplier?.id) return [];
+    const rows = buildAdminEarningsList({
+      suppliers: [supplier],
+      products: allProducts,
+      sales,
+      returns,
+      contracts,
+      earningsRecords,
+    });
+    return rows.filter((r) => r.supplierId === supplier.id);
+  }, [supplier, allProducts, sales, returns, contracts, earningsRecords]);
+
   const metrics = [
     { title: "Toplam Ürün Çeşidi", value: totalProductVariety, description: "Tanımlanmış Toplam Ürün Sayısıdır", accentClass: "erp-metric-accent-coral", onClick: () => navigate("/supplier/products") },
     { title: "Toplam Stok Adet", value: totalStockQty, description: "Stokta olan toplam ürün sayısı", accentClass: "erp-metric-accent-amber", onClick: () => navigate("/supplier/products", { state: { dashboardFilter: "in-stock" } }) },
-    { title: "Toplam Stok Değeri", value: formatDashboardMoney(totalStockValue), description: "Stokta olan ürünlerin toplam değeri", accentClass: "erp-metric-accent-green", onClick: () => navigate("/supplier/products", { state: { dashboardFilter: "in-stock" } }) },
     { title: "Stok Biten Ürünler", value: outOfStockCount, description: "Stok sayısı 0 olan ürün sayısı", accentClass: "erp-metric-accent-red", onClick: () => navigate("/supplier/products", { state: { dashboardFilter: "out-of-stock" } }) },
     { title: "Onay Bekleyen Teslimat", value: waitingDeliveries, description: "Onay bekleyen teslimat kayıtları", accentClass: "erp-metric-accent-gold", onClick: () => navigate("/supplier/deliveries", { state: { dashboardFilter: "pending-approval" } }) },
     { title: "Toplam Teslimatlar", value: totalDeliveries, description: "Tüm teslimat kayıtları", accentClass: "erp-metric-accent-blue", onClick: () => navigate("/supplier/deliveries") },
@@ -705,9 +738,32 @@ export function SupplierDashboardPage() {
         <Text type="secondary">Tedarikçi hesabınızdaki ürün, stok ve teslimat özetini buradan takip edebilirsiniz.</Text>
       </div>
 
+      <Card bordered={false} loading={pageLoading} className="erp-card-logo-divider">
+        <div className="erp-supplier-info-card">
+          <div className="erp-supplier-info-main">
+            <Descriptions column={1} size="small">
+              <Descriptions.Item label="Firma">{supplier?.company || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Yetkili">{supplier?.contact || authUser?.fullName || "-"}</Descriptions.Item>
+              <Descriptions.Item label="E-posta">{supplier?.email || authUser?.email || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Telefon">{supplier?.phone || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Şehir">{supplier?.city || "-"}</Descriptions.Item>
+            </Descriptions>
+          </div>
+          <div className="erp-supplier-info-visual">
+            {supplierVisual ? (
+              <img src={supplierVisual} alt={supplier?.company || "Tedarikci logosu"} className="erp-supplier-info-image" />
+            ) : (
+              <div style={{ width: 96, height: 96, borderRadius: "50%", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#888" }}>
+                {supplier?.initials || (supplier?.company || "TP").split(" ").map((part) => part[0] || "").slice(0, 2).join("").toUpperCase()}
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
+
       <Row gutter={[16, 16]}>
         {metrics.map((metric) => (
-          <Col xs={24} sm={12} xl={8} xxl={4} key={metric.title}>
+          <Col xs={24} sm={12} xl={12} xxl={6} key={metric.title}>
             <Card bordered={false} className={`erp-metric-card ${metric.accentClass || ""}`} loading={pageLoading} hoverable onClick={metric.onClick}>
               <Statistic title={<span className="erp-metric-title">{metric.title}</span>} value={metric.value} />
               <Text type="secondary" className="erp-metric-description">{metric.description}</Text>
@@ -717,31 +773,7 @@ export function SupplierDashboardPage() {
       </Row>
 
       <Row gutter={[16, 16]}>
-        <Col xs={24} xl={10}>
-          <Card title="Firma Bilgileri" bordered={false} loading={pageLoading} className="erp-card-logo-divider">
-            <div className="erp-supplier-info-card">
-              <div className="erp-supplier-info-main">
-                <Descriptions column={1} size="small">
-                  <Descriptions.Item label="Firma">{supplier?.company || "-"}</Descriptions.Item>
-                  <Descriptions.Item label="Yetkili">{supplier?.contact || authUser?.fullName || "-"}</Descriptions.Item>
-                  <Descriptions.Item label="E-posta">{supplier?.email || authUser?.email || "-"}</Descriptions.Item>
-                  <Descriptions.Item label="Telefon">{supplier?.phone || "-"}</Descriptions.Item>
-                  <Descriptions.Item label="Şehir">{supplier?.city || "-"}</Descriptions.Item>
-                </Descriptions>
-              </div>
-              <div className="erp-supplier-info-visual">
-                {supplierVisual ? (
-                  <img src={supplierVisual} alt={supplier?.company || "Tedarikci logosu"} className="erp-supplier-info-image" />
-                ) : (
-                  <div style={{ width: 96, height: 96, borderRadius: "50%", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#888" }}>
-                    {supplier?.initials || (supplier?.company || "TP").split(" ").map((part) => part[0] || "").slice(0, 2).join("").toUpperCase()}
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} xl={14}>
+        <Col xs={24} xl={12}>
           <Card title="Son Teslimatlar" bordered={false} loading={pageLoading} className="erp-card-logo-divider">
             <Table
               rowKey="id"
@@ -752,9 +784,24 @@ export function SupplierDashboardPage() {
               columns={[
                 { title: "Teslimat No", dataIndex: "deliveryNo", key: "deliveryNo" },
                 { title: "Sevk Tarihi", dataIndex: "date", key: "date", render: (v) => formatDisplayDate(v) },
-                { title: "Teslim Alınan", dataIndex: "inventoryPostedAt", key: "inventoryPostedAt", render: (v) => formatDisplayDate(v) },
-                { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 80 },
+                { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 70 },
                 { title: "Durum", dataIndex: "status", key: "status", render: (v) => <Tag color={deliveryStatusColorMap[v] || "default"}>{v || "Taslak"}</Tag> },
+              ]}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} xl={12}>
+          <Card title="Hakediş Özeti" bordered={false} loading={pageLoading} className="erp-card-logo-divider">
+            <Table
+              rowKey="key"
+              pagination={false}
+              size="small"
+              dataSource={earningsSummaries}
+              locale={{ emptyText: "Henüz hakedişe konu satış bulunmuyor." }}
+              columns={[
+                { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel" },
+                { title: "Toplam Hakediş", dataIndex: "earningsTotal", key: "earningsTotal", align: "right", render: (v) => formatEarningsMoney(v) },
+                { title: "Durum", dataIndex: "status", key: "status", render: (v) => <Tag color={EARNINGS_STATUS_META[v]?.color || "default"}>{v}</Tag> },
               ]}
             />
           </Card>

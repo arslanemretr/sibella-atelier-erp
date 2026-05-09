@@ -11,7 +11,7 @@ import { listEarningsRecordsFresh } from "../earningsData";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
 import { listPosSalesFresh, listPosReturnsFresh } from "../posData";
-import { listProductsFresh, listProductsRawFresh } from "../productsData";
+import { listProductsCatalogFresh, listProductImagesFresh, listProductsFresh, listProductsRawFresh } from "../productsData";
 import { getSupplierByIdFresh, listSuppliersFresh } from "../suppliersData";
 
 const { Title, Text } = Typography;
@@ -678,6 +678,9 @@ export function SupplierPortalProductListPage() {
     status: undefined,
   });
   const [filterModalOpen, setFilterModalOpen] = React.useState(false);
+  const [kanbanImageMap, setKanbanImageMap] = React.useState({});
+  const [kanbanImagesLoading, setKanbanImagesLoading] = React.useState(false);
+  const kanbanFetchedRef = React.useRef(false);
   const [savedFilterName, setSavedFilterName] = React.useState("");
   const [savedFilters, setSavedFilters] = React.useState(() => {
     if (typeof window === "undefined") {
@@ -719,6 +722,16 @@ export function SupplierPortalProductListPage() {
   React.useEffect(() => {
     void refreshProducts();
   }, [refreshProducts]);
+
+  React.useEffect(() => {
+    if (viewMode !== "kanban" || kanbanFetchedRef.current) return;
+    kanbanFetchedRef.current = true;
+    setKanbanImagesLoading(true);
+    listProductImagesFresh()
+      .then((imageMap) => setKanbanImageMap(imageMap))
+      .catch(() => {})
+      .finally(() => setKanbanImagesLoading(false));
+  }, [viewMode]);
 
   const persistSavedFilters = (nextSavedFilters) => {
     setSavedFilters(nextSavedFilters);
@@ -941,6 +954,7 @@ export function SupplierPortalProductListPage() {
                   hoverable
                   className="erp-product-kanban-card"
                   styles={{ body: { padding: 14 } }}
+                  loading={kanbanImagesLoading}
                   onClick={() => navigate(`/supplier/products/${product.id}`)}
                 >
                   <div className="erp-product-kanban-row">
@@ -952,7 +966,7 @@ export function SupplierPortalProductListPage() {
                       <Text className="erp-product-kanban-line">Satis Adet: {Number(product.soldQuantity || 0)}</Text>
                     </div>
                     <div className="erp-product-kanban-thumb">
-                      <img src={product.image} alt={product.name} className="erp-product-image-small" />
+                      <img src={kanbanImageMap[product.id] || product.image || "/products/baroque-necklace.svg"} alt={product.name} className="erp-product-image-small" loading="lazy" />
                     </div>
                   </div>
                 </Card>
@@ -1955,7 +1969,7 @@ export function SupplierPortalDeliveryEditorPage() {
           listMasterDataFresh("barcode-standards"),
           // Tedarikçi görünümünde tek kayıt çek; admin görünümünde tüm liste gerekir
           isAdminView ? listSuppliersFresh({ slim: true }) : getSupplierByIdFresh(supplierId),
-          listProductsRawFresh(),
+          listProductsCatalogFresh(),
           isEditMode ? getDeliveryListByIdFresh(deliveryId) : Promise.resolve(null),
         ]);
 

@@ -366,6 +366,11 @@ export async function listProductImagesFresh() {
   return Object.fromEntries(rows.map((row) => [row.id, row.image || ""]));
 }
 
+// Catalog modu: slim + image dahil (teslimat editörü gibi görsel gerektiren yerler için).
+export async function listProductsCatalogFresh() {
+  return requestCollection("/api/products?catalog=true", []);
+}
+
 export function generateProductCodeForSupplier(supplierId, currentProductId) {
   const supplier = listSuppliers().find((item) => item.id === supplierId);
   const shortCode = String(supplier?.shortCode || "").trim().toUpperCase();
