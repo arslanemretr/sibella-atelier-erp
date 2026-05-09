@@ -577,15 +577,15 @@ export function SupplierPortalEarningsPage() {
           ]}
           summary={() => (
             <Table
-          size="small".Summary>
+          .Summary>
               <Table
-          size="small".Summary.Row style={{ background: "#d86d5b" }}>
+          .Summary.Row style={{ background: "#d86d5b" }}>
                 <Table
-          size="small".Summary.Cell index={0} colSpan={8}>
+          .Summary.Cell index={0} colSpan={8}>
                   <Text strong style={{ color: "#fff" }}>Toplam</Text>
                 </Table.Summary.Cell>
                 <Table
-          size="small".Summary.Cell index={8} align="right">
+          .Summary.Cell index={8} align="right">
                   <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(currentSummary.earningsTotal)}</Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
@@ -646,24 +646,24 @@ export function SupplierPortalEarningsPage() {
             const totalKdv = totalEarnings * 0.2;
             return (
               <Table
-          size="small".Summary>
+          .Summary>
                 <Table
-          size="small".Summary.Row style={{ background: "#d86d5b" }}>
+          .Summary.Row style={{ background: "#d86d5b" }}>
                   <Table
-          size="small".Summary.Cell index={0}><Text strong style={{ color: "#fff" }}>Toplam</Text></Table.Summary.Cell>
+          .Summary.Cell index={0}><Text strong style={{ color: "#fff" }}>Toplam</Text></Table.Summary.Cell>
                   <Table
-          size="small".Summary.Cell index={1} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalGross)}</Text></Table.Summary.Cell>
+          .Summary.Cell index={1} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalGross)}</Text></Table.Summary.Cell>
                   <Table
-          size="small".Summary.Cell index={2} align="right"><Text strong style={{ color: "#fff" }}>{totalReturn > 0 ? `-${formatDisplayMoney(totalReturn)}` : "-"}</Text></Table.Summary.Cell>
+          .Summary.Cell index={2} align="right"><Text strong style={{ color: "#fff" }}>{totalReturn > 0 ? `-${formatDisplayMoney(totalReturn)}` : "-"}</Text></Table.Summary.Cell>
                   <Table
-          size="small".Summary.Cell index={3} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalNetSales)}</Text></Table.Summary.Cell>
+          .Summary.Cell index={3} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalNetSales)}</Text></Table.Summary.Cell>
                   <Table.Summary.Cell index={4} />
                   <Table
-          size="small".Summary.Cell index={5} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings)}</Text></Table.Summary.Cell>
+          .Summary.Cell index={5} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings)}</Text></Table.Summary.Cell>
                   <Table
-          size="small".Summary.Cell index={6} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalKdv)}</Text></Table.Summary.Cell>
+          .Summary.Cell index={6} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalKdv)}</Text></Table.Summary.Cell>
                   <Table
-          size="small".Summary.Cell index={7} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings * 1.2)}</Text></Table.Summary.Cell>
+          .Summary.Cell index={7} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings * 1.2)}</Text></Table.Summary.Cell>
                   <Table.Summary.Cell index={8} />
                 </Table.Summary.Row>
               </Table.Summary>
@@ -2647,15 +2647,15 @@ export function SupplierPortalDeliveryEditorPage() {
               ]}
               summary={() => (
                 <Table
-          size="small".Summary>
+          .Summary>
                   <Table
-          size="small".Summary.Row>
+          .Summary.Row>
                     <Table
-          size="small".Summary.Cell index={0} colSpan={5}>
+          .Summary.Cell index={0} colSpan={5}>
                       <Text strong>Alt Toplam</Text>
                     </Table.Summary.Cell>
                     <Table
-          size="small".Summary.Cell index={5}>
+          .Summary.Cell index={5}>
                       <Text strong>{new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(totalAmount)}</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={6} />

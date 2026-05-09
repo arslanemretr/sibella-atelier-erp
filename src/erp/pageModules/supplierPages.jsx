@@ -1163,16 +1163,16 @@ export function SupplierEarningsManagementPage() {
                   const totalEarnings = data.reduce((s, p) => s + p.earningsAmount, 0);
                   return (
                     <Table
-          size="small".Summary.Row style={{ background: "#fafafa", fontWeight: 700 }}>
+          .Summary.Row style={{ background: "#fafafa", fontWeight: 700 }}>
                       <Table
-          size="small".Summary.Cell index={0} colSpan={4}><Text strong>Toplam</Text></Table.Summary.Cell>
+          .Summary.Cell index={0} colSpan={4}><Text strong>Toplam</Text></Table.Summary.Cell>
                       <Table.Summary.Cell index={4} align="right" />
                       <Table.Summary.Cell index={5} align="right" />
                       <Table
-          size="small".Summary.Cell index={6} align="right">{formatMoneyAdmin(totalNet)}</Table.Summary.Cell>
+          .Summary.Cell index={6} align="right">{formatMoneyAdmin(totalNet)}</Table.Summary.Cell>
                       <Table.Summary.Cell index={7} align="right" />
                       <Table
-          size="small".Summary.Cell index={8} align="right" style={{ color: "#389e0d" }}>{formatMoneyAdmin(totalEarnings)}</Table.Summary.Cell>
+          .Summary.Cell index={8} align="right" style={{ color: "#389e0d" }}>{formatMoneyAdmin(totalEarnings)}</Table.Summary.Cell>
                     </Table.Summary.Row>
                   );
                 }}
