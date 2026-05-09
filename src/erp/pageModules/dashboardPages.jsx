@@ -736,38 +736,42 @@ export function SupplierDashboardPage() {
         <Text type="secondary">Tedarikçi hesabınızdaki ürün, stok ve teslimat özetini buradan takip edebilirsiniz.</Text>
       </div>
 
-      <Card bordered={false} loading={pageLoading} className="erp-card-logo-divider">
-        <div className="erp-supplier-info-card">
-          <div className="erp-supplier-info-main">
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label="Firma">{supplier?.company || "-"}</Descriptions.Item>
-              <Descriptions.Item label="Yetkili">{supplier?.contact || authUser?.fullName || "-"}</Descriptions.Item>
-              <Descriptions.Item label="E-posta">{supplier?.email || authUser?.email || "-"}</Descriptions.Item>
-              <Descriptions.Item label="Telefon">{supplier?.phone || "-"}</Descriptions.Item>
-              <Descriptions.Item label="Şehir">{supplier?.city || "-"}</Descriptions.Item>
-            </Descriptions>
-          </div>
-          <div className="erp-supplier-info-visual">
-            {supplierVisual ? (
-              <img src={supplierVisual} alt={supplier?.company || "Tedarikci logosu"} className="erp-supplier-info-image" />
-            ) : (
-              <div style={{ width: 96, height: 96, borderRadius: "50%", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#888" }}>
-                {supplier?.initials || (supplier?.company || "TP").split(" ").map((part) => part[0] || "").slice(0, 2).join("").toUpperCase()}
+      <Row gutter={[16, 16]} align="stretch">
+        <Col xs={24} lg={10}>
+          <Card bordered={false} loading={pageLoading} className="erp-card-logo-divider" style={{ height: "100%" }}>
+            <div className="erp-supplier-info-card">
+              <div className="erp-supplier-info-main">
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label="Firma">{supplier?.company || "-"}</Descriptions.Item>
+                  <Descriptions.Item label="Yetkili">{supplier?.contact || authUser?.fullName || "-"}</Descriptions.Item>
+                  <Descriptions.Item label="E-posta">{supplier?.email || authUser?.email || "-"}</Descriptions.Item>
+                  <Descriptions.Item label="Telefon">{supplier?.phone || "-"}</Descriptions.Item>
+                  <Descriptions.Item label="Şehir">{supplier?.city || "-"}</Descriptions.Item>
+                </Descriptions>
               </div>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      <Row gutter={[16, 16]}>
-        {metrics.map((metric) => (
-          <Col xs={24} sm={12} xl={12} xxl={6} key={metric.title}>
-            <Card bordered={false} className={`erp-metric-card ${metric.accentClass || ""}`} loading={pageLoading} hoverable onClick={metric.onClick}>
-              <Statistic title={<span className="erp-metric-title">{metric.title}</span>} value={metric.value} />
-              <Text type="secondary" className="erp-metric-description">{metric.description}</Text>
-            </Card>
-          </Col>
-        ))}
+              <div className="erp-supplier-info-visual">
+                {supplierVisual ? (
+                  <img src={supplierVisual} alt={supplier?.company || "Tedarikci logosu"} className="erp-supplier-info-image" />
+                ) : (
+                  <div style={{ width: 96, height: 96, borderRadius: "50%", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#888" }}>
+                    {supplier?.initials || (supplier?.company || "TP").split(" ").map((part) => part[0] || "").slice(0, 2).join("").toUpperCase()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} lg={14}>
+          <Row gutter={[16, 16]}>
+            {metrics.map((metric) => (
+              <Col xs={12} key={metric.title}>
+                <Card bordered={false} className={`erp-metric-card ${metric.accentClass || ""}`} loading={pageLoading} hoverable onClick={metric.onClick}>
+                  <Statistic title={<span className="erp-metric-title">{metric.title}</span>} value={metric.value} />
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Col>
       </Row>
 
       <Row gutter={[16, 16]}>
