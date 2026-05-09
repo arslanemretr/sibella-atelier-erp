@@ -359,6 +359,13 @@ export async function listProductsRawFresh() {
   return requestCollection("/api/products?slim=true", []);
 }
 
+// Kanban görünümü için id→image haritası — catalog modunda yalnızca görsel alanı kullanılır.
+// Slim listeden bağımsız, tek seferlik çekilir.
+export async function listProductImagesFresh() {
+  const rows = await requestCollection("/api/products?catalog=true", []);
+  return Object.fromEntries(rows.map((row) => [row.id, row.image || ""]));
+}
+
 export function generateProductCodeForSupplier(supplierId, currentProductId) {
   const supplier = listSuppliers().find((item) => item.id === supplierId);
   const shortCode = String(supplier?.shortCode || "").trim().toUpperCase();

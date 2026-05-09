@@ -4,7 +4,7 @@ import { Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumbe
 import { AppstoreOutlined, BarsOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, LeftOutlined, PlusOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { listMasterDataFresh } from "../masterData";
-import { createProduct, createProductAsync, deleteProduct, getProductByIdFresh, importProducts, listProductsRawFresh, listProductStockLocationsFresh, listProductsFresh, updateProductAsync } from "../productsData";
+import { createProduct, createProductAsync, deleteProduct, getProductByIdFresh, importProducts, listProductImagesFresh, listProductsRawFresh, listProductStockLocationsFresh, listProductsFresh, updateProductAsync } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 import { getSystemParametersFresh } from "../systemParameters";
 
@@ -77,6 +77,9 @@ export function ProductListPage() {
   const navigate = useNavigate();
   const SAVED_FILTERS_KEY = "sibella.erp.productFilters.v1";
   const [viewMode, setViewMode] = React.useState("liste");
+  const [kanbanImageMap, setKanbanImageMap] = React.useState({});
+  const [kanbanImagesLoading, setKanbanImagesLoading] = React.useState(false);
+  const kanbanFetchedRef = React.useRef(false);
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedProduct, setSelectedProduct] = React.useState(null);
   const [stockDrawerOpen, setStockDrawerOpen] = React.useState(false);
@@ -167,6 +170,16 @@ export function ProductListPage() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [refreshProducts]);
+
+  React.useEffect(() => {
+    if (viewMode !== "kanban" || kanbanFetchedRef.current) return;
+    kanbanFetchedRef.current = true;
+    setKanbanImagesLoading(true);
+    listProductImagesFresh()
+      .then((imageMap) => setKanbanImageMap(imageMap))
+      .catch(() => {})
+      .finally(() => setKanbanImagesLoading(false));
+  }, [viewMode]);
 
   const persistSavedFilters = (nextSavedFilters) => {
     setSavedFilters(nextSavedFilters);
@@ -602,7 +615,7 @@ export function ProductListPage() {
           />
         </Card>
       ) : (
-        <Card title="Kanban Gorunumu">
+        <Card title="Kanban Gorunumu" loading={kanbanImagesLoading}>
           <Row gutter={[16, 16]}>
             {filteredProducts.map((product) => (
               <Col xs={24} sm={12} xl={6} key={product.id}>
@@ -624,7 +637,12 @@ export function ProductListPage() {
                       <Text className="erp-product-kanban-line">Kategori: {product.categoryLabel.split(" / ").slice(-2, -1)[0] || product.categoryLabel}</Text>
                     </div>
                     <div className="erp-product-kanban-thumb">
-                      <img src={product.image} alt={product.name} className="erp-product-image-small" />
+                      <img
+                        src={kanbanImageMap[product.id] || product.image || "/products/baroque-necklace.svg"}
+                        alt={product.name}
+                        className="erp-product-image-small"
+                        loading="lazy"
+                      />
                     </div>
                   </div>
                 </Card>
