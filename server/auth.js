@@ -17,6 +17,7 @@ const SCREEN_KEYS = [
   "stock_entry", "stock_list", "stock_locations", "reports_consolidated", "reports_supplier",
   "settings_users", "settings_categories", "settings_collections", "settings_pos_categories",
   "settings_barcode", "settings_procurement", "settings_payment_terms", "settings_parameters", "settings_mail",
+  "supplier_portal_dashboard", "supplier_portal_products", "supplier_portal_deliveries", "supplier_portal_earnings",
 ];
 
 function buildAllPermissions(allTrue = false) {
