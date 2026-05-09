@@ -1,50 +1,49 @@
 export const mainMenuItems = [
-  { key: "/dashboard", label: "Dashboard" },
+  { key: "/dashboard", label: "Dashboard", permissionKey: "dashboard" },
   {
     key: "products",
     label: "Urunler",
     children: [
-      { key: "/products/list", label: "Urun Listesi" },
-      { key: "/products/new", label: "Urun Ekle" },
+      { key: "/products/list", label: "Urun Listesi", permissionKey: "products_list" },
+      { key: "/products/new", label: "Urun Ekle", permissionKey: "products_list", permissionWrite: true },
     ],
   },
   {
     key: "pos",
     label: "Pos",
     children: [
-      { key: "/pos/sessions", label: "Oturumlar" },
-      { key: "/pos/store", label: "Pos Ekrani" },
-      { key: "/pos/orders", label: "Siparisler" },
-      { key: "/pos/returns", label: "Iadeler" },
+      { key: "/pos/sessions", label: "Oturumlar", permissionKey: "pos_sessions" },
+      { key: "/pos/store", label: "Pos Ekrani", permissionKey: "pos_store" },
+      { key: "/pos/orders", label: "Siparisler", permissionKey: "pos_orders" },
+      { key: "/pos/returns", label: "Iadeler", permissionKey: "pos_returns" },
     ],
   },
   {
     key: "purchasing",
     label: "Satinalma",
     children: [
-      { key: "/purchasing/suppliers", label: "Tedarikci Listesi" },
-      { key: "/purchasing/suppliers/new", label: "Tedarikci Ekle" },
-      { key: "/purchasing/contracts", label: "Sozlesmeler" },
+      { key: "/purchasing/suppliers", label: "Tedarikci Listesi", permissionKey: "purchasing_suppliers" },
+      { key: "/purchasing/suppliers/new", label: "Tedarikci Ekle", permissionKey: "purchasing_suppliers", permissionWrite: true },
+      { key: "/purchasing/contracts", label: "Sozlesmeler", permissionKey: "purchasing_contracts" },
     ],
   },
   {
     key: "stores",
     label: "Magaza",
-    roles: ["Yonetici", "Muhasebe"],
     children: [
-      { key: "/stores/list", label: "Magaza Listesi", roles: ["Yonetici", "Muhasebe"] },
-      { key: "/stores/new", label: "Magaza Tanimla", roles: ["Yonetici", "Muhasebe"] },
-      { key: "/stores/shipments", label: "Gonderi Listesi", roles: ["Yonetici", "Muhasebe"] },
-      { key: "/stores/shipments/new", label: "Gonderi Olustur", roles: ["Yonetici", "Muhasebe"] },
+      { key: "/stores/list", label: "Magaza Listesi", permissionKey: "stores_list" },
+      { key: "/stores/new", label: "Magaza Tanimla", permissionKey: "stores_list", permissionWrite: true },
+      { key: "/stores/shipments", label: "Gonderi Listesi", permissionKey: "stores_shipments" },
+      { key: "/stores/shipments/new", label: "Gonderi Olustur", permissionKey: "stores_shipments", permissionWrite: true },
     ],
   },
   {
     key: "stock",
     label: "Stok",
     children: [
-      { key: "/stock/entry", label: "Stok Giris Ekrani" },
-      { key: "/stock/list", label: "Stok Hareketleri" },
-      { key: "/stock/locations", label: "Stok Yerleri", roles: ["Yonetici", "Muhasebe"] },
+      { key: "/stock/entry", label: "Stok Giris Ekrani", permissionKey: "stock_entry" },
+      { key: "/stock/list", label: "Stok Hareketleri", permissionKey: "stock_list" },
+      { key: "/stock/locations", label: "Stok Yerleri", permissionKey: "stock_locations" },
     ],
   },
   {
@@ -58,25 +57,24 @@ export const mainMenuItems = [
   {
     key: "reports",
     label: "Raporlar",
-    roles: ["Yonetici", "Muhasebe"],
     children: [
-      { key: "/reports/consolidated-earnings", label: "Toplu Hakedis Raporu", roles: ["Yonetici", "Muhasebe"] },
-      { key: "/reports/supplier-earnings", label: "Tedarikci Hakedis Raporu", roles: ["Yonetici", "Muhasebe"] },
+      { key: "/reports/consolidated-earnings", label: "Toplu Hakedis Raporu", permissionKey: "reports_consolidated" },
+      { key: "/reports/supplier-earnings", label: "Tedarikci Hakedis Raporu", permissionKey: "reports_supplier" },
     ],
   },
   {
     key: "settings",
     label: "Ayarlar",
     children: [
-      { key: "/settings/users", label: "Kullanici" },
-      { key: "/settings/categories", label: "Kategori Tanimlari" },
-      { key: "/settings/collections", label: "Koleksiyon Tanimlari" },
-      { key: "/settings/pos-categories", label: "Pos Kategori Tanimlari" },
-      { key: "/settings/barcode-standards", label: "Barkod Olusturma Standarti" },
-      { key: "/settings/procurement-types", label: "Tedarik Tipi Tanimlama" },
-      { key: "/settings/payment-terms", label: "Odeme Kosulu Tanimlama" },
-      { key: "/settings/parameters", label: "Parametreler" },
-      { key: "/settings/mail-management", label: "Mail Yonetimi" },
+      { key: "/settings/users", label: "Kullanici", permissionKey: "settings_users" },
+      { key: "/settings/categories", label: "Kategori Tanimlari", permissionKey: "settings_categories" },
+      { key: "/settings/collections", label: "Koleksiyon Tanimlari", permissionKey: "settings_collections" },
+      { key: "/settings/pos-categories", label: "Pos Kategori Tanimlari", permissionKey: "settings_pos_categories" },
+      { key: "/settings/barcode-standards", label: "Barkod Olusturma Standarti", permissionKey: "settings_barcode" },
+      { key: "/settings/procurement-types", label: "Tedarik Tipi Tanimlama", permissionKey: "settings_procurement" },
+      { key: "/settings/payment-terms", label: "Odeme Kosulu Tanimlama", permissionKey: "settings_payment_terms" },
+      { key: "/settings/parameters", label: "Parametreler", permissionKey: "settings_parameters" },
+      { key: "/settings/mail-management", label: "Mail Yonetimi", permissionKey: "settings_mail" },
     ],
   },
 ];
@@ -85,52 +83,51 @@ export const sidebarGroups = [
   {
     type: "group",
     children: [
-      { key: "/dashboard", label: "Dashboard" },
+      { key: "/dashboard", label: "Dashboard", permissionKey: "dashboard" },
       {
         key: "products-group",
         label: "Urunler",
         children: [
-          { key: "/products/list", label: "Urun Listesi" },
-          { key: "/products/new", label: "Urun Ekle" },
+          { key: "/products/list", label: "Urun Listesi", permissionKey: "products_list" },
+          { key: "/products/new", label: "Urun Ekle", permissionKey: "products_list", permissionWrite: true },
         ],
       },
       {
         key: "pos-group",
         label: "Pos",
         children: [
-          { key: "/pos/sessions", label: "Oturumlar" },
-          { key: "/pos/store", label: "Pos Ekrani" },
-          { key: "/pos/orders", label: "Siparisler" },
-          { key: "/pos/returns", label: "Iadeler" },
+          { key: "/pos/sessions", label: "Oturumlar", permissionKey: "pos_sessions" },
+          { key: "/pos/store", label: "Pos Ekrani", permissionKey: "pos_store" },
+          { key: "/pos/orders", label: "Siparisler", permissionKey: "pos_orders" },
+          { key: "/pos/returns", label: "Iadeler", permissionKey: "pos_returns" },
         ],
       },
       {
         key: "purchasing-group",
         label: "Satinalma",
         children: [
-          { key: "/purchasing/suppliers", label: "Tedarikci Listesi" },
-          { key: "/purchasing/suppliers/new", label: "Tedarikci Ekle" },
-          { key: "/purchasing/contracts", label: "Sozlesmeler" },
+          { key: "/purchasing/suppliers", label: "Tedarikci Listesi", permissionKey: "purchasing_suppliers" },
+          { key: "/purchasing/suppliers/new", label: "Tedarikci Ekle", permissionKey: "purchasing_suppliers", permissionWrite: true },
+          { key: "/purchasing/contracts", label: "Sozlesmeler", permissionKey: "purchasing_contracts" },
         ],
       },
       {
         key: "stores-group",
         label: "Magaza",
-        roles: ["Yonetici", "Muhasebe"],
         children: [
-          { key: "/stores/list", label: "Magaza Listesi", roles: ["Yonetici", "Muhasebe"] },
-          { key: "/stores/new", label: "Magaza Tanimla", roles: ["Yonetici", "Muhasebe"] },
-          { key: "/stores/shipments", label: "Gonderi Listesi", roles: ["Yonetici", "Muhasebe"] },
-          { key: "/stores/shipments/new", label: "Gonderi Olustur", roles: ["Yonetici", "Muhasebe"] },
+          { key: "/stores/list", label: "Magaza Listesi", permissionKey: "stores_list" },
+          { key: "/stores/new", label: "Magaza Tanimla", permissionKey: "stores_list", permissionWrite: true },
+          { key: "/stores/shipments", label: "Gonderi Listesi", permissionKey: "stores_shipments" },
+          { key: "/stores/shipments/new", label: "Gonderi Olustur", permissionKey: "stores_shipments", permissionWrite: true },
         ],
       },
       {
         key: "stock-group",
         label: "Stok",
         children: [
-          { key: "/stock/entry", label: "Stok Giris Ekrani" },
-          { key: "/stock/list", label: "Stok Hareketleri" },
-          { key: "/stock/locations", label: "Stok Yerleri", roles: ["Yonetici", "Muhasebe"] },
+          { key: "/stock/entry", label: "Stok Giris Ekrani", permissionKey: "stock_entry" },
+          { key: "/stock/list", label: "Stok Hareketleri", permissionKey: "stock_list" },
+          { key: "/stock/locations", label: "Stok Yerleri", permissionKey: "stock_locations" },
         ],
       },
       {
@@ -144,25 +141,24 @@ export const sidebarGroups = [
       {
         key: "reports-group",
         label: "Raporlar",
-        roles: ["Yonetici", "Muhasebe"],
         children: [
-          { key: "/reports/consolidated-earnings", label: "Toplu Hakedis Raporu", roles: ["Yonetici", "Muhasebe"] },
-          { key: "/reports/supplier-earnings", label: "Tedarikci Hakedis Raporu", roles: ["Yonetici", "Muhasebe"] },
+          { key: "/reports/consolidated-earnings", label: "Toplu Hakedis Raporu", permissionKey: "reports_consolidated" },
+          { key: "/reports/supplier-earnings", label: "Tedarikci Hakedis Raporu", permissionKey: "reports_supplier" },
         ],
       },
       {
         key: "settings-group",
         label: "Ayarlar",
         children: [
-          { key: "/settings/users", label: "Kullanici" },
-          { key: "/settings/categories", label: "Kategori Tanimlari" },
-          { key: "/settings/collections", label: "Koleksiyon Tanimlari" },
-          { key: "/settings/pos-categories", label: "Pos Kategori Tanimlari" },
-          { key: "/settings/barcode-standards", label: "Barkod Olusturma Standarti" },
-          { key: "/settings/procurement-types", label: "Tedarik Tipi Tanimlama" },
-          { key: "/settings/payment-terms", label: "Odeme Kosulu Tanimlama" },
-          { key: "/settings/parameters", label: "Parametreler" },
-          { key: "/settings/mail-management", label: "Mail Yonetimi" },
+          { key: "/settings/users", label: "Kullanici", permissionKey: "settings_users" },
+          { key: "/settings/categories", label: "Kategori Tanimlari", permissionKey: "settings_categories" },
+          { key: "/settings/collections", label: "Koleksiyon Tanimlari", permissionKey: "settings_collections" },
+          { key: "/settings/pos-categories", label: "Pos Kategori Tanimlari", permissionKey: "settings_pos_categories" },
+          { key: "/settings/barcode-standards", label: "Barkod Olusturma Standarti", permissionKey: "settings_barcode" },
+          { key: "/settings/procurement-types", label: "Tedarik Tipi Tanimlama", permissionKey: "settings_procurement" },
+          { key: "/settings/payment-terms", label: "Odeme Kosulu Tanimlama", permissionKey: "settings_payment_terms" },
+          { key: "/settings/parameters", label: "Parametreler", permissionKey: "settings_parameters" },
+          { key: "/settings/mail-management", label: "Mail Yonetimi", permissionKey: "settings_mail" },
         ],
       },
     ],
@@ -189,27 +185,23 @@ export const supplierSidebarGroups = [
   },
 ];
 
-function isItemVisibleForRole(item, role) {
-  if (!item?.roles || item.roles.length === 0) {
-    return true;
-  }
-  return item.roles.includes(role);
+function isItemVisible(item, permissions) {
+  if (!item.permissionKey) return true;
+  // Permissions boşsa (eski rol / Yonetici hariç): izin ver
+  if (!permissions || Object.keys(permissions).length === 0) return true;
+  const perm = permissions[item.permissionKey];
+  return item.permissionWrite ? perm?.write === true : perm?.view === true;
 }
 
-export function filterNavigationItems(items, role) {
+export function filterNavigationItems(items, _role, permissions = {}) {
   return (items || [])
     .map((item) => {
-      const nextChildren = item.children ? filterNavigationItems(item.children, role) : undefined;
-      if (!isItemVisibleForRole(item, role)) {
-        return null;
-      }
-      if (item.children && (!nextChildren || nextChildren.length === 0)) {
-        return null;
-      }
-      return {
-        ...item,
-        children: nextChildren,
-      };
+      if (!isItemVisible(item, permissions)) return null;
+      const nextChildren = item.children
+        ? filterNavigationItems(item.children, _role, permissions)
+        : undefined;
+      if (item.children && (!nextChildren || nextChildren.length === 0)) return null;
+      return { ...item, children: nextChildren };
     })
     .filter(Boolean);
 }

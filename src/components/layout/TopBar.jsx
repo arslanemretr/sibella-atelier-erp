@@ -18,7 +18,7 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
 
   const visibleMenuItems = authUser?.role === "Tedarikci"
     ? supplierMainMenuItems
-    : filterNavigationItems(mainMenuItems, authUser?.role);
+    : filterNavigationItems(mainMenuItems, authUser?.role, authUser?.permissions);
 
   const activeMainMenu = useMemo(
     () =>

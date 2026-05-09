@@ -524,7 +524,19 @@ export async function handleSession(req, res) {
       message: "Aktif oturum bulunamadi.",
     });
   }
-  return res.json({ ok: true, user });
+
+  // Rolün yetkilerini DB'den çek ve oturum yanıtına ekle
+  let permissions = {};
+  try {
+    const roleRow = await sqlOne("SELECT permissions FROM roles WHERE name = $1", [user.role]);
+    if (roleRow?.permissions) {
+      permissions = typeof roleRow.permissions === "object"
+        ? roleRow.permissions
+        : JSON.parse(roleRow.permissions || "{}");
+    }
+  } catch { permissions = {}; }
+
+  return res.json({ ok: true, user: { ...user, permissions } });
 }
 
 export async function handleLogout(req, res) {

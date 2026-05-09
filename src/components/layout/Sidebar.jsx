@@ -100,7 +100,7 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
   const items = withIcons(
     authUser?.role === "Tedarikci"
       ? supplierSidebarGroups
-      : filterNavigationItems(sidebarGroups, authUser?.role),
+      : filterNavigationItems(sidebarGroups, authUser?.role, authUser?.permissions),
   );
   const selectedKey = React.useMemo(() => {
     const allRoutes = [];
