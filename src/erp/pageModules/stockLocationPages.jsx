@@ -80,6 +80,7 @@ export function StockLocationListPage() {
 
       <Card title="Stok Yeri Listesi" className="erp-list-table-card">
         <Table
+          size="small"
           rowKey="id"
           loading={loading}
           columns={columns}
@@ -112,6 +113,7 @@ export function StockLocationListPage() {
             </Descriptions>
 
             <Table
+          size="small"
               rowKey={(record) => `${record.stockLocationId}-${record.productId}`}
               loading={drawerLoading}
               pagination={false}

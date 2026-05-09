@@ -311,6 +311,7 @@ export function ContractsPage() {
 
       <Card title="Tum Sozlesmeler" className="erp-list-table-card">
         <Table
+          size="small"
           rowKey="id"
           loading={tableLoading}
           columns={columns}

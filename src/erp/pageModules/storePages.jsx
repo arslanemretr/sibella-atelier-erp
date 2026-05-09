@@ -50,6 +50,7 @@ export function StoreListPage() {
 
       <Card title="Tum Magazalar" className="erp-list-table-card" style={{ paddingBottom: 24 }}>
         <Table
+          size="small"
           rowKey="id"
           loading={loading}
           pagination={false}

@@ -480,6 +480,7 @@ export default function ConsolidatedEarningsReportPage() {
 
         <Card bordered={false} className="erp-list-table-card" style={{ paddingBottom: 16 }}>
           <Table
+          size="small"
             rowKey="key"
             loading={pageLoading}
             dataSource={previewRows}

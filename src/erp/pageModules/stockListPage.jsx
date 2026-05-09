@@ -405,6 +405,7 @@ export function StockListPage() {
 
       <Card title="Tum Stok Hareketleri" className="erp-list-table-card">
         <Table
+          size="small"
           loading={tableLoading}
           columns={columns}
           dataSource={filteredMovements}

@@ -255,6 +255,7 @@ export function StockEntryEditorPage() {
                 )}
               >
                 <Table
+          size="small"
                   rowKey="key"
                   pagination={false}
                   dataSource={fields.map((field) => ({ key: field.key, field }))}
@@ -507,6 +508,7 @@ export function StockEntryListPage() {
 
       <Card title="Ana Kayit Listesi" className="erp-list-table-card">
         <Table
+          size="small"
           rowKey="id"
           loading={tableLoading}
           columns={columns}

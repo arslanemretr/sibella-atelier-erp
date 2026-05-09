@@ -330,7 +330,7 @@ function UserManagementPage() {
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateUser}>Kullanici Ekle</Button>
           </div>
           <Card>
-            <Table rowKey="id" loading={tableLoading} columns={userColumns} dataSource={users} pagination={{ pageSize: 10 }} />
+            <Table rowKey="id" loading={tableLoading} columns={userColumns} dataSource={users} pagination={{ pageSize: 10 }}  size="small"/>
           </Card>
         </Space>
       ),
@@ -344,7 +344,7 @@ function UserManagementPage() {
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateRole}>Rol Oluştur</Button>
           </div>
           <Card>
-            <Table rowKey="id" loading={rolesLoading} columns={roleColumns} dataSource={roles} pagination={false} />
+            <Table rowKey="id" loading={rolesLoading} columns={roleColumns} dataSource={roles} pagination={false}  size="small"/>
           </Card>
         </Space>
       ),

@@ -262,6 +262,7 @@ export function SupplierListPage() {
       {viewMode === "liste" ? (
         <Card title="Tum Tedarikciler" className="erp-list-table-card">
           <Table
+          size="small"
             loading={tableLoading}
             columns={columns}
             dataSource={filteredSuppliers.map((supplier) => ({ key: supplier.id, ...supplier }))}
@@ -1054,6 +1055,7 @@ export function SupplierEarningsManagementPage() {
 
       <Card bordered={false} className="erp-list-table-card" style={{ paddingBottom: 16 }}>
         <Table
+          size="small"
           rowKey="key"
           loading={pageLoading}
           pagination={false}
@@ -1160,13 +1162,17 @@ export function SupplierEarningsManagementPage() {
                   const totalNet = data.reduce((s, p) => s + p.netAmount, 0);
                   const totalEarnings = data.reduce((s, p) => s + p.earningsAmount, 0);
                   return (
-                    <Table.Summary.Row style={{ background: "#fafafa", fontWeight: 700 }}>
-                      <Table.Summary.Cell index={0} colSpan={4}><Text strong>Toplam</Text></Table.Summary.Cell>
+                    <Table
+          size="small".Summary.Row style={{ background: "#fafafa", fontWeight: 700 }}>
+                      <Table
+          size="small".Summary.Cell index={0} colSpan={4}><Text strong>Toplam</Text></Table.Summary.Cell>
                       <Table.Summary.Cell index={4} align="right" />
                       <Table.Summary.Cell index={5} align="right" />
-                      <Table.Summary.Cell index={6} align="right">{formatMoneyAdmin(totalNet)}</Table.Summary.Cell>
+                      <Table
+          size="small".Summary.Cell index={6} align="right">{formatMoneyAdmin(totalNet)}</Table.Summary.Cell>
                       <Table.Summary.Cell index={7} align="right" />
-                      <Table.Summary.Cell index={8} align="right" style={{ color: "#389e0d" }}>{formatMoneyAdmin(totalEarnings)}</Table.Summary.Cell>
+                      <Table
+          size="small".Summary.Cell index={8} align="right" style={{ color: "#389e0d" }}>{formatMoneyAdmin(totalEarnings)}</Table.Summary.Cell>
                     </Table.Summary.Row>
                   );
                 }}

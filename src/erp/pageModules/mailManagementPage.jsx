@@ -676,7 +676,7 @@ function MailManagementPage() {
                   <Button type="primary" icon={<PlusOutlined />} onClick={openTemplateCreate}>Yeni Sablon Ekle</Button>
                 </div>
                 <Card className="erp-list-table-card">
-                  <Table rowKey="id" loading={templatesLoading} columns={templateColumns} dataSource={templates} pagination={{ pageSize: 8 }} />
+                  <Table rowKey="id" loading={templatesLoading} columns={templateColumns} dataSource={templates} pagination={{ pageSize: 8 }}  size="small"/>
                 </Card>
               </Space>
             ),
@@ -697,7 +697,7 @@ function MailManagementPage() {
                   <Button type="primary" icon={<PlusOutlined />} onClick={openScenarioCreate}>Yeni Senaryo Ekle</Button>
                 </div>
                 <Card className="erp-list-table-card">
-                  <Table rowKey="id" loading={scenariosLoading} columns={scenarioColumns} dataSource={scenarios} pagination={{ pageSize: 8 }} />
+                  <Table rowKey="id" loading={scenariosLoading} columns={scenarioColumns} dataSource={scenarios} pagination={{ pageSize: 8 }}  size="small"/>
                 </Card>
               </Space>
             ),
@@ -712,7 +712,7 @@ function MailManagementPage() {
                   <Button icon={<ReloadOutlined />} onClick={() => { void refreshLogs(); }}>Yenile</Button>
                 </div>
                 <Card className="erp-list-table-card">
-                  <Table rowKey="id" loading={logsLoading} columns={logColumns} dataSource={logs} pagination={{ pageSize: 10 }} />
+                  <Table rowKey="id" loading={logsLoading} columns={logColumns} dataSource={logs} pagination={{ pageSize: 10 }}  size="small"/>
                 </Card>
               </Space>
             ),

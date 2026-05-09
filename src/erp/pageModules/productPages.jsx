@@ -44,6 +44,7 @@ function StockBreakdownDrawer({ open, onClose, product, items, loading }) {
           </Descriptions>
 
           <Table
+          size="small"
             rowKey={(record) => `${record.stockLocationId}-${record.productId}`}
             loading={loading}
             pagination={false}
@@ -587,6 +588,7 @@ export function ProductListPage() {
       {viewMode === "liste" ? (
         <Card title="Tum Urunler" className="erp-list-table-card">
           <Table
+          size="small"
             loading={tableLoading}
             columns={columns}
             dataSource={filteredProducts.map((product) => ({ key: product.id, ...product }))}

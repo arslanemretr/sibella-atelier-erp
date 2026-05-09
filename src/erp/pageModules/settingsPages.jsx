@@ -197,6 +197,7 @@ export function SettingsDefinitionPage({ entityKey }) {
 
       <Card title="Tanim Listesi" className="erp-list-table-card">
         <Table
+          size="small"
           rowKey="id"
           loading={tableLoading}
           columns={tableColumns}
@@ -692,6 +693,7 @@ export function BarcodeStandardsPage() {
 
       <Card title="Standart Listesi" className="erp-list-table-card" style={{ paddingBottom: 16 }}>
         <Table
+          size="small"
           loading={loading}
           rowKey="id"
           columns={columns}

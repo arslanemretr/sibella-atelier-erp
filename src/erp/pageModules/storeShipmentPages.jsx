@@ -88,6 +88,7 @@ export function StoreShipmentListPage() {
 
       <Card title="Tum Gonderiler" className="erp-list-table-card" style={{ paddingBottom: 24 }}>
         <Table
+          size="small"
           rowKey="id"
           loading={loading}
           pagination={false}
@@ -154,6 +155,7 @@ export function StoreShipmentListPage() {
             </Descriptions>
 
             <Table
+          size="small"
               rowKey="id"
               pagination={false}
               dataSource={selectedShipment.lines || []}
@@ -665,6 +667,7 @@ export function StoreShipmentEditorPage() {
           ) : null}
 
           <Table
+          size="small"
             rowKey="id"
             pagination={false}
             dataSource={shipmentLines.map((item, index) => ({ ...item, _rowIndex: index }))}

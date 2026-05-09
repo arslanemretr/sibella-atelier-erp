@@ -537,6 +537,7 @@ export function SupplierPortalEarningsPage() {
         extra={<Button icon={<DownloadOutlined />} onClick={handleExportDetail}>Excel'e Aktar</Button>}
       >
         <Table
+          size="small"
           rowKey="key"
           pagination={false}
           dataSource={currentSummary.detailRows}
@@ -575,12 +576,16 @@ export function SupplierPortalEarningsPage() {
             { title: "Hakediş Tutar", dataIndex: "netAmount", key: "netAmount", width: 130, align: "right", render: (value) => <Text strong>{formatDisplayMoney(value)}</Text> },
           ]}
           summary={() => (
-            <Table.Summary>
-              <Table.Summary.Row style={{ background: "#d86d5b" }}>
-                <Table.Summary.Cell index={0} colSpan={8}>
+            <Table
+          size="small".Summary>
+              <Table
+          size="small".Summary.Row style={{ background: "#d86d5b" }}>
+                <Table
+          size="small".Summary.Cell index={0} colSpan={8}>
                   <Text strong style={{ color: "#fff" }}>Toplam</Text>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={8} align="right">
+                <Table
+          size="small".Summary.Cell index={8} align="right">
                   <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(currentSummary.earningsTotal)}</Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
@@ -597,6 +602,7 @@ export function SupplierPortalEarningsPage() {
         extra={<Button icon={<DownloadOutlined />} onClick={handleExportHistory}>Excel'e Aktar</Button>}
       >
         <Table
+          size="small"
           rowKey="periodKey"
           pagination={false}
           dataSource={historySummaries}
@@ -639,16 +645,25 @@ export function SupplierPortalEarningsPage() {
             const totalEarnings = historySummaries.reduce((sum, item) => sum + Number(item.earningsTotal || 0), 0);
             const totalKdv = totalEarnings * 0.2;
             return (
-              <Table.Summary>
-                <Table.Summary.Row style={{ background: "#d86d5b" }}>
-                  <Table.Summary.Cell index={0}><Text strong style={{ color: "#fff" }}>Toplam</Text></Table.Summary.Cell>
-                  <Table.Summary.Cell index={1} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalGross)}</Text></Table.Summary.Cell>
-                  <Table.Summary.Cell index={2} align="right"><Text strong style={{ color: "#fff" }}>{totalReturn > 0 ? `-${formatDisplayMoney(totalReturn)}` : "-"}</Text></Table.Summary.Cell>
-                  <Table.Summary.Cell index={3} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalNetSales)}</Text></Table.Summary.Cell>
+              <Table
+          size="small".Summary>
+                <Table
+          size="small".Summary.Row style={{ background: "#d86d5b" }}>
+                  <Table
+          size="small".Summary.Cell index={0}><Text strong style={{ color: "#fff" }}>Toplam</Text></Table.Summary.Cell>
+                  <Table
+          size="small".Summary.Cell index={1} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalGross)}</Text></Table.Summary.Cell>
+                  <Table
+          size="small".Summary.Cell index={2} align="right"><Text strong style={{ color: "#fff" }}>{totalReturn > 0 ? `-${formatDisplayMoney(totalReturn)}` : "-"}</Text></Table.Summary.Cell>
+                  <Table
+          size="small".Summary.Cell index={3} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalNetSales)}</Text></Table.Summary.Cell>
                   <Table.Summary.Cell index={4} />
-                  <Table.Summary.Cell index={5} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings)}</Text></Table.Summary.Cell>
-                  <Table.Summary.Cell index={6} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalKdv)}</Text></Table.Summary.Cell>
-                  <Table.Summary.Cell index={7} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings * 1.2)}</Text></Table.Summary.Cell>
+                  <Table
+          size="small".Summary.Cell index={5} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings)}</Text></Table.Summary.Cell>
+                  <Table
+          size="small".Summary.Cell index={6} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalKdv)}</Text></Table.Summary.Cell>
+                  <Table
+          size="small".Summary.Cell index={7} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings * 1.2)}</Text></Table.Summary.Cell>
                   <Table.Summary.Cell index={8} />
                 </Table.Summary.Row>
               </Table.Summary>
@@ -929,6 +944,7 @@ export function SupplierPortalProductListPage() {
       {viewMode === "liste" ? (
         <Card title="Ürün Listesi" className="erp-list-table-card erp-card-logo-divider erp-supplier-products-table-card">
           <Table
+          size="small"
             rowKey="id"
             loading={tableLoading}
             columns={columns}
@@ -1438,6 +1454,7 @@ export function SupplierDeliveryListsPage() {
 
       <Card title="Gelen Kayitlar" className="erp-list-table-card">
         <Table
+          size="small"
           rowKey="id"
           loading={tableLoading}
           columns={columns}
@@ -1798,6 +1815,7 @@ export function SupplierPortalDeliveryListPage() {
 
       <Card title="Teslimatlarim" className="erp-list-table-card erp-card-logo-divider erp-delivery-list-table-card">
         <Table
+          size="small"
           rowKey="id"
           loading={tableLoading}
           columns={columns}
@@ -2567,6 +2585,7 @@ export function SupplierPortalDeliveryEditorPage() {
 
           <div className="erp-delivery-lines-table-wrap">
             <Table
+          size="small"
               className="erp-delivery-lines-table"
               rowKey={(record, index) => record.id || `delivery-line-${index}`}
               pagination={false}
@@ -2627,12 +2646,16 @@ export function SupplierPortalDeliveryEditorPage() {
               },
               ]}
               summary={() => (
-                <Table.Summary>
-                  <Table.Summary.Row>
-                    <Table.Summary.Cell index={0} colSpan={5}>
+                <Table
+          size="small".Summary>
+                  <Table
+          size="small".Summary.Row>
+                    <Table
+          size="small".Summary.Cell index={0} colSpan={5}>
                       <Text strong>Alt Toplam</Text>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={5}>
+                    <Table
+          size="small".Summary.Cell index={5}>
                       <Text strong>{new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(totalAmount)}</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={6} />

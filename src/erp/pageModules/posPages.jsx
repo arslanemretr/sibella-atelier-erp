@@ -182,6 +182,7 @@ export function PosSessionsPage() {
 
       <Card title="POS Oturum Listesi" className="erp-list-table-card">
         <Table
+          size="small"
           loading={tableLoading}
           columns={columns}
           dataSource={sessions.map((item) => ({ key: item.id, ...item }))}
@@ -1948,6 +1949,7 @@ export function PosReturnEditorPage() {
 
       <Card title="İade Edilecek Ürünler" className="erp-list-table-card" styles={{ body: { padding: 0 } }}>
         <Table
+          size="small"
           rowKey="id"
           columns={columns}
           dataSource={(sale.lines || []).map((l) => ({ key: l.id, ...l }))}
@@ -2172,6 +2174,7 @@ export function PosReturnListPage() {
         className="erp-list-table-card"
       >
         <Table
+          size="small"
           loading={loading}
           columns={columns}
           dataSource={flatRows}

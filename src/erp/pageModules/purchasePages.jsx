@@ -230,6 +230,7 @@ export function PurchaseListPage() {
 
       <Card title="Tum Satinalma Kayitlari" className="erp-list-table-card">
         <Table
+          size="small"
           loading={tableLoading}
           columns={columns}
           dataSource={filteredPurchases.map((purchase) => ({ key: purchase.id, ...purchase }))}
@@ -265,6 +266,7 @@ export function PurchaseListPage() {
             </Descriptions>
             <Card size="small" title="Kalemler">
               <Table
+                size="small"
                 rowKey="id"
                 pagination={false}
                 columns={[
@@ -452,6 +454,7 @@ export function PurchaseEditorPage() {
             {(fields, { add, remove }) => (
               <Card title="Satinalma Kalemleri" extra={<Button icon={<PlusOutlined />} onClick={() => add({ productId: undefined, quantity: 1, unitPrice: 0, note: "" })}>Satir Ekle</Button>}>
                 <Table
+          size="small"
                   rowKey="key"
                   pagination={false}
                   dataSource={fields.map((field) => ({ key: field.key, field }))}
