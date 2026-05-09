@@ -11,6 +11,37 @@ const PASSWORD_RESET_TTL_MS = 1000 * 60 * 10;
 const VALID_ROLES = new Set(["Yonetici", "Magaza", "Muhasebe", "Tedarikci"]);
 const VALID_STATUSES = new Set(["Aktif", "Pasif"]);
 
+const SCREEN_KEYS = [
+  "dashboard", "products_list", "pos_sessions", "pos_store", "pos_orders", "pos_returns",
+  "purchasing_suppliers", "purchasing_contracts", "stores_list", "stores_shipments",
+  "stock_entry", "stock_list", "stock_locations", "reports_consolidated", "reports_supplier",
+  "settings_users", "settings_categories", "settings_collections", "settings_pos_categories",
+  "settings_barcode", "settings_procurement", "settings_payment_terms", "settings_parameters", "settings_mail",
+];
+
+function buildAllPermissions(allTrue = false) {
+  return Object.fromEntries(SCREEN_KEYS.map((key) => [key, { view: allTrue, write: allTrue }]));
+}
+
+function mapRoleRow(row) {
+  if (!row) return null;
+  let permissions = {};
+  try {
+    permissions = typeof row.permissions === "object" && row.permissions !== null
+      ? row.permissions
+      : JSON.parse(row.permissions || "{}");
+  } catch { permissions = {}; }
+  return {
+    id: row.id,
+    name: row.name || "",
+    description: row.description || "",
+    permissions,
+    isSystem: Boolean(row.is_system),
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+  };
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -101,7 +132,7 @@ function sanitizeUser(user) {
 }
 
 function validateRole(role) {
-  if (!VALID_ROLES.has(role)) {
+  if (!role || typeof role !== "string" || !role.trim()) {
     throw new Error("Gecersiz kullanici rolu.");
   }
 }
@@ -737,5 +768,114 @@ export async function handleUsersDelete(req, res) {
   }
 
   await deleteUserRow(userId);
+  return res.json({ ok: true });
+}
+
+// ─── Rol Yönetimi ────────────────────────────────────────────────────────────
+
+export async function ensureRolesTable() {
+  await sqlExec(`
+    CREATE TABLE IF NOT EXISTS roles (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      description TEXT,
+      permissions JSONB,
+      is_system BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ
+    )
+  `);
+
+  const defaultRoles = [
+    {
+      id: "role-yonetici",
+      name: "Yonetici",
+      description: "Tüm ekranlar ve işlemler",
+      permissions: buildAllPermissions(true),
+      isSystem: true,
+    },
+    {
+      id: "role-tedarikci",
+      name: "Tedarikci",
+      description: "Tedarikçi portalı",
+      permissions: {},
+      isSystem: true,
+    },
+  ];
+
+  for (const role of defaultRoles) {
+    await sqlExec(`
+      INSERT INTO roles (id, name, description, permissions, is_system, created_at, updated_at)
+      VALUES ($1, $2, $3, $4::jsonb, $5, $6::timestamptz, $6::timestamptz)
+      ON CONFLICT (name) DO NOTHING
+    `, [role.id, role.name, role.description, JSON.stringify(role.permissions), role.isSystem, nowIso()]);
+  }
+}
+
+export async function handleRolesList(_req, res) {
+  const rows = await sqlMany("SELECT * FROM roles ORDER BY is_system DESC, created_at ASC");
+  return res.json({ ok: true, items: rows.map(mapRoleRow) });
+}
+
+export async function handleRolesCreate(req, res) {
+  try {
+    const { name, description = "", permissions = {} } = req.body || {};
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: "Rol adı zorunludur." });
+    }
+    const id = createId("role");
+    const now = nowIso();
+    await sqlExec(
+      `INSERT INTO roles (id, name, description, permissions, is_system, created_at, updated_at)
+       VALUES ($1, $2, $3, $4::jsonb, FALSE, $5::timestamptz, $5::timestamptz)`,
+      [id, name.trim(), String(description || ""), JSON.stringify(permissions || {}), now],
+    );
+    const row = await sqlOne("SELECT * FROM roles WHERE id = $1", [id]);
+    return res.status(201).json({ ok: true, item: mapRoleRow(row) });
+  } catch (error) {
+    if (String(error?.message || "").toLowerCase().includes("unique")) {
+      return res.status(409).json({ ok: false, code: "DUPLICATE_NAME", message: "Bu rol adı zaten kullanılıyor." });
+    }
+    return res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: error?.message || "Rol oluşturulamadı." });
+  }
+}
+
+export async function handleRolesUpdate(req, res) {
+  const roleId = req.params.id;
+  const existingRow = await sqlOne("SELECT * FROM roles WHERE id = $1", [roleId]);
+  if (!existingRow) {
+    return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "Rol bulunamadı." });
+  }
+  const existing = mapRoleRow(existingRow);
+  try {
+    const { name, description, permissions } = req.body || {};
+    const nextName = existing.isSystem ? existing.name : (name?.trim() || existing.name);
+    const nextDesc = typeof description !== "undefined" ? String(description) : existing.description;
+    const nextPerms = typeof permissions !== "undefined" ? permissions : existing.permissions;
+    const now = nowIso();
+    await sqlExec(
+      "UPDATE roles SET name = $2, description = $3, permissions = $4::jsonb, updated_at = $5::timestamptz WHERE id = $1",
+      [roleId, nextName, nextDesc, JSON.stringify(nextPerms), now],
+    );
+    const row = await sqlOne("SELECT * FROM roles WHERE id = $1", [roleId]);
+    return res.json({ ok: true, item: mapRoleRow(row) });
+  } catch (error) {
+    if (String(error?.message || "").toLowerCase().includes("unique")) {
+      return res.status(409).json({ ok: false, code: "DUPLICATE_NAME", message: "Bu rol adı zaten kullanılıyor." });
+    }
+    return res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: error?.message || "Rol güncellenemedi." });
+  }
+}
+
+export async function handleRolesDelete(req, res) {
+  const roleId = req.params.id;
+  const existingRow = await sqlOne("SELECT * FROM roles WHERE id = $1", [roleId]);
+  if (!existingRow) {
+    return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "Rol bulunamadı." });
+  }
+  if (existingRow.is_system) {
+    return res.status(400).json({ ok: false, code: "SYSTEM_ROLE", message: "Sistem rolleri silinemez." });
+  }
+  await sqlExec("DELETE FROM roles WHERE id = $1", [roleId]);
   return res.json({ ok: true });
 }

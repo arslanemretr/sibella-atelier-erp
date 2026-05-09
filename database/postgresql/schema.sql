@@ -84,6 +84,16 @@ CREATE TABLE IF NOT EXISTS suppliers (
 
 ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS logo TEXT;
 
+CREATE TABLE IF NOT EXISTS roles (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  permissions JSONB,
+  is_system BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   full_name TEXT,

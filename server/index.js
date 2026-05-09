@@ -3,8 +3,13 @@ import express from "express";
 import fs from "node:fs";
 import path from "node:path";
 import {
+  ensureRolesTable,
   handleForgotPasswordConfirm,
   handleForgotPasswordRequest,
+  handleRolesCreate,
+  handleRolesDelete,
+  handleRolesList,
+  handleRolesUpdate,
   requireRole,
   handleLogin,
   handleLogout,
@@ -144,6 +149,7 @@ void ensureDatabaseReady()
   .then(() => ensureProductIndexes())
   .then(() => ensureDeliveryIndexes())
   .then(() => ensurePosSalesIndexes())
+  .then(() => ensureRolesTable())
   .then(() => migrateLegacyPasswords())
   .catch((error) => {
     console.error("Database init / auth migration hatasi:", error?.message || error);
@@ -168,6 +174,10 @@ app.get("/api/users", requireRole("Yonetici"), handleUsersList);
 app.post("/api/users", requireRole("Yonetici"), handleUsersCreate);
 app.put("/api/users/:id", requireRole("Yonetici"), handleUsersUpdate);
 app.delete("/api/users/:id", requireRole("Yonetici"), handleUsersDelete);
+app.get("/api/roles", requireRole("Yonetici"), handleRolesList);
+app.post("/api/roles", requireRole("Yonetici"), handleRolesCreate);
+app.put("/api/roles/:id", requireRole("Yonetici"), handleRolesUpdate);
+app.delete("/api/roles/:id", requireRole("Yonetici"), handleRolesDelete);
 app.get("/api/dashboard/summary", requireRole("Yonetici", "Magaza", "Muhasebe"), handleDashboardSummary);
 app.post("/api/settings/smtp/test", requireRole("Yonetici"), handleSmtpTestEmail);
 app.get("/api/settings/system-parameters", requireRole("Yonetici"), handleSystemParametersGet);
