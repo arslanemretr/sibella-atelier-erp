@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AutoComplete, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Row, Select, Space, Table, Tag, Tooltip, Typography, Upload, message } from "antd";
 import { CheckOutlined, DeleteOutlined, EditOutlined, FilePdfOutlined, PlusCircleOutlined, PlusOutlined, SendOutlined, UploadOutlined } from "@ant-design/icons";
@@ -77,7 +77,7 @@ export function StoreShipmentListPage() {
   }, [refreshShipments]);
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Gonderi Listesi</Title>
@@ -140,9 +140,9 @@ export function StoreShipmentListPage() {
         />
       </Card>
 
-      <Drawer title="Gonderi Detayi" placement="right" width={520} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Gonderi Detayi" placement="right" styles={{ wrapper: { width: 520 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedShipment ? (
-          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Space vertical size={16} style={{ width: "100%" }}>
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label="Gonderi No">{selectedShipment.shipmentNo}</Descriptions.Item>
               <Descriptions.Item label="Magaza">{selectedShipment.storeName}</Descriptions.Item>
@@ -550,7 +550,7 @@ export function StoreShipmentEditorPage() {
   };
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+    <Space vertical size={16} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Gonderi Formu" : "Gonderi Olustur"}</Title>
@@ -735,7 +735,7 @@ export function StoreShipmentEditorPage() {
         }}
       >
         {editLine ? (
-          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Space vertical size={16} style={{ width: "100%" }}>
             <div>
               <Text strong>Gorsel</Text>
               <div style={{ marginTop: 4 }}>
@@ -791,7 +791,7 @@ export function StoreShipmentEditorPage() {
                 title="Urun Karti Bilgileri"
                 style={{ border: "1px solid #e8edf3", borderRadius: 8, background: "#fafbfc" }}
               >
-                <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                <Space vertical size={12} style={{ width: "100%" }}>
                   <Row gutter={12}>
                     <Col span={12}>
                       <Text strong>

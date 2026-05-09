@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm, Row, Select, Space, Switch, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { createMasterData, listMasterDataFresh, masterDataDefinitions, updateMasterData } from "../masterData";
@@ -162,7 +162,7 @@ export function SettingsDefinitionPage({ entityKey }) {
   const formColSpan = activeConfig.fields.length <= 3 ? 8 : 6;
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>{activeConfig.title}</Title>
@@ -172,7 +172,7 @@ export function SettingsDefinitionPage({ entityKey }) {
       </div>
 
       <Card title="Tanim Formu" extra={<Tag color="blue">Kalici Kayit Acik</Tag>}>
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <Text type="secondary">
             {activeConfig.relationText.join(" ")}
           </Text>
@@ -233,7 +233,7 @@ export function SettingsDefinitionPage({ entityKey }) {
         extra={<Button type="primary" onClick={handleUpdate}>Guncelle</Button>}
       >
         {selectedRecord ? (
-          <Space direction="vertical" size={18} style={{ width: "100%" }}>
+          <Space vertical size={18} style={{ width: "100%" }}>
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label="Kayit No">{selectedRecord.id}</Descriptions.Item>
               <Descriptions.Item label="Olusturma Tarihi">{new Date(selectedRecord.createdAt).toLocaleString("tr-TR")}</Descriptions.Item>
@@ -301,7 +301,7 @@ export function ParametersPage() {
   };
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Parametreler</Title>
@@ -315,7 +315,7 @@ export function ParametersPage() {
           <Row gutter={[16, 16]}>
             <Col xs={24} md={12} xl={8}>
               <Card size="small" title="Urun Kodu Kontrolu">
-                <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                <Space vertical size={12} style={{ width: "100%" }}>
                   <Text type="secondary">
                     Aktifken urun kodu tedarikci kisa koduna gore otomatik uretilir ve tekrar kontrol edilir. Pasifken manuel girise izin verilir.
                   </Text>
@@ -414,7 +414,7 @@ export function SmtpSettingsPage() {
   };
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>SMTP ve E-posta</Title>
@@ -425,13 +425,13 @@ export function SmtpSettingsPage() {
 
       <Card title="SMTP Ayarlari" extra={<Tag color="gold">Sifremi Unuttum Maili</Tag>} loading={pageLoading}>
         <Form form={smtpForm} layout="vertical">
-          <Space direction="vertical" size={12} style={{ width: "100%", marginBottom: 16 }}>
+          <Space vertical size={12} style={{ width: "100%", marginBottom: 16 }}>
             <Alert
               type="info"
               showIcon
               message="Gmail kurulumu"
               description={(
-                <Space direction="vertical" size={2}>
+                <Space vertical size={2}>
                   <Text>1. Google hesabinizda 2 Adimli Dogrulama acin.</Text>
                   <Text>2. Google hesabinizdan 16 haneli Uygulama Sifresi olusturun.</Text>
                   <Text>3. Bu sayfada Gmail ayarlarini doldurun veya hazir ayari uygulayin.</Text>
@@ -447,7 +447,7 @@ export function SmtpSettingsPage() {
           <Row gutter={[16, 16]}>
             <Col xs={24} md={12} xl={8}>
               <Card size="small" title="SMTP Durumu">
-                <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                <Space vertical size={12} style={{ width: "100%" }}>
                   <Text type="secondary">
                     Aktif oldugunda sifre yenileme kodlari ekranda gosterilmek yerine e-posta ile gonderilir.
                   </Text>
@@ -654,7 +654,7 @@ export function BarcodeStandardsPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Barkod Standartları</Title>

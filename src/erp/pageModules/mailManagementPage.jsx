@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import {
   Alert,
   Button,
@@ -543,7 +543,7 @@ function MailManagementPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div>
         <Title level={3} style={{ marginBottom: 6 }}>Mail Yonetimi</Title>
         <Text type="secondary">SMTP ayarlari, mail sablonlari, faz 2 senaryo kurallari ve gonderim gecmisi bu ekrandan yonetilir.</Text>
@@ -556,16 +556,16 @@ function MailManagementPage() {
             key: "smtp",
             label: "SMTP Ayarlari",
             children: (
-              <Space direction="vertical" size={16} style={{ width: "100%" }}>
+              <Space vertical size={16} style={{ width: "100%" }}>
                 <Card title="SMTP Ayarlari" extra={<Button type="primary" onClick={handleSaveSmtp}>Kaydet</Button>} loading={smtpLoading}>
                   <Form form={smtpForm} layout="vertical">
-                    <Space direction="vertical" size={12} style={{ width: "100%", marginBottom: 16 }}>
+                    <Space vertical size={12} style={{ width: "100%", marginBottom: 16 }}>
                       <Alert
                         type="info"
                         showIcon
                         message="Gmail kurulumu"
                         description={(
-                          <Space direction="vertical" size={2}>
+                          <Space vertical size={2}>
                             <Text>1. Google hesabinizda 2 Adimli Dogrulama acin.</Text>
                             <Text>2. 16 haneli Uygulama Sifresi olusturun.</Text>
                             <Text>3. Gmail ayarlarini doldurup test maili gonderin.</Text>
@@ -580,7 +580,7 @@ function MailManagementPage() {
                     <Row gutter={[16, 16]}>
                       <Col xs={24} md={12} xl={8}>
                         <Card size="small" title="SMTP Durumu">
-                          <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                          <Space vertical size={12} style={{ width: "100%" }}>
                             <Text type="secondary">Aktif oldugunda sistem mailleri e-posta ile gonderilir.</Text>
                             <Form.Item name="enabled" valuePropName="checked" style={{ marginBottom: 0 }}>
                               <Switch checkedChildren="Aktif" unCheckedChildren="Pasif" />
@@ -670,7 +670,7 @@ function MailManagementPage() {
             key: "templates",
             label: "Sablonlar",
             children: (
-              <Space direction="vertical" size={16} style={{ width: "100%" }}>
+              <Space vertical size={16} style={{ width: "100%" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
                   <Text type="secondary">HTML icerik, konu ve duz metin alanlarini sablon bazinda yonetin.</Text>
                   <Button type="primary" icon={<PlusOutlined />} onClick={openTemplateCreate}>Yeni Sablon Ekle</Button>
@@ -685,7 +685,7 @@ function MailManagementPage() {
             key: "scenarios",
             label: "Senaryolar",
             children: (
-              <Space direction="vertical" size={16} style={{ width: "100%" }}>
+              <Space vertical size={16} style={{ width: "100%" }}>
                 <Alert
                   type="info"
                   showIcon
@@ -706,7 +706,7 @@ function MailManagementPage() {
             key: "logs",
             label: "Gonderim Gecmisi",
             children: (
-              <Space direction="vertical" size={16} style={{ width: "100%" }}>
+              <Space vertical size={16} style={{ width: "100%" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
                   <Text type="secondary">Son 250 mail gonderim kaydi izlenir.</Text>
                   <Button icon={<ReloadOutlined />} onClick={() => { void refreshLogs(); }}>Yenile</Button>
@@ -801,7 +801,7 @@ function MailManagementPage() {
                 key: "preview",
                 label: "Onizleme",
                 children: (
-                  <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                  <Space vertical size={12} style={{ width: "100%" }}>
                     <Card size="small" title="Konu Onizleme">
                       <Text>{renderTemplateString(watchedTemplateSubject, previewContext) || "-"}</Text>
                     </Card>
@@ -914,7 +914,7 @@ function MailManagementPage() {
 
             <Form.List name="conditions">
               {(fields, { add, remove }) => (
-                <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                <Space vertical size={12} style={{ width: "100%" }}>
                   {fields.map((field) => {
                     const currentOperator = scenarioForm.getFieldValue(["conditions", field.name, "operator"]);
                     const hideValue = currentOperator === "is_empty" || currentOperator === "is_not_empty";
@@ -965,7 +965,7 @@ function MailManagementPage() {
           </Card>
 
           <Card size="small" title="Ek Dosyalar">
-            <Space direction="vertical" size={12} style={{ width: "100%" }}>
+            <Space vertical size={12} style={{ width: "100%" }}>
               <input
                 ref={attachmentInputRef}
                 type="file"
@@ -978,7 +978,7 @@ function MailManagementPage() {
                 <Text type="secondary">Yuklenen dosyalar mail ile ekte gonderilir.</Text>
               </Space>
               {(watchedScenarioAttachments || []).length ? (
-                <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                <Space vertical size={8} style={{ width: "100%" }}>
                   {watchedScenarioAttachments.map((attachment, index) => (
                     <Card
                       key={`${attachment.url}-${index}`}
@@ -1002,7 +1002,7 @@ function MailManagementPage() {
             showIcon
             message="Senaryo Ozeti"
             description={(
-              <Space direction="vertical" size={2}>
+              <Space vertical size={2}>
                 <Text>{`Kosul sayisi: ${watchedScenarioConditions.length}`}</Text>
                 <Text>{`Ek dosya sayisi: ${watchedScenarioAttachments.length}`}</Text>
               </Space>

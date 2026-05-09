@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
@@ -206,7 +206,7 @@ export function StockEntryEditorPage() {
   };
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Stok Girisi Duzenle" : "Stok Giris Ekrani"}</Title>
@@ -456,7 +456,7 @@ export function StockEntryListPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div>
         <Title level={3} style={{ marginBottom: 6 }}>Stok Giris Ana Kayitlar</Title>
         <Text type="secondary">Stok giris ana kayitlari burada olusur. Kalemleri duzenlemek icin ana kayda girilir.</Text>
@@ -527,7 +527,7 @@ export function StockEntryListPage() {
         </div>
       </Card>
 
-      <Drawer title="Stok Giris Detayi" placement="right" width={420} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Stok Giris Detayi" placement="right" styles={{ wrapper: { width: 420 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedEntry ? (
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label="Belge No">{selectedEntry.documentNo}</Descriptions.Item>

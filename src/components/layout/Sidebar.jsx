@@ -173,11 +173,10 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
         placement="left"
         open={!collapsed}
         onClose={() => setCollapsed(true)}
-        width={280}
         maskClosable
         closable
         rootClassName="erp-sidebar-drawer"
-        bodyStyle={{ padding: 0 }}
+        styles={{ body: { padding: 0 }, wrapper: { width: 280 } }}
       >
         {sidebarContent}
       </Drawer>

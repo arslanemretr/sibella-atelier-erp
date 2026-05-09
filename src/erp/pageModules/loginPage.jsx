@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Alert, Button, Card, Form, Input, Modal, Space, Spin, Typography, message } from "antd";
 import { LockOutlined, MailOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
@@ -144,7 +144,7 @@ function LoginPage() {
   return (
     <div className="erp-login-page">
       <Card className="erp-login-card" bordered={false}>
-        <Space direction="vertical" size={20} style={{ width: "100%" }}>
+        <Space vertical size={20} style={{ width: "100%" }}>
           <div className="erp-login-header">
             <div className="erp-login-logo-wrap">
               <img src={logo} alt="Sibella Atelier" className="erp-login-logo" />
@@ -237,7 +237,7 @@ function LoginPage() {
                 showIcon
                 message={resetMeta?.delivery === "email" ? "Yenileme kodu e-posta adresinize gonderildi" : "Yenileme kodu olusturuldu"}
                 description={(
-                  <Space direction="vertical" size={4}>
+                  <Space vertical size={4}>
                     {resetMeta?.delivery === "email" ? (
                       <Text>Kodu e-posta kutunuzdan alip asagidaki alana girin.</Text>
                     ) : (

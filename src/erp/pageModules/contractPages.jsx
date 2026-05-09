@@ -276,7 +276,7 @@ export function ContractsPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Sozlesmeler</Title>
@@ -340,7 +340,7 @@ export function ContractsPage() {
       </Card>
 
       <Modal title="Gelismis Filtreler" open={filterModalOpen} onCancel={() => setFilterModalOpen(false)} footer={null}>
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <Row gutter={[12, 12]}>
             <Col span={24}>
               <Form.Item label="Firma">
@@ -415,7 +415,7 @@ export function ContractsPage() {
             <InputNumber style={{ width: "100%" }} min={0} max={100} step={0.01} precision={2} />
           </Form.Item>
           <Form.Item label="Sozlesme PDF Yukleme">
-            <Space direction="vertical" size={6} style={{ width: "100%" }}>
+            <Space vertical size={6} style={{ width: "100%" }}>
               <input type="file" accept="application/pdf" onChange={handlePdfFileChange} />
               <Text type="secondary">
                 {uploadedPdf.pdfName ? `Yuklenen dosya: ${uploadedPdf.pdfName}` : "PDF dosyasi secilmedi. Isterseniz bos birakabilirsiniz."}

@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppstoreOutlined, BarsOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import { Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
@@ -219,7 +219,7 @@ export function SupplierListPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Tedarikci Listesi</Title>
@@ -292,7 +292,7 @@ export function SupplierListPage() {
           <Row gutter={[16, 16]}>
             {filteredSuppliers.map((supplier) => (
               <Col xs={24} sm={12} xl={6} key={supplier.id}>
-                <Card hoverable className="erp-product-kanban-card" bodyStyle={{ padding: 14 }} onClick={() => openDetailFromRow(setSelectedSupplier, setDetailOpen, supplier)}>
+                <Card hoverable className="erp-product-kanban-card" styles={{ body: { padding: 14 } }} onClick={() => openDetailFromRow(setSelectedSupplier, setDetailOpen, supplier)}>
                   <div className="erp-supplier-kanban">
                     <div className="erp-supplier-avatar">{supplier.initials}</div>
                     <div className="erp-product-kanban-content">
@@ -309,7 +309,7 @@ export function SupplierListPage() {
         </Card>
       )}
 
-      <Drawer title="Tedarikci Detayi" placement="right" width={420} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Tedarikci Detayi" placement="right" styles={{ wrapper: { width: 420 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedSupplier ? (
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label="Kisa Kod">{selectedSupplier.shortCode || "-"}</Descriptions.Item>
@@ -327,7 +327,7 @@ export function SupplierListPage() {
       </Drawer>
 
       <Modal title="Gelismis Filtreler" open={filterModalOpen} onCancel={() => setFilterModalOpen(false)} footer={null}>
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <Row gutter={[12, 12]}>
             <Col span={24}>
               <Form.Item label="Tedarik Tipi">
@@ -528,7 +528,7 @@ export function SupplierEditorPage() {
   };
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Tedarikci Duzenle" : "Tedarikci Ekle"}</Title>
@@ -543,9 +543,9 @@ export function SupplierEditorPage() {
       <Form form={form} layout="vertical">
         <Row gutter={[20, 20]}>
           <Col xs={24} xl={8}>
-            <Space direction="vertical" size={20} style={{ width: "100%" }}>
+            <Space vertical size={20} style={{ width: "100%" }}>
               <Card title="Tedarikci Ozet" loading={pageLoading}>
-                <Space direction="vertical" size={14} style={{ width: "100%" }}>
+                <Space vertical size={14} style={{ width: "100%" }}>
                   <div className="erp-supplier-summary">
                     {logoValue ? (
                       <img src={logoValue} alt={watchedCompany} className="erp-supplier-avatar erp-supplier-avatar-large erp-supplier-logo-image" />
@@ -606,13 +606,13 @@ export function SupplierEditorPage() {
           </Col>
 
           <Col xs={24} xl={16}>
-            <Space direction="vertical" size={20} style={{ width: "100%" }}>
+            <Space vertical size={20} style={{ width: "100%" }}>
               <Card title="Genel Bilgiler" loading={pageLoading}>
                 <Row gutter={[16, 16]}>
                   <Col xs={24} md={12}><Form.Item name="shortCode" label="Tedarikci Kisa Kod"><Input placeholder="MINA" /></Form.Item></Col>
                   <Col xs={24} md={12}><Form.Item name="company" label="Firma / Kisi Adi" rules={[{ required: true, message: "Firma adi zorunludur." }]}><Input placeholder="Mina Aksesuar" /></Form.Item></Col>
                   <Col xs={24}>
-                    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                    <Space vertical size={12} style={{ width: "100%" }}>
                       <Text strong>Tedarikci Logosu</Text>
                       <div className="erp-supplier-logo-upload">
                         {logoValue ? (
@@ -993,7 +993,7 @@ export function SupplierEarningsManagementPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div>
         <Title level={3} style={{ marginBottom: 6 }}>Hakediş Yönetimi</Title>
         <Text type="secondary">Tedarikçi dönem hakediş takibi, fatura ve ödeme durumu girişleri.</Text>
@@ -1106,7 +1106,7 @@ export function SupplierEarningsManagementPage() {
         }
       >
         {selectedRow ? (
-          <Space direction="vertical" size={20} style={{ width: "100%" }}>
+          <Space vertical size={20} style={{ width: "100%" }}>
             <Row gutter={[12, 12]}>
               <Col span={12}>
                 <Card size="small" bordered style={{ background: "#fafafa" }}>

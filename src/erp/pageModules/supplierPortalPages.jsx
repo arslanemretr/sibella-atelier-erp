@@ -475,7 +475,7 @@ export function SupplierPortalEarningsPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div className="erp-page-intro">
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Hakediş Özeti</Title>
@@ -877,7 +877,7 @@ export function SupplierPortalProductListPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div className="erp-page-intro erp-page-intro-mobile-products">
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Ürünlerim</Title>
@@ -940,7 +940,7 @@ export function SupplierPortalProductListPage() {
                 <Card
                   hoverable
                   className="erp-product-kanban-card"
-                  bodyStyle={{ padding: 14 }}
+                  styles={{ body: { padding: 14 } }}
                   onClick={() => navigate(`/supplier/products/${product.id}`)}
                 >
                   <div className="erp-product-kanban-row">
@@ -968,7 +968,7 @@ export function SupplierPortalProductListPage() {
         onCancel={() => setFilterModalOpen(false)}
         footer={null}
       >
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <Row gutter={[12, 12]}>
             <Col span={24}>
               <Form.Item label="Kategori">
@@ -1100,7 +1100,7 @@ export function SupplierPortalProductEditorPage() {
   }, [form, isEditMode, navigate, productId, supplierId]);
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Urun Karti</Title>
@@ -1136,7 +1136,7 @@ export function SupplierPortalProductEditorPage() {
           </Col>
 
           <Col xs={24} xl={16}>
-            <Space direction="vertical" size={20} style={{ width: "100%" }}>
+            <Space vertical size={20} style={{ width: "100%" }}>
               <Card title="Urun Bilgileri" extra={<Tag color="blue">{form.getFieldValue("workflowStatus") || "Taslak"}</Tag>} loading={pageLoading}>
                 <Row gutter={[16, 16]}>
                   <Col xs={24} md={12}>
@@ -1391,7 +1391,7 @@ export function SupplierDeliveryListsPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div>
         <Title level={3} style={{ marginBottom: 6 }}>Teslimat Listeleri</Title>
         <Text type="secondary">Tedarikciler tarafindan olusturulan teslimat listeleri burada izlenir, acilir ve durumlari guncellenir.</Text>
@@ -1440,7 +1440,7 @@ export function SupplierDeliveryListsPage() {
       </Card>
 
       <Modal title="Gelismis Filtreler" open={filterModalOpen} onCancel={() => setFilterModalOpen(false)} footer={null}>
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <Row gutter={[12, 12]}>
             <Col span={24}>
               <Form.Item label="Teslimat No">
@@ -1515,7 +1515,7 @@ export function SupplierDeliveryListsPage() {
 
           <Card size="small" title="Kayitli Filtreler">
             {savedFilters.length === 0 ? <Text type="secondary">Henuz kayitli filtre yok.</Text> : (
-              <Space direction="vertical" size={6} style={{ width: "100%" }}>
+              <Space vertical size={6} style={{ width: "100%" }}>
                 {savedFilters.map((item) => (
                   <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Button style={{ flex: 1, textAlign: "left" }} onClick={() => { setFilters(item.filters); setFilterModalOpen(false); message.success(`${item.name} filtresi uygulandi.`); }}>{item.name}</Button>
@@ -1757,7 +1757,7 @@ export function SupplierPortalDeliveryListPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Teslimat Listesi</Title>
@@ -1800,7 +1800,7 @@ export function SupplierPortalDeliveryListPage() {
         </div>
       </Card>
 
-      <Drawer title="Teslimat Detayi" placement="right" width={420} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Teslimat Detayi" placement="right" styles={{ wrapper: { width: 420 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedRecord ? (
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label="Teslimat No">{selectedRecord.deliveryNo}</Descriptions.Item>
@@ -1834,7 +1834,7 @@ export function SupplierPortalDeliveryListPage() {
             <Text type="secondary">Yükleniyor...</Text>
           </div>
         ) : (
-          <Space direction="vertical" size={16} style={{ width: "100%", paddingTop: 8 }}>
+          <Space vertical size={16} style={{ width: "100%", paddingTop: 8 }}>
             <Descriptions column={2} size="small" bordered>
               <Descriptions.Item label="Teslimat Kodu">{newModalMeta.deliveryNo || "-"}</Descriptions.Item>
               <Descriptions.Item label="Firma">{newModalMeta.supplierName || "-"}</Descriptions.Item>
@@ -2398,7 +2398,7 @@ export function SupplierPortalDeliveryEditorPage() {
   };
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+    <Space vertical size={16} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>{isAdminView ? "Teslimat Formu" : "Teslimat Olustur"}</Title>
@@ -2472,7 +2472,7 @@ export function SupplierPortalDeliveryEditorPage() {
           ) : null}
         </Card>
 
-        <Card title="Urun Listesi" className="erp-card-logo-divider" bodyStyle={{ paddingTop: 16 }} style={{ marginTop: 12 }}>
+        <Card title="Urun Listesi" className="erp-card-logo-divider" styles={{ body: { paddingTop: 16 } }} style={{ marginTop: 12 }}>
           {!isDeliveryLocked ? (
           <Card size="small" title="Urun Ekleme" style={{ marginBottom: 12 }}>
             <Row gutter={[12, 12]} align="bottom" className="erp-delivery-draft-grid">
@@ -2642,7 +2642,7 @@ export function SupplierPortalDeliveryEditorPage() {
         }}
       >
         {editLine ? (
-          <Space direction="vertical" size={14} style={{ width: "100%" }}>
+          <Space vertical size={14} style={{ width: "100%" }}>
             <div className="erp-product-preview" style={{ minHeight: 200 }} onClick={() => (!isDeliveryLocked || isAdminView) && editImageInputRef.current?.click()} role="button" tabIndex={0}>
               <img src={editLine.image || "/products/baroque-necklace.svg"} alt="Urun gorseli" className="erp-product-image-large" />
             </div>

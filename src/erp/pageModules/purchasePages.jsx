@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Modal, Row, Select, Space, Table, Typography, message } from "antd";
@@ -194,7 +194,7 @@ export function PurchaseListPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Satinalma Listesi</Title>
@@ -251,9 +251,9 @@ export function PurchaseListPage() {
         </div>
       </Card>
 
-      <Drawer title="Satinalma Detayi" placement="right" width={460} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Satinalma Detayi" placement="right" styles={{ wrapper: { width: 460 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedPurchase ? (
-          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Space vertical size={16} style={{ width: "100%" }}>
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label="Belge No">{selectedPurchase.documentNo}</Descriptions.Item>
               <Descriptions.Item label="Tarih">{selectedPurchase.date}</Descriptions.Item>
@@ -282,7 +282,7 @@ export function PurchaseListPage() {
       </Drawer>
 
       <Modal title="Gelismis Filtreler" open={filterModalOpen} onCancel={() => setFilterModalOpen(false)} footer={null}>
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <Row gutter={[12, 12]}>
             <Col span={24}>
               <Form.Item label="Tedarikci">
@@ -423,7 +423,7 @@ export function PurchaseEditorPage() {
   };
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Satinalma Duzenle" : "Satinalma Giris"}</Title>

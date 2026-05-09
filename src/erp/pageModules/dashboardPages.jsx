@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import {
@@ -209,7 +209,7 @@ export function DashboardPage() {
         <Descriptions column={1} size="small" bordered>
           {(data?.metricDetails?.["open-pos"]?.items || []).map((item, i) => (
             <Descriptions.Item key={i} label={item.label}>
-              <Space direction="vertical" size={2}>
+              <Space vertical size={2}>
                 <Text strong>{item.value}</Text>
                 {item.hint ? <Text type="secondary">{item.hint}</Text> : null}
               </Space>
@@ -224,7 +224,7 @@ export function DashboardPage() {
         <Descriptions column={1} size="small" bordered>
           {(data?.metricDetails?.suppliers?.items || []).map((item, i) => (
             <Descriptions.Item key={i} label={item.label}>
-              <Space direction="vertical" size={2}>
+              <Space vertical size={2}>
                 <Text strong>{item.value}</Text>
                 {item.hint ? <Text type="secondary">{item.hint}</Text> : null}
               </Space>
@@ -272,7 +272,7 @@ export function DashboardPage() {
   };
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
 
       {/* Başlık + Filtre */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
@@ -480,7 +480,7 @@ export function DashboardPage() {
             {topProducts.length === 0 ? (
               <Empty description="Bu dönemde satış yok." style={{ padding: "24px 0" }} />
             ) : (
-              <Space direction="vertical" style={{ width: "100%" }} size={12}>
+              <Space vertical style={{ width: "100%" }} size={12}>
                 {topProducts.slice(0, 6).map((product, index) => (
                   <div key={product.id}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
@@ -699,7 +699,7 @@ export function SupplierDashboardPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div>
         <Title level={3} style={{ marginBottom: 6 }}>Dashboard</Title>
         <Text type="secondary">Tedarikçi hesabınızdaki ürün, stok ve teslimat özetini buradan takip edebilirsiniz.</Text>

@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm, Row, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
@@ -39,7 +39,7 @@ export function StoreListPage() {
   };
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Magaza Listesi</Title>
@@ -109,7 +109,7 @@ export function StoreListPage() {
         />
       </Card>
 
-      <Drawer title="Magaza Detayi" placement="right" width={440} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Magaza Detayi" placement="right" styles={{ wrapper: { width: 440 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedStore ? (
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label="Magaza Adi">{selectedStore.name}</Descriptions.Item>
@@ -202,7 +202,7 @@ export function StoreEditorPage() {
   };
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Magaza Duzenle" : "Magaza Tanimla"}</Title>
@@ -228,7 +228,7 @@ export function StoreEditorPage() {
           </Col>
 
           <Col xs={24} xl={14}>
-            <Space direction="vertical" size={20} style={{ width: "100%" }}>
+            <Space vertical size={20} style={{ width: "100%" }}>
               <Card title="Genel Bilgiler" loading={pageLoading}>
                 <Row gutter={[16, 16]}>
                   <Col xs={24} md={12}><Form.Item name="name" label="Magaza Adi" rules={[{ required: true, message: "Magaza adi zorunludur." }]}><Input /></Form.Item></Col>

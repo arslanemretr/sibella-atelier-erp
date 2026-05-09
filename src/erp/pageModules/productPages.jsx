@@ -36,7 +36,7 @@ function StockBreakdownDrawer({ open, onClose, product, items, loading }) {
       onClose={onClose}
     >
       {product ? (
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label="Urun Kodu">{product.code}</Descriptions.Item>
             <Descriptions.Item label="Urun Adi">{product.name}</Descriptions.Item>
@@ -532,7 +532,7 @@ export function ProductListPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div className="erp-page-intro erp-page-intro-mobile-products erp-page-intro-product-mobile-only">
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Ürünlerim</Title>
@@ -622,7 +622,7 @@ export function ProductListPage() {
                 <Card
                   hoverable
                   className="erp-product-kanban-card"
-                  bodyStyle={{ padding: 14 }}
+                  styles={{ body: { padding: 14 } }}
                   onClick={() => openDetailFromRow(setSelectedProduct, setDetailOpen, product)}
                 >
                   <div className="erp-product-kanban-row">
@@ -694,7 +694,7 @@ export function ProductListPage() {
         onCancel={() => setFilterModalOpen(false)}
         footer={null}
       >
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <Row gutter={[12, 12]}>
             <Col span={24}>
               <Form.Item label="Kategori">
@@ -773,7 +773,7 @@ export function ProductListPage() {
 
           <Card size="small" title="Kayitli Filtreler">
             {savedFilters.length === 0 ? <Text type="secondary">Henuz kayitli filtre yok.</Text> : (
-              <Space direction="vertical" size={6} style={{ width: "100%" }}>
+              <Space vertical size={6} style={{ width: "100%" }}>
                 {savedFilters.map((item) => (
                   <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Button style={{ flex: 1, textAlign: "left" }} onClick={() => applySavedFilter(item)}>{item.name}</Button>
@@ -807,7 +807,7 @@ export function ProductListPage() {
         }}
         footer={null}
       >
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <Text type="secondary">Excel formatinda dosya secin veya once sablonu indirin.</Text>
           <input type="file" accept=".xlsx,.xls" onChange={handleImportFileChange} />
           {importTestResult ? (
@@ -816,7 +816,7 @@ export function ProductListPage() {
               showIcon
               message="Dosya Test Sonucu"
               description={(
-                <Space direction="vertical" size={2}>
+                <Space vertical size={2}>
                   <Text>Dosya: <Text strong>{importTestResult.fileName}</Text></Text>
                   <Text>Baslik Sayisi: <Text strong>{importTestResult.headerCount}</Text></Text>
                   <Text>Veri Satiri: <Text strong>{importTestResult.rowCount}</Text></Text>
@@ -1114,7 +1114,7 @@ export function ProductEditorPage() {
   );
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Urun Duzenle" : "Urun Ekle"}</Title>
@@ -1146,7 +1146,7 @@ export function ProductEditorPage() {
         />
         <Row gutter={[20, 20]}>
           <Col xs={24} xl={8}>
-            <Space direction="vertical" size={20} style={{ width: "100%" }}>
+            <Space vertical size={20} style={{ width: "100%" }}>
               <Card
                 loading={pageLoading}
                 title="Urun Gorseli"
@@ -1345,7 +1345,7 @@ export function ProductEditorPage() {
               />
             </Card>
 
-            <Space direction="vertical" size={20} style={{ width: "100%", marginTop: 20 }}>
+            <Space vertical size={20} style={{ width: "100%", marginTop: 20 }}>
               <Card title="Stok ve Tedarik" loading={pageLoading}>
                 <Row gutter={[16, 16]}>
                   <Col xs={24} md={12}>
@@ -1364,7 +1364,7 @@ export function ProductEditorPage() {
               <Form.List name="features">
                 {(fields, { add, remove }) => (
                   <Card title="Ozellikler" extra={<Button icon={<PlusOutlined />} onClick={() => add({ name: "", value: "" })}>Ozellik Ekle</Button>}>
-                    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                    <Space vertical size={12} style={{ width: "100%" }}>
                       {fields.map((field) => (
                         <Row gutter={[12, 12]} key={field.key}>
                           <Col xs={24} md={10}>
@@ -1403,7 +1403,7 @@ export function ProductEditorPage() {
         onCancel={() => setImageModalOpen(false)}
         footer={null}
       >
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <Text type="secondary">Hazir gorsellerden birini secin, dosyadan yukleyin veya gorsel yolunu degistirin.</Text>
           <Button onClick={handleImagePickerClick}>Dosyadan Gorsel Sec</Button>
           <div className="erp-image-picker-grid">

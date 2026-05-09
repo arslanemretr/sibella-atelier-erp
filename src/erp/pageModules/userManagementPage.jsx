@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import {
   Button,
   Card,
@@ -321,7 +321,7 @@ function UserManagementPage() {
       key: "users",
       label: "Kullanıcılar",
       children: (
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateUser}>Kullanici Ekle</Button>
           </div>
@@ -335,7 +335,7 @@ function UserManagementPage() {
       key: "roles",
       label: "Roller",
       children: (
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateRole}>Rol Oluştur</Button>
           </div>
@@ -348,7 +348,7 @@ function UserManagementPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div>
         <Title level={3} style={{ marginBottom: 6 }}>Kullanıcı Yönetimi</Title>
         <Text type="secondary">ERP giriş kullanıcıları, roller ve yetki yönetimi bu ekrandan yapılır.</Text>
@@ -360,7 +360,7 @@ function UserManagementPage() {
       <Drawer
         title={editingUser ? "Kullanici Duzenle" : "Yeni Kullanici"}
         placement="right"
-        width={420}
+        styles={{ wrapper: { width: 420 } }}
         open={userDrawerOpen}
         onClose={() => setUserDrawerOpen(false)}
         extra={<Button type="primary" onClick={handleSaveUser} loading={userSaving}>Kaydet</Button>}
@@ -408,7 +408,7 @@ function UserManagementPage() {
         okText="Kaydet"
         cancelText="İptal"
         width={760}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={roleForm} layout="vertical" style={{ marginBottom: 16 }}>
           <Form.Item name="name" label="Rol Adı" rules={[{ required: true, message: "Rol adı zorunludur." }]}>

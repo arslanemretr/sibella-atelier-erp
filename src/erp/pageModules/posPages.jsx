@@ -168,7 +168,7 @@ export function PosSessionsPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>POS Oturumları</Title>
@@ -203,9 +203,9 @@ export function PosSessionsPage() {
         </div>
       </Card>
 
-      <Drawer title="Oturum Detayı" placement="right" width={520} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Oturum Detayı" placement="right" styles={{ wrapper: { width: 520 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedSession ? (
-          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Space vertical size={16} style={{ width: "100%" }}>
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label="Oturum No">{selectedSession.sessionNo}</Descriptions.Item>
               <Descriptions.Item label="Kasa">{selectedSession.registerName}</Descriptions.Item>
@@ -1042,10 +1042,10 @@ export function PosScreenPage() {
   };
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+    <Space vertical size={16} style={{ width: "100%" }}>
       {!activeSession ? (
         <Card className="erp-pos-opening-card" bordered={false}>
-          <Space direction="vertical" size={18} style={{ width: "100%", textAlign: "center" }}>
+          <Space vertical size={18} style={{ width: "100%", textAlign: "center" }}>
             <div>
               <Title level={2} style={{ marginBottom: 6 }}>POS Oturumu Kapali</Title>
               <Text type="secondary">Kasa acilmadan urun satisina gecilmez. Oturum acilis ve kapanis tarihleri kayit altina alinir.</Text>
@@ -1366,8 +1366,8 @@ export function PosScreenPage() {
         </Form>
       </Modal>
 
-      <Drawer title="Siparisler" placement="right" width={620} open={ordersDrawerOpen} onClose={() => setOrdersDrawerOpen(false)}>
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+      <Drawer title="Siparisler" placement="right" styles={{ wrapper: { width: 620 } }} open={ordersDrawerOpen} onClose={() => setOrdersDrawerOpen(false)}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <Card size="small" title="Acik ve Kapali Siparisler">
             <Table
               rowKey="id"
@@ -1635,7 +1635,7 @@ export function PosOrdersPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
 
       {/* Başlık */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
@@ -1687,7 +1687,7 @@ export function PosOrdersPage() {
         onClose={() => setDetailOpen(false)}
       >
         {detailSale ? (
-          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Space vertical size={16} style={{ width: "100%" }}>
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label="Fiş No">{detailSale.receiptNo}</Descriptions.Item>
               <Descriptions.Item label="Müşteri">{detailSale.customerName || "Misafir"}</Descriptions.Item>
@@ -1726,7 +1726,7 @@ export function PosOrdersPage() {
         onCancel={() => setFilterModalOpen(false)}
         footer={null}
       >
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <Row gutter={[12, 12]}>
             <Col span={24}>
               <Form.Item label="Ürün Kodu / Adı">
@@ -1789,7 +1789,7 @@ export function PosOrdersPage() {
             {savedFilters.length === 0 ? (
               <Text type="secondary">Henüz kayıtlı filtre yok.</Text>
             ) : (
-              <Space direction="vertical" size={6} style={{ width: "100%" }}>
+              <Space vertical size={6} style={{ width: "100%" }}>
                 {savedFilters.map((item) => (
                   <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Button style={{ flex: 1, textAlign: "left" }} onClick={() => applySavedFilter(item)}>
@@ -1933,7 +1933,7 @@ export function PosReturnEditorPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>İade Oluştur</Title>
@@ -2135,7 +2135,7 @@ export function PosReturnListPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
 
       {/* Başlık */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
@@ -2185,7 +2185,7 @@ export function PosReturnListPage() {
         onCancel={() => setFilterModalOpen(false)}
         footer={null}
       >
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space vertical size={16} style={{ width: "100%" }}>
           <Row gutter={[12, 12]}>
             <Col span={24}>
               <Form.Item label="Ürün Kodu / Adı">
@@ -2236,7 +2236,7 @@ export function PosReturnListPage() {
             {savedFilters.length === 0 ? (
               <Text type="secondary">Henüz kayıtlı filtre yok.</Text>
             ) : (
-              <Space direction="vertical" size={6} style={{ width: "100%" }}>
+              <Space vertical size={6} style={{ width: "100%" }}>
                 {savedFilters.map((item) => (
                   <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Button style={{ flex: 1, textAlign: "left" }} onClick={() => applySavedFilter(item)}>

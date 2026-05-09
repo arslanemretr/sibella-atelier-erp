@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Card, Descriptions, Drawer, Space, Table, Tag, Typography, message } from "antd";
 import { listStockLocationBalancesFresh, listStockLocationsFresh } from "../stockLocationsData";
 
@@ -72,7 +72,7 @@ export function StockLocationListPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div>
         <Title level={3} style={{ marginBottom: 6 }}>Stok Yerleri</Title>
         <Text type="secondary">Merkez ve magaza bazli stok gorunumu burada izlenir.</Text>
@@ -102,7 +102,7 @@ export function StockLocationListPage() {
         onClose={() => setDrawerOpen(false)}
       >
         {selectedLocation ? (
-          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Space vertical size={16} style={{ width: "100%" }}>
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label="Stok Yeri">{selectedLocation.name}</Descriptions.Item>
               <Descriptions.Item label="Bagli Magaza">{selectedLocation.storeName || "-"}</Descriptions.Item>

@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import dayjs from "dayjs";
 import { Button, Card, Col, DatePicker, Descriptions, Form, Input, InputNumber, Row, Select, Space, Switch, Table, Tag, Typography, message } from "antd";
 import { EyeOutlined, MailOutlined, ReloadOutlined, SaveOutlined } from "@ant-design/icons";
@@ -339,7 +339,7 @@ export default function SupplierEarningsReportPage() {
 
   return (
     <Form form={form} layout="vertical">
-      <Space direction="vertical" size={20} style={{ width: "100%" }}>
+      <Space vertical size={20} style={{ width: "100%" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
           <div>
             <Title level={3} style={{ marginBottom: 6 }}>Tedarikci Hakedis Raporu</Title>

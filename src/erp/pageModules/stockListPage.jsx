@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Card, Descriptions, Drawer, Input, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DownloadOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
@@ -344,7 +344,7 @@ export function StockListPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
+    <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Stok Hareketleri</Title>
@@ -420,7 +420,7 @@ export function StockListPage() {
         />
       </Card>
 
-      <Drawer title="Stok Hareket Detayi" placement="right" width={500} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Stok Hareket Detayi" placement="right" styles={{ wrapper: { width: 500 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedMovement ? (
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label="Tarih">{formatDateTime(selectedMovement.documentDate || selectedMovement.createdAt)}</Descriptions.Item>
