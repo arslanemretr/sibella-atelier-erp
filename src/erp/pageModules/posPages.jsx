@@ -1448,7 +1448,7 @@ export function PosOrdersPage() {
       const data = await listPosSalesFresh();
       setSales(data);
     } catch (error) {
-      message.error(error?.message || "Siparişler yüklenemedi.");
+      message.error(error?.message || "Satışlar yüklenemedi.");
     } finally {
       setLoading(false);
     }
@@ -1562,7 +1562,7 @@ export function PosOrdersPage() {
       title: "Fiş No",
       dataIndex: "receiptNo",
       key: "receiptNo",
-      width: 100,
+      width: 160,
       sorter: (a, b) => (a.receiptNo || "").localeCompare(b.receiptNo || "", "tr"),
     },
     {
@@ -1640,8 +1640,8 @@ export function PosOrdersPage() {
       {/* Başlık */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
-          <Title level={3} style={{ marginBottom: 6 }}>POS Siparişleri</Title>
-          <Text type="secondary">Tüm POS satışları. İade işlemi için ilgili siparişi seçin.</Text>
+          <Title level={3} style={{ marginBottom: 6 }}>POS Satışları</Title>
+          <Text type="secondary">Tüm POS satışları. İade işlemi için ilgili satışı seçin.</Text>
         </div>
         <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>Yenile</Button>
       </div>
@@ -1667,13 +1667,14 @@ export function PosOrdersPage() {
 
       {/* Tablo */}
       <Card
-        title={`Sipariş Listesi${activeFilterCount > 0 ? ` (${flatRows.length} satır / ${filteredSales.length} fiş)` : ` (${flatRows.length} satır)`}`}
+        title={`Satış Listesi${activeFilterCount > 0 ? ` (${flatRows.length} satır / ${filteredSales.length} fiş)` : ` (${flatRows.length} satır)`}`}
         className="erp-list-table-card"
       >
         <Table
           loading={loading}
           columns={columns}
           dataSource={flatRows}
+          size="small"
           pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (total, range) => `${range[0]}-${range[1]} / ${total}` }}
         />
       </Card>
@@ -1682,7 +1683,7 @@ export function PosOrdersPage() {
       <Drawer
         title={detailSale ? `Fiş: ${detailSale.receiptNo} — ${detailSale.customerName || "Misafir"}` : "Satış Detayı"}
         placement="right"
-        width={480}
+        styles={{ wrapper: { width: 480 } }}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
       >

@@ -14,7 +14,7 @@ export const mainMenuItems = [
     children: [
       { key: "/pos/sessions", label: "Oturumlar", permissionKey: "pos_sessions" },
       { key: "/pos/store", label: "Pos Ekrani", permissionKey: "pos_store" },
-      { key: "/pos/orders", label: "Siparisler", permissionKey: "pos_orders" },
+      { key: "/pos/orders", label: "Satislar", permissionKey: "pos_orders" },
       { key: "/pos/returns", label: "Iadeler", permissionKey: "pos_returns" },
     ],
   },
@@ -98,7 +98,7 @@ export const sidebarGroups = [
         children: [
           { key: "/pos/sessions", label: "Oturumlar", permissionKey: "pos_sessions" },
           { key: "/pos/store", label: "Pos Ekrani", permissionKey: "pos_store" },
-          { key: "/pos/orders", label: "Siparisler", permissionKey: "pos_orders" },
+          { key: "/pos/orders", label: "Satislar", permissionKey: "pos_orders" },
           { key: "/pos/returns", label: "Iadeler", permissionKey: "pos_returns" },
         ],
       },
