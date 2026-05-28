@@ -160,6 +160,7 @@ export const sidebarGroups = [
           { key: "/settings/payment-terms", label: "Odeme Kosulu Tanimlama", permissionKey: "settings_payment_terms" },
           { key: "/settings/parameters", label: "Parametreler", permissionKey: "settings_parameters" },
           { key: "/settings/mail-management", label: "Mail Yonetimi", permissionKey: "settings_mail" },
+          { key: "/settings/branding", label: "Tema Ayarlari", permissionKey: "settings_branding" },
         ],
       },
     ],
@@ -186,20 +187,22 @@ export const supplierSidebarGroups = [
   },
 ];
 
-function isItemVisible(item, permissions) {
+function isItemVisible(item, permissions, role) {
   if (!item.permissionKey) return true;
-  // Permissions boşsa (eski rol / Yonetici hariç): izin ver
+  // Yonetici her zaman tum ekranlari gorur
+  if (role === "Yonetici") return true;
+  // Permissions bossa: izin ver
   if (!permissions || Object.keys(permissions).length === 0) return true;
   const perm = permissions[item.permissionKey];
   return item.permissionWrite ? perm?.write === true : perm?.view === true;
 }
 
-export function filterNavigationItems(items, _role, permissions = {}) {
+export function filterNavigationItems(items, role, permissions = {}) {
   return (items || [])
     .map((item) => {
-      if (!isItemVisible(item, permissions)) return null;
+      if (!isItemVisible(item, permissions, role)) return null;
       const nextChildren = item.children
-        ? filterNavigationItems(item.children, _role, permissions)
+        ? filterNavigationItems(item.children, role, permissions)
         : undefined;
       if (item.children && (!nextChildren || nextChildren.length === 0)) return null;
       return { ...item, children: nextChildren };
