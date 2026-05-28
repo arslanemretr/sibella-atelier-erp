@@ -103,6 +103,9 @@ import {
   handleSmtpSettingsPut,
   handleSystemParametersGet,
   handleSystemParametersPut,
+  handleBrandingGet,
+  handleBrandingPut,
+  ensureBrandingReady,
 } from "./settingsApi.js";
 import { handleSmtpTestEmail } from "./smtp.js";
 
@@ -150,6 +153,7 @@ void ensureDatabaseReady()
   .then(() => ensureDeliveryIndexes())
   .then(() => ensurePosSalesIndexes())
   .then(() => ensureRolesTable())
+  .then(() => ensureBrandingReady())
   .then(() => migrateLegacyPasswords())
   .catch((error) => {
     console.error("Database init / auth migration hatasi:", error?.message || error);
@@ -184,6 +188,8 @@ app.get("/api/settings/system-parameters", requireRole("Yonetici"), handleSystem
 app.put("/api/settings/system-parameters", requireRole("Yonetici"), handleSystemParametersPut);
 app.get("/api/settings/smtp", requireRole("Yonetici"), handleSmtpSettingsGet);
 app.put("/api/settings/smtp", requireRole("Yonetici"), handleSmtpSettingsPut);
+app.get("/api/settings/branding", handleBrandingGet);
+app.put("/api/settings/branding", requireRole("Yonetici"), handleBrandingPut);
 app.get("/api/settings/email-templates", requireRole("Yonetici"), handleEmailTemplatesList);
 app.post("/api/settings/email-templates", requireRole("Yonetici"), handleEmailTemplatesCreate);
 app.put("/api/settings/email-templates/:id", requireRole("Yonetici"), handleEmailTemplatesUpdate);

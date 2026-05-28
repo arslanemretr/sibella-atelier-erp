@@ -11,7 +11,7 @@ import {
   requestPasswordReset,
   restoreAuthSession,
 } from "../../auth";
-import logo from "../../assets/logo.png";
+import { useBranding } from "../../erp/BrandingContext";
 
 const { Text } = Typography;
 
@@ -25,6 +25,7 @@ function LoginPage() {
   const [authUser, setAuthUser] = React.useState(() => getAuthUser());
   const [authReady, setAuthReady] = React.useState(() => hasAuthLoaded());
   const [errorMessage, setErrorMessage] = React.useState("");
+  const { appName, logoSrc } = useBranding();
   const [forgotOpen, setForgotOpen] = React.useState(false);
   const [resetStep, setResetStep] = React.useState("request");
   const [resetMeta, setResetMeta] = React.useState(null);
@@ -147,7 +148,7 @@ function LoginPage() {
         <Space vertical size={20} style={{ width: "100%" }}>
           <div className="erp-login-header">
             <div className="erp-login-logo-wrap">
-              <img src={logo} alt="Sibella Atelier" className="erp-login-logo" />
+              <img src={logoSrc} alt={appName} className="erp-login-logo" />
             </div>
             <div className="erp-login-badge">
               <SafetyCertificateOutlined />

@@ -576,3 +576,15 @@ CREATE TABLE IF NOT EXISTS login_attempts (
   failure_reason TEXT,
   user_id TEXT REFERENCES users(id) ON DELETE SET NULL
 );
+
+CREATE TABLE IF NOT EXISTS branding_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  app_name TEXT NOT NULL DEFAULT 'App',
+  app_tagline TEXT DEFAULT '',
+  primary_color TEXT NOT NULL DEFAULT '#1677ff',
+  logo_url TEXT,
+  mobile_logo_url TEXT,
+  support_email TEXT DEFAULT '',
+  storage_prefix TEXT NOT NULL DEFAULT 'app',
+  updated_at TIMESTAMPTZ
+);

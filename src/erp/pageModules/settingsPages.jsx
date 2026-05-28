@@ -1,11 +1,13 @@
 ﻿import React from "react";
-import { Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm, Row, Select, Space, Switch, Table, Tag, Tooltip, Typography, message } from "antd";
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
+import { Alert, Button, Card, Col, ColorPicker, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm, Row, Select, Space, Switch, Table, Tag, Tooltip, Typography, Upload, message } from "antd";
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from "@ant-design/icons";
 import { createMasterData, listMasterDataFresh, masterDataDefinitions, updateMasterData } from "../masterData";
 import { getSmtpSettingsFresh, updateSmtpSettings } from "../smtpSettings";
 import { getSystemParametersFresh, updateSystemParameters } from "../systemParameters";
 import { listSuppliersFresh } from "../suppliersData";
 import { requestJson } from "../apiClient";
+import { getBrandingFresh, updateBranding, uploadBrandingAsset } from "../brandingData";
+import { useBranding } from "../BrandingContext";
 
 const { Title, Text } = Typography;
 
@@ -777,6 +779,209 @@ export function BarcodeStandardsPage() {
           </Form.Item>
         </Form>
       </Drawer>
+    </Space>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tema Ayarlari
+// ---------------------------------------------------------------------------
+
+function LogoUploadField({ label, value, onChange }) {
+  const [uploading, setUploading] = React.useState(false);
+
+  const handleUpload = async (file) => {
+    try {
+      setUploading(true);
+      const url = await uploadBrandingAsset(file);
+      onChange(url);
+      message.success(`${label} yuklendi.`);
+    } catch {
+      message.error(`${label} yuklenemedi.`);
+    } finally {
+      setUploading(false);
+    }
+    return false;
+  };
+
+  return (
+    <Space direction="vertical" size={8} style={{ width: "100%" }}>
+      {value ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <img src={value} alt={label} style={{ height: 48, maxWidth: 160, objectFit: "contain", border: "1px solid #f0f0f0", borderRadius: 6, padding: 4, background: "#fafafa" }} />
+          <Button size="small" danger onClick={() => onChange(null)}>Kaldir</Button>
+        </div>
+      ) : (
+        <div style={{ color: "#bbb", fontSize: 13 }}>Logo yuklenmedi</div>
+      )}
+      <Upload beforeUpload={handleUpload} showUploadList={false} accept="image/png,image/jpeg,image/svg+xml,image/webp">
+        <Button icon={<UploadOutlined />} loading={uploading} size="small">
+          {value ? "Degistir" : "Logo Yukle"}
+        </Button>
+      </Upload>
+    </Space>
+  );
+}
+
+function BrandingPreview({ values }) {
+  const primaryColor = values.primaryColor || "#1677ff";
+  const appName = values.appName || "App";
+  const appTagline = values.appTagline || "";
+
+  return (
+    <Space vertical size={16} style={{ width: "100%" }}>
+      <Card size="small" title="Sidebar Onizleme" bodyStyle={{ padding: 0 }}>
+        <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 6, overflow: "hidden" }}>
+          <div style={{ height: 52, display: "flex", alignItems: "center", justifyContent: "center", borderBottom: "1px solid #f0f0f0", padding: "0 12px", gap: 8 }}>
+            {values.logoUrl ? (
+              <img src={values.logoUrl} alt={appName} style={{ height: 32, maxWidth: 120, objectFit: "contain" }} />
+            ) : (
+              <span style={{ fontWeight: 800, fontSize: 15, color: primaryColor }}>{appName}</span>
+            )}
+          </div>
+          {["Dashboard", "Urunler", "POS", "Ayarlar"].map((item, i) => (
+            <div key={item} style={{ padding: "8px 16px", fontSize: 13, color: i === 0 ? "#fff" : "#595959", background: i === 0 ? primaryColor : "transparent", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: i === 0 ? "#fff" : "#d9d9d9", flexShrink: 0 }} />
+              {item}
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card size="small" title="Giris Ekrani Onizleme">
+        <div style={{ background: "#f5f7fa", borderRadius: 8, padding: 20, textAlign: "center" }}>
+          <div style={{ marginBottom: 12 }}>
+            {values.logoUrl ? (
+              <img src={values.logoUrl} alt={appName} style={{ height: 44, maxWidth: 160, objectFit: "contain" }} />
+            ) : (
+              <div style={{ fontWeight: 800, fontSize: 20, color: primaryColor }}>{appName}</div>
+            )}
+            {appTagline && <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>{appTagline}</div>}
+          </div>
+          <div style={{ background: "#fff", borderRadius: 6, padding: "12px 16px", border: "1px solid #e8e8e8" }}>
+            <div style={{ height: 28, background: "#fafafa", borderRadius: 4, border: "1px solid #d9d9d9", marginBottom: 8 }} />
+            <div style={{ height: 28, background: "#fafafa", borderRadius: 4, border: "1px solid #d9d9d9", marginBottom: 12 }} />
+            <div style={{ height: 32, background: primaryColor, borderRadius: 6, color: "#fff", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              Giris Yap
+            </div>
+          </div>
+        </div>
+      </Card>
+    </Space>
+  );
+}
+
+export function BrandingPage() {
+  const [form] = Form.useForm();
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [previewValues, setPreviewValues] = React.useState({});
+  const { refreshBranding } = useBranding();
+
+  React.useEffect(() => {
+    getBrandingFresh().then((data) => {
+      form.setFieldsValue(data);
+      setPreviewValues(data);
+      setLoading(false);
+    });
+  }, [form]);
+
+  const handleValuesChange = (_, allValues) => {
+    setPreviewValues(allValues);
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const values = await form.validateFields();
+      const colorValue = values.primaryColor;
+      const primaryColor = typeof colorValue === "string"
+        ? colorValue
+        : colorValue?.toHexString?.() || colorValue?.metaColor?.toHexString?.() || "#1677ff";
+      await updateBranding({ ...values, primaryColor });
+      refreshBranding();
+      message.success("Tema ayarlari kaydedildi.");
+    } catch (err) {
+      if (!err?.errorFields) {
+        message.error(err?.message || "Kayit basarisiz.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Space vertical size={20} style={{ width: "100%" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+        <div>
+          <Title level={3} style={{ marginBottom: 6 }}>Tema Ayarlari</Title>
+          <Text type="secondary">Uygulama adi, logosu ve renk temasini ozellestirin.</Text>
+        </div>
+        <Button type="primary" loading={saving} onClick={handleSave}>Kaydet</Button>
+      </div>
+
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={14}>
+          <Card title="Marka Bilgileri" loading={loading}>
+            <Form form={form} layout="vertical" onValuesChange={handleValuesChange}>
+              <Row gutter={[16, 0]}>
+                <Col xs={24} md={12}>
+                  <Form.Item name="appName" label="Uygulama Adi" rules={[{ required: true, message: "Uygulama adi zorunludur." }]}>
+                    <Input placeholder="Storely" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item name="appTagline" label="Alt Baslik">
+                    <Input placeholder="Magaza Yonetim Sistemi" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item name="primaryColor" label="Ana Renk">
+                    <ColorPicker format="hex" showText />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item name="supportEmail" label="Destek E-postasi">
+                    <Input placeholder="destek@ornek.com" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item name="storagePrefix" label="Depolama Oneki" extra="Tarayici veri anahtarlari icin kullanilir.">
+                    <Input placeholder="app" />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={[16, 0]}>
+                <Col xs={24} md={12}>
+                  <Form.Item label="Ana Logo" name="logoUrl" getValueFromEvent={(v) => v}>
+                    <Form.Item name="logoUrl" noStyle>
+                      {({ value, onChange }) => (
+                        <LogoUploadField label="Ana Logo" value={value} onChange={onChange} />
+                      )}
+                    </Form.Item>
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item label="Mobil Logo" name="mobileLogoUrl" getValueFromEvent={(v) => v}>
+                    <Form.Item name="mobileLogoUrl" noStyle>
+                      {({ value, onChange }) => (
+                        <LogoUploadField label="Mobil Logo" value={value} onChange={onChange} />
+                      )}
+                    </Form.Item>
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Form>
+          </Card>
+        </Col>
+
+        <Col xs={24} lg={10}>
+          <div style={{ position: "sticky", top: 24 }}>
+            <BrandingPreview values={previewValues} />
+          </div>
+        </Col>
+      </Row>
     </Space>
   );
 }

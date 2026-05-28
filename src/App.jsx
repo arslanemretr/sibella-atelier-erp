@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import { Spin } from "antd";
 import AppLayout from "./components/layout/AppLayout";
 import { getAuthUser, hasAuthLoaded, isAuthenticated, onAuthChange, restoreAuthSession } from "./auth";
+import { BrandingProvider } from "./erp/BrandingContext";
 import { resetOperationalDataIfNeeded } from "./erp/resetOperationalData";
 import LoginPage from "./erp/pageModules/loginPage";
 import UserManagementPage from "./erp/pageModules/userManagementPage";
@@ -15,6 +16,7 @@ const SettingsDefinitionPage = React.lazy(() => import("./erp/pageModules/settin
 const BarcodeStandardsPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.BarcodeStandardsPage })));
 const ParametersPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.ParametersPage })));
 const MailManagementPage = React.lazy(() => import("./erp/pageModules/mailManagementPage"));
+const BrandingPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((m) => ({ default: m.BrandingPage })));
 const ConsolidatedEarningsReportPage = React.lazy(() => import("./erp/pageModules/reportPages"));
 const SupplierEarningsReportPage = React.lazy(() => import("./erp/pageModules/supplierEarningsReportPage"));
 const StockListPage = React.lazy(() => import("./erp/pageModules/stockListPage").then((module) => ({ default: module.StockListPage })));
@@ -174,6 +176,7 @@ function ProtectedApp() {
         <Route path="/settings/payment-terms" element={withLazyPage(<SettingsDefinitionPage entityKey="payment-terms" />)} />
         <Route path="/settings/parameters" element={withLazyPage(<ParametersPage />)} />
         <Route path="/settings/mail-management" element={withLazyPage(<MailManagementPage />)} />
+        <Route path="/settings/branding" element={withLazyPage(<BrandingPage />)} />
         <Route path="/settings/smtp" element={<Navigate to="/settings/mail-management" replace />} />
 
         <Route path="/supplier/products" element={withLazyPage(<SupplierPortalProductListPage />)} />
@@ -190,12 +193,14 @@ function ProtectedApp() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/*" element={<ProtectedApp />} />
-      </Routes>
-    </BrowserRouter>
+    <BrandingProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/*" element={<ProtectedApp />} />
+        </Routes>
+      </BrowserRouter>
+    </BrandingProvider>
   );
 }
 

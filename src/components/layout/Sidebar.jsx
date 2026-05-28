@@ -11,6 +11,7 @@ import {
   MonitorSmartphone,
   Package,
   PackagePlus,
+  Palette,
   ScanLine,
   Settings2,
   ShieldUser,
@@ -19,6 +20,7 @@ import {
   Users,
   Warehouse,
 } from "lucide-react";
+import { useBranding } from "../../erp/BrandingContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { filterNavigationItems, sidebarGroups, supplierSidebarGroups } from "../../erp/navigation";
 import { getAuthUser, onAuthChange } from "../../auth";
@@ -77,6 +79,7 @@ const iconMap = {
   "/settings/parameters": menuIcon(Settings2),
   "/settings/mail-management": menuIcon(Mail),
   "/settings/smtp": menuIcon(Mail),
+  "/settings/branding": menuIcon(Palette),
   "/supplier/dashboard": menuIcon(LayoutDashboard),
   "/supplier/products": menuIcon(Package),
   "/supplier/earnings": menuIcon(HandCoins),
@@ -97,6 +100,7 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
   const location = useLocation();
   const [authUser, setAuthUser] = React.useState(() => getAuthUser());
   React.useEffect(() => onAuthChange(() => setAuthUser(getAuthUser())), []);
+  const { appName, logoSrc, mobileLogoSrc } = useBranding();
   const items = withIcons(
     authUser?.role === "Tedarikci"
       ? supplierSidebarGroups
@@ -143,12 +147,16 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
           zIndex: 11,
         }}
       >
-        {collapsed ? "S" : authUser?.role === "Tedarikci" ? (
+        {collapsed ? (
+          <img src={mobileLogoSrc} alt={appName} style={{ height: 32, maxWidth: 40, objectFit: "contain" }} />
+        ) : authUser?.role === "Tedarikci" ? (
           <div className="erp-sidebar-brand-multiline">
-            <span>Sibella Atelier Design Store</span>
-            <span>Tedarikçi Portalı</span>
+            <img src={logoSrc} alt={appName} style={{ height: 32, maxWidth: 120, objectFit: "contain" }} />
+            <span style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Tedarikci Portali</span>
           </div>
-        ) : "Sibella Atelier"}
+        ) : (
+          <img src={logoSrc} alt={appName} style={{ height: 36, maxWidth: 140, objectFit: "contain" }} />
+        )}
       </div>
       <Menu
         mode="inline"

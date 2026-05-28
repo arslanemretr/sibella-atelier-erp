@@ -75,6 +75,7 @@ export const mainMenuItems = [
       { key: "/settings/payment-terms", label: "Odeme Kosulu Tanimlama", permissionKey: "settings_payment_terms" },
       { key: "/settings/parameters", label: "Parametreler", permissionKey: "settings_parameters" },
       { key: "/settings/mail-management", label: "Mail Yonetimi", permissionKey: "settings_mail" },
+      { key: "/settings/branding", label: "Tema Ayarlari", permissionKey: "settings_branding" },
     ],
   },
 ];

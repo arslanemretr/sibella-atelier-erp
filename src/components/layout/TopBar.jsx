@@ -4,8 +4,7 @@ import { Layout, Button, Avatar, Dropdown, Space } from "antd";
 import { MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined } from "@ant-design/icons";
 import { filterNavigationItems, mainMenuItems, supplierMainMenuItems } from "../../erp/navigation";
 import { getAuthUser, logoutUser, onAuthChange } from "../../auth";
-import logo from "../../assets/logo.png";
-import mobileLogo from "../../assets/logo-mobile.png";
+import { useBranding } from "../../erp/BrandingContext";
 
 const { Header } = Layout;
 
@@ -13,6 +12,7 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [authUser, setAuthUser] = React.useState(() => getAuthUser());
+  const { appName, logoSrc, mobileLogoSrc } = useBranding();
 
   React.useEffect(() => onAuthChange(() => setAuthUser(getAuthUser())), []);
 
@@ -115,8 +115,8 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
       </Space>
 
       {isTabletOrMobile ? (
-        <div className="erp-topbar-mobile-brand" aria-label="Sibella Atelier">
-          <img src={mobileLogo || logo} alt="Sibella Atelier" className="erp-topbar-mobile-logo" />
+        <div className="erp-topbar-mobile-brand" aria-label={appName}>
+          <img src={mobileLogoSrc} alt={appName} className="erp-topbar-mobile-logo" />
         </div>
       ) : null}
 
