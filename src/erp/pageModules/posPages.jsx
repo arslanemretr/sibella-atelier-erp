@@ -378,12 +378,12 @@ export function PosScreenPage() {
 
     setActiveOrderIdBySession((prev) => {
       const currentActiveId = prev[activeSessionId];
-      const currentStillOpen = existingOrders.some((item) => item.id === currentActiveId && item.status === "open");
+      const currentStillActive = existingOrders.some((item) => item.id === currentActiveId && (item.status === "open" || item.status === "paid"));
       const firstOpenOrder = existingOrders.find((item) => item.status === "open");
 
       return {
         ...prev,
-        [activeSessionId]: currentStillOpen ? currentActiveId : firstOpenOrder?.id,
+        [activeSessionId]: currentStillActive ? currentActiveId : firstOpenOrder?.id,
       };
     });
   }, [activeSessionId, buildEmptyOrder, orderDraftsBySession, persistDraftOrders, sessions]);
@@ -434,8 +434,10 @@ export function PosScreenPage() {
   const draftOrders = orderDraftsBySession[activeSessionId] || [];
   const openDraftOrders = draftOrders.filter((item) => item.status === "open");
   const closedDraftOrders = draftOrders.filter((item) => item.status === "closed");
+  const paidDraftOrders = draftOrders.filter((item) => item.status === "paid");
   const activeOrderId = activeOrderIdBySession[activeSessionId];
-  const activeOrder = openDraftOrders.find((item) => item.id === activeOrderId) || openDraftOrders[0];
+  const activeOrder = draftOrders.find((item) => item.id === activeOrderId && (item.status === "open" || item.status === "paid")) || openDraftOrders[0];
+  const isPaidOrder = activeOrder?.status === "paid";
   const activeOrderStockLocationId = activeSession?.stockLocationId || null;
   const activeOrderLines = activeOrder?.lines;
   const cart = activeOrderLines || [];
@@ -548,7 +550,7 @@ export function PosScreenPage() {
   }, [activeOrderLines, selectedCartLineId]);
 
   const updateActiveOrder = (updater) => {
-    if (!activeSessionId || !activeOrder) {
+    if (!activeSessionId || !activeOrder || activeOrder.status === "paid") {
       return;
     }
 
@@ -930,17 +932,31 @@ export function PosScreenPage() {
       });
       setPaymentModalOpen(false);
       paymentForm.resetFields();
-      const remainingOrders = draftOrders.filter((item) => item.id !== activeOrder.id);
-      const newOrder = buildEmptyOrder(activeSessionId, remainingOrders.length + 1, activeSession?.sessionNo || null);
-      const nextOrders = [...remainingOrders, newOrder];
-      persistDraftOrders({
-        ...orderDraftsBySession,
-        [activeSessionId]: nextOrders,
-      });
-      setActiveOrderIdBySession((prev) => ({
-        ...prev,
-        [activeSessionId]: newOrder.id,
-      }));
+
+      // Ödenen siparişi "paid" olarak işaretle (silme)
+      const markedOrders = draftOrders.map((item) =>
+        item.id === activeOrder.id
+          ? { ...item, status: "paid", paidAt: new Date().toISOString() }
+          : item,
+      );
+
+      // Bir sonraki açık siparişi bul
+      const nextOpenOrder = openDraftOrders.find((item) => item.id !== activeOrder.id);
+
+      let finalOrders = markedOrders;
+      let nextActiveId;
+
+      if (nextOpenOrder) {
+        nextActiveId = nextOpenOrder.id;
+      } else {
+        // Başka açık sipariş yok — yeni boş sipariş oluştur
+        const newOrder = buildEmptyOrder(activeSessionId, markedOrders.length + 1, activeSession?.sessionNo || null);
+        finalOrders = [...markedOrders, newOrder];
+        nextActiveId = newOrder.id;
+      }
+
+      persistDraftOrders({ ...orderDraftsBySession, [activeSessionId]: finalOrders });
+      setActiveOrderIdBySession((prev) => ({ ...prev, [activeSessionId]: nextActiveId }));
       void refreshPosContext();
       message.success("Satış tamamlandı.");
     } catch (error) {
@@ -1138,18 +1154,19 @@ export function PosScreenPage() {
               <Button icon={<PlusCircleOutlined />} onClick={() => createDraftOrder()}>Yeni</Button>
             </div>
             <div className="erp-pos-session-tabs">
-              {openDraftOrders.length > 0 ? openDraftOrders.map((order) => (
-                <button
-                  key={order.id}
-                  type="button"
-                  className={`erp-pos-tab-btn ${activeOrder?.id === order.id ? "is-active" : ""}`}
-                  onClick={() => setActiveOrderIdBySession((prev) => ({ ...prev, [activeSessionId]: order.id }))}
-                >
-                  {order.title.split("-").pop() || order.title}
-                </button>
-              )) : (
-                <Button type="primary" onClick={() => setOpenSessionModalOpen(true)}>Sipariş Aç</Button>
-              )}
+              {draftOrders.filter((o) => o.status === "open" || o.status === "paid").length > 0
+                ? draftOrders.filter((o) => o.status === "open" || o.status === "paid").map((order) => (
+                  <button
+                    key={order.id}
+                    type="button"
+                    className={`erp-pos-tab-btn ${activeOrder?.id === order.id ? "is-active" : ""} ${order.status === "paid" ? "is-paid" : ""}`}
+                    onClick={() => setActiveOrderIdBySession((prev) => ({ ...prev, [activeSessionId]: order.id }))}
+                  >
+                    {order.title.split("-").pop() || order.title}{order.status === "paid" ? " ✓" : ""}
+                  </button>
+                ))
+                : <Button type="primary" onClick={() => setOpenSessionModalOpen(true)}>Sipariş Aç</Button>
+              }
             </div>
           </div>
 
@@ -1159,18 +1176,24 @@ export function PosScreenPage() {
                 <div className="erp-pos-active-order-banner-row">
                   <Text strong style={{ fontSize: 13 }}>{getOrderDisplayTitle(activeOrder)}</Text>
                   <div className="erp-pos-banner-actions">
-                    <Button size="small" onClick={() => {
-                      discountForm.setFieldsValue({
-                        discountType: activeOrder.discountType || "amount",
-                        discountValue: activeOrder.discountValue || 0,
-                      });
-                      setDiscountModalOpen(true);
-                    }}>
-                      İndirim
-                    </Button>
-                    <Button size="small" onClick={handleCloseOrderButton} disabled={activeOrder?.id === openDraftOrders[0]?.id}>
-                      Kapat
-                    </Button>
+                    {isPaidOrder ? (
+                      <Tag color="success" style={{ margin: 0 }}>Ödendi ✓</Tag>
+                    ) : (
+                      <>
+                        <Button size="small" onClick={() => {
+                          discountForm.setFieldsValue({
+                            discountType: activeOrder.discountType || "amount",
+                            discountValue: activeOrder.discountValue || 0,
+                          });
+                          setDiscountModalOpen(true);
+                        }}>
+                          İndirim
+                        </Button>
+                        <Button size="small" onClick={handleCloseOrderButton} disabled={activeOrder?.id === openDraftOrders[0]?.id}>
+                          Kapat
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1181,8 +1204,9 @@ export function PosScreenPage() {
               cart.map((item, index) => (
                 <div
                   key={item.productId}
-                  className={`erp-pos-order-item ${selectedCartLineId === item.productId ? "is-selected" : ""}`}
+                  className={`erp-pos-order-item ${!isPaidOrder && selectedCartLineId === item.productId ? "is-selected" : ""}`}
                   onClick={() => {
+                    if (isPaidOrder) return;
                     setSelectedCartLineId(item.productId);
                     setKeypadInput(String(keypadMode === "price" ? item.unitPrice : item.quantity));
                   }}
@@ -1194,9 +1218,9 @@ export function PosScreenPage() {
                     </Text>
                   </div>
                   <div className="erp-pos-order-item-actions">
-                    <Button size="small" onClick={() => updateCartQuantity(item.productId, -1)}>-</Button>
+                    {!isPaidOrder && <Button size="small" onClick={() => updateCartQuantity(item.productId, -1)}>-</Button>}
                     <Text strong style={{ minWidth: 16, textAlign: "center" }}>{item.quantity}</Text>
-                    <Button size="small" onClick={() => updateCartQuantity(item.productId, 1)}>+</Button>
+                    {!isPaidOrder && <Button size="small" onClick={() => updateCartQuantity(item.productId, 1)}>+</Button>}
                     <Text strong style={{ whiteSpace: "nowrap", minWidth: 72, textAlign: "right", fontSize: 13 }}>
                       {formatMovementMoney(item.lineTotal)}
                     </Text>
@@ -1226,50 +1250,58 @@ export function PosScreenPage() {
           </div>
 
           <div className="erp-pos-bottom-actions">
-            <div className="erp-pos-mini-actions">
-              <Button block onClick={() => {
-                customerForm.setFieldsValue({ customerName: activeOrder?.customerName || "" });
-                setCustomerModalOpen(true);
-              }}>Müşteri</Button>
-              <Button block onClick={() => {
-                noteForm.setFieldsValue({ note: activeOrder?.note || "" });
-                setNoteModalOpen(true);
-              }}>Not</Button>
-            </div>
+            {isPaidOrder ? (
+              <div style={{ textAlign: "center", padding: "24px 0" }}>
+                <Tag color="success" style={{ fontSize: 15, padding: "6px 20px" }}>✓ Ödeme Tamamlandı</Tag>
+              </div>
+            ) : (
+              <>
+                <div className="erp-pos-mini-actions">
+                  <Button block onClick={() => {
+                    customerForm.setFieldsValue({ customerName: activeOrder?.customerName || "" });
+                    setCustomerModalOpen(true);
+                  }}>Müşteri</Button>
+                  <Button block onClick={() => {
+                    noteForm.setFieldsValue({ note: activeOrder?.note || "" });
+                    setNoteModalOpen(true);
+                  }}>Not</Button>
+                </div>
 
-            <div className="erp-pos-value-row">
-              {selectedCartLineId ? (
-                <>
-                  <span className="erp-pos-value-label">
-                    {cart.find((item) => item.productId === selectedCartLineId)?.name || "-"}
-                  </span>
-                  <InputNumber
-                    className="erp-pos-value-input"
-                    value={keypadInput !== "" ? Number(keypadInput.replace(",", ".")) : undefined}
-                    onChange={(val) => {
-                      const str = val != null ? String(val) : "";
-                      setKeypadInput(str);
-                      if (str) updateCartLineValue(selectedCartLineId, str, keypadMode);
-                    }}
-                    placeholder={keypadMode === "price" ? "Fiyat gir" : "Miktar gir"}
-                    min={0}
-                    precision={keypadMode === "price" ? 2 : 0}
-                  />
-                </>
-              ) : (
-                <span className="erp-pos-value-empty">Listeden ürün seçin</span>
-              )}
-            </div>
+                <div className="erp-pos-value-row">
+                  {selectedCartLineId ? (
+                    <>
+                      <span className="erp-pos-value-label">
+                        {cart.find((item) => item.productId === selectedCartLineId)?.name || "-"}
+                      </span>
+                      <InputNumber
+                        className="erp-pos-value-input"
+                        value={keypadInput !== "" ? Number(keypadInput.replace(",", ".")) : undefined}
+                        onChange={(val) => {
+                          const str = val != null ? String(val) : "";
+                          setKeypadInput(str);
+                          if (str) updateCartLineValue(selectedCartLineId, str, keypadMode);
+                        }}
+                        placeholder={keypadMode === "price" ? "Fiyat gir" : "Miktar gir"}
+                        min={0}
+                        precision={keypadMode === "price" ? 2 : 0}
+                      />
+                    </>
+                  ) : (
+                    <span className="erp-pos-value-empty">Listeden ürün seçin</span>
+                  )}
+                </div>
 
-            <div className="erp-pos-action-btns">
-              <button type="button" className={`erp-pos-action-btn ${keypadMode === "quantity" ? "is-active" : ""}`} onClick={() => handleKeypadPress("Miktar")}>Miktar</button>
-              <button type="button" className="erp-pos-action-btn" onClick={() => handleKeypadPress("%")}>% İndirim</button>
-              <button type="button" className={`erp-pos-action-btn ${keypadMode === "price" ? "is-active" : ""}`} onClick={() => handleKeypadPress("Fiyat")}>Fiyat</button>
-            </div>
+                <div className="erp-pos-action-btns">
+                  <button type="button" className={`erp-pos-action-btn ${keypadMode === "quantity" ? "is-active" : ""}`} onClick={() => handleKeypadPress("Miktar")}>Miktar</button>
+                  <button type="button" className="erp-pos-action-btn" onClick={() => handleKeypadPress("%")}>% İndirim</button>
+                  <button type="button" className={`erp-pos-action-btn ${keypadMode === "price" ? "is-active" : ""}`} onClick={() => handleKeypadPress("Fiyat")}>Fiyat</button>
+                </div>
 
-            <Button type="primary" size="large" className="erp-pos-pay-btn" onClick={openPaymentModal}>
-              Ödeme
-            </Button>
+                <Button type="primary" size="large" className="erp-pos-pay-btn" onClick={openPaymentModal}>
+                  Ödeme
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -1374,11 +1406,18 @@ export function PosScreenPage() {
               rowKey="id"
               pagination={false}
               size="small"
-              dataSource={[...openDraftOrders, ...closedDraftOrders]}
+              dataSource={[...openDraftOrders, ...paidDraftOrders, ...closedDraftOrders]}
               locale={{ emptyText: "Oturuma ait siparis bulunmuyor." }}
               columns={[
                 { title: "Siparis", dataIndex: "title", key: "title" },
-                { title: "Durum", key: "status", render: (_, record) => record.status === "open" ? "Devam Ediyor" : "Kapali" },
+                {
+                  title: "Durum",
+                  key: "status",
+                  render: (_, record) =>
+                    record.status === "open" ? "Devam Ediyor"
+                      : record.status === "paid" ? <Tag color="success">Ödendi</Tag>
+                        : "Kapali",
+                },
                 { title: "Musteri", dataIndex: "customerName", key: "customerName", render: (value) => value || "-" },
                 { title: "Indirim", key: "discount", render: (_, record) => formatMovementMoney(calculateOrderTotals(record).discountAmount) },
                 {
@@ -1386,8 +1425,17 @@ export function PosScreenPage() {
                   key: "actions",
                   render: (_, record) => (
                     <Space size={8}>
-                      <Button size="small" onClick={() => record.status === "open" ? setActiveOrderIdBySession((prev) => ({ ...prev, [activeSessionId]: record.id })) : reopenDraftOrder(record.id)}>{record.status === "open" ? "Yukle" : "Ac"}</Button>
-                      {record.id !== openDraftOrders[0]?.id && (
+                      <Button size="small" onClick={() => {
+                        if (record.status === "open" || record.status === "paid") {
+                          setActiveOrderIdBySession((prev) => ({ ...prev, [activeSessionId]: record.id }));
+                          setOrdersDrawerOpen(false);
+                        } else {
+                          reopenDraftOrder(record.id);
+                        }
+                      }}>
+                        {record.status === "open" ? "Yukle" : record.status === "paid" ? "Gör" : "Ac"}
+                      </Button>
+                      {record.id !== openDraftOrders[0]?.id && record.status !== "paid" && (
                         <Popconfirm title="Siparis silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => removeOrderDraft(record.id)}>
                           <Button size="small" danger>Sil</Button>
                         </Popconfirm>
