@@ -14,7 +14,7 @@ const VALID_STATUSES = new Set(["Aktif", "Pasif"]);
 const SCREEN_KEYS = [
   "dashboard", "products_list", "pos_sessions", "pos_store", "pos_orders", "pos_returns",
   "purchasing_suppliers", "purchasing_contracts", "stores_list", "stores_shipments",
-  "stock_entry", "stock_list", "stock_locations", "reports_consolidated", "reports_supplier",
+  "stock_entry", "stock_list", "stock_locations", "reports_sales", "reports_stock", "reports_consolidated", "reports_supplier",
   "settings_users", "settings_categories", "settings_collections", "settings_pos_categories",
   "settings_barcode", "settings_procurement", "settings_payment_terms", "settings_parameters", "settings_mail", "settings_branding",
   "supplier_portal_dashboard", "supplier_portal_products", "supplier_portal_deliveries", "supplier_portal_earnings",
@@ -823,6 +823,16 @@ export async function ensureRolesTable() {
       ON CONFLICT (name) DO NOTHING
     `, [role.id, role.name, role.description, JSON.stringify(role.permissions), role.isSystem, nowIso()]);
   }
+
+  // Yonetici sistem rolünün permissions alanını güncel SCREEN_KEYS ile senkronize et.
+  // Yeni eklenen ekran anahtarları mevcut role merge edilir; eski anahtarlar korunur.
+  await sqlExec(
+    `UPDATE roles
+     SET permissions = $1::jsonb || permissions,
+         updated_at  = $2::timestamptz
+     WHERE name = 'Yonetici' AND is_system = TRUE`,
+    [JSON.stringify(buildAllPermissions(true)), nowIso()],
+  );
 }
 
 export async function handleRolesList(_req, res) {
