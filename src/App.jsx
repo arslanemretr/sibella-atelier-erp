@@ -19,6 +19,8 @@ const MailManagementPage = React.lazy(() => import("./erp/pageModules/mailManage
 const BrandingPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((m) => ({ default: m.BrandingPage })));
 const ConsolidatedEarningsReportPage = React.lazy(() => import("./erp/pageModules/reportPages"));
 const SupplierEarningsReportPage = React.lazy(() => import("./erp/pageModules/supplierEarningsReportPage"));
+const SalesReportPage = React.lazy(() => import("./erp/pageModules/analyticsReportPages").then((m) => ({ default: m.SalesReportPage })));
+const StockReportPage = React.lazy(() => import("./erp/pageModules/analyticsReportPages").then((m) => ({ default: m.StockReportPage })));
 const StockListPage = React.lazy(() => import("./erp/pageModules/stockListPage").then((module) => ({ default: module.StockListPage })));
 const StockLocationListPage = React.lazy(() => import("./erp/pageModules/stockLocationPages").then((module) => ({ default: module.StockLocationListPage })));
 const StockEntryListPage = React.lazy(() => import("./erp/pageModules/stockEntryPages").then((module) => ({ default: module.StockEntryListPage })));
@@ -127,7 +129,7 @@ function ProtectedApp() {
     <AppLayout>
       <Routes>
         <Route path="/" element={<Navigate to={isSupplierUser ? "/supplier/dashboard" : "/dashboard"} replace />} />
-        <Route path="/reports" element={<Navigate to="/reports/consolidated-earnings" replace />} />
+        <Route path="/reports" element={<Navigate to="/reports/sales" replace />} />
         <Route path="/settings" element={<Navigate to="/settings/users" replace />} />
         <Route path="/dashboard" element={withLazyPage(<DashboardPage />)} />
 
@@ -164,6 +166,8 @@ function ProtectedApp() {
         <Route path="/supplier-portal/delivery-lists" element={withLazyPage(<SupplierDeliveryListsPage />)} />
         <Route path="/supplier-portal/delivery-lists/:deliveryId" element={withLazyPage(<SupplierPortalDeliveryEditorPage />)} />
         <Route path="/supplier-portal/earnings" element={withLazyPage(<SupplierEarningsManagementPage />)} />
+        <Route path="/reports/sales" element={withRolePage(<SalesReportPage />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/reports/stock" element={withRolePage(<StockReportPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/reports/consolidated-earnings" element={withRolePage(<ConsolidatedEarningsReportPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/reports/supplier-earnings" element={withRolePage(<SupplierEarningsReportPage />, authUser, "Yonetici", "Muhasebe")} />
 

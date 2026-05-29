@@ -58,6 +58,8 @@ export const mainMenuItems = [
     key: "reports",
     label: "Raporlar",
     children: [
+      { key: "/reports/sales", label: "Satış Raporu", permissionKey: "reports_sales" },
+      { key: "/reports/stock", label: "Stok Raporu", permissionKey: "reports_stock" },
       { key: "/reports/consolidated-earnings", label: "Toplu Hakedis Raporu", permissionKey: "reports_consolidated" },
       { key: "/reports/supplier-earnings", label: "Tedarikci Hakedis Raporu", permissionKey: "reports_supplier" },
     ],
@@ -143,6 +145,8 @@ export const sidebarGroups = [
         key: "reports-group",
         label: "Raporlar",
         children: [
+          { key: "/reports/sales", label: "Satış Raporu", permissionKey: "reports_sales" },
+          { key: "/reports/stock", label: "Stok Raporu", permissionKey: "reports_stock" },
           { key: "/reports/consolidated-earnings", label: "Toplu Hakedis Raporu", permissionKey: "reports_consolidated" },
           { key: "/reports/supplier-earnings", label: "Tedarikci Hakedis Raporu", permissionKey: "reports_supplier" },
         ],
