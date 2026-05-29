@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { sqlExec, sqlMany, sqlOne } from "./db.js";
 import {
   getMainStockLocation,
+  rebuildStockBalancesForProducts,
   rebuildStockBalancesFromMovements,
   replaceStockMovementsForSource,
   withInventoryTransaction,
@@ -364,7 +365,8 @@ export async function handleStockEntriesCreate(req, res) {
         })),
         tx,
       );
-      await rebuildStockBalancesFromMovements(tx);
+      const affectedProductIds = item.lines.map((line) => line.productId).filter(Boolean);
+      await rebuildStockBalancesForProducts(affectedProductIds, tx);
     });
     return res.status(201).json({ ok: true, item: await getStockEntryRow(item.id) });
   } catch (error) {
@@ -423,7 +425,10 @@ export async function handleStockEntriesUpdate(req, res) {
         })),
         tx,
       );
-      await rebuildStockBalancesFromMovements(tx);
+      const previousProductIds = (existing.lines || []).map((line) => line.productId).filter(Boolean);
+      const currentProductIds = item.lines.map((line) => line.productId).filter(Boolean);
+      const affectedProductIds = [...new Set([...previousProductIds, ...currentProductIds])];
+      await rebuildStockBalancesForProducts(affectedProductIds, tx);
     });
     return res.json({ ok: true, item: await getStockEntryRow(item.id) });
   } catch (error) {

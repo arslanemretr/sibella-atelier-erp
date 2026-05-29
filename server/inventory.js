@@ -407,6 +407,60 @@ export async function rebuildStockBalancesFromMovements(tx) {
   await syncProductsStockSnapshot(executor);
 }
 
+/**
+ * Sadece belirtilen ürünler için stok bakiyelerini ve products.stock alanını yeniden hesaplar.
+ * rebuildStockBalancesFromMovements'ın tüm tabloyu yeniden hesaplaması yerine,
+ * etkilenen ürünlere odaklanarak çok daha hızlı çalışır.
+ */
+export async function rebuildStockBalancesForProducts(productIds, tx) {
+  const executor = createExecutor(tx);
+  const ids = [...new Set((productIds || []).filter(Boolean))];
+  if (!ids.length) {
+    return;
+  }
+
+  const mainLocation = await getMainStockLocation(executor);
+  if (!mainLocation) {
+    return;
+  }
+
+  for (const productId of ids) {
+    const result = await executor.one(
+      `
+        SELECT COALESCE(SUM(stock_delta), 0) AS quantity
+        FROM stock_movements
+        WHERE product_id = $1
+          AND stock_location_id = $2
+          AND affects_stock = TRUE
+      `,
+      [productId, mainLocation.id],
+    );
+    const quantity = Number(result?.quantity || 0);
+
+    if (quantity !== 0) {
+      await executor.exec(
+        `
+          INSERT INTO stock_location_balances (stock_location_id, product_id, quantity, updated_at)
+          VALUES ($1, $2, $3, $4::timestamptz)
+          ON CONFLICT (stock_location_id, product_id)
+          DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = EXCLUDED.updated_at
+        `,
+        [mainLocation.id, productId, quantity, nowIso()],
+      );
+    } else {
+      await executor.exec(
+        "DELETE FROM stock_location_balances WHERE stock_location_id = $1 AND product_id = $2",
+        [mainLocation.id, productId],
+      );
+    }
+
+    await executor.exec(
+      "UPDATE products SET stock = $1 WHERE id = $2",
+      [Math.max(0, quantity), productId],
+    );
+  }
+}
+
 export async function listStockMovementRows() {
   const rows = await sqlMany(
     `

@@ -108,11 +108,13 @@ export function StockEntryEditorPage() {
     try {
       setLoading(true);
       const values = await form.validateFields();
-      const savedEntry = isEditMode ? updateStockEntry(stockEntryId, values) : createStockEntry(values);
+      const savedEntry = await (isEditMode ? updateStockEntry(stockEntryId, values) : createStockEntry(values));
       message.success(isEditMode ? "Stok girisi guncellendi." : "Stok girisi kaydedildi.");
       navigate(`/stock/entry/${savedEntry.id}`);
-    } catch {
-      // validation handled by form
+    } catch (error) {
+      if (!error?.errorFields) {
+        message.error(error?.message || "Kayit islemi basarisiz oldu.");
+      }
     } finally {
       setLoading(false);
     }
@@ -386,15 +388,17 @@ export function StockEntryListPage() {
     try {
       setCreating(true);
       const values = await createForm.validateFields();
-      const savedEntry = createStockEntry({
+      const savedEntry = await createStockEntry({
         ...values,
         lines: [],
       });
       await refreshEntries();
       message.success("Ana kayit olusturuldu. Kalem girisi ekranina yonlendiriliyorsunuz.");
       navigate(`/stock/entry/${savedEntry.id}`);
-    } catch {
-      // validation handled by form
+    } catch (error) {
+      if (!error?.errorFields) {
+        message.error(error?.message || "Kayit islemi basarisiz oldu.");
+      }
     } finally {
       setCreating(false);
     }

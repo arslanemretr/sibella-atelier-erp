@@ -1,6 +1,6 @@
 import { listProducts } from "./productsData";
 import { listSuppliers } from "./suppliersData";
-import { mutateResourceSync, requestCollection, requestCollectionSync } from "./apiClient";
+import { requestJson, requestCollection, requestCollectionSync } from "./apiClient";
 
 function money(value) {
   return new Intl.NumberFormat("tr-TR", {
@@ -93,10 +93,16 @@ export function getStockEntryById(stockEntryId) {
   return loadStore().find((item) => item.id === stockEntryId) || null;
 }
 
-export function createStockEntry(values) {
-  return enrichStockEntry(mutateResourceSync("POST", "/api/stock-entries", values));
+export async function createStockEntry(values) {
+  const payload = await requestJson("POST", "/api/stock-entries", values);
+  const item = payload?.item;
+  if (!item) throw new Error("Stok girisi kaydedilemedi.");
+  return enrichStockEntry(item);
 }
 
-export function updateStockEntry(stockEntryId, values) {
-  return enrichStockEntry(mutateResourceSync("PUT", `/api/stock-entries/${encodeURIComponent(stockEntryId)}`, values));
+export async function updateStockEntry(stockEntryId, values) {
+  const payload = await requestJson("PUT", `/api/stock-entries/${encodeURIComponent(stockEntryId)}`, values);
+  const item = payload?.item;
+  if (!item) throw new Error("Stok girisi guncellenemedi.");
+  return enrichStockEntry(item);
 }
