@@ -115,12 +115,9 @@ const assetStoragePath = path.resolve(String(process.env.ASSET_STORAGE_PATH || p
 
 app.use(express.json({ limit: "25mb" }));
 fs.mkdirSync(assetStoragePath, { recursive: true });
-app.use("/api/assets", express.static(assetStoragePath, {
-  fallthrough: false,
-  maxAge: "30d",
-  immutable: true,
-}));
 
+// Upload route statik middleware'den ONCE tanimlanmali —
+// express.static fallthrough:false POST isteklerini 405 ile keser.
 app.post("/api/assets/upload", (req, res) => {
   try {
     const { base64, filename } = req.body || {};
@@ -142,6 +139,12 @@ app.post("/api/assets/upload", (req, res) => {
     return res.status(500).json({ ok: false, message: error?.message || "Gorsel yuklenemedi." });
   }
 });
+
+app.use("/api/assets", express.static(assetStoragePath, {
+  fallthrough: false,
+  maxAge: "30d",
+  immutable: true,
+}));
 
 void ensureDatabaseReady()
   .then(() => ensureStockMovementsReady())
