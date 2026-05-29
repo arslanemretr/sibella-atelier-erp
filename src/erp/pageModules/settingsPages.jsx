@@ -954,21 +954,13 @@ export function BrandingPage() {
 
               <Row gutter={[16, 0]}>
                 <Col xs={24} md={12}>
-                  <Form.Item label="Ana Logo" name="logoUrl" getValueFromEvent={(v) => v}>
-                    <Form.Item name="logoUrl" noStyle>
-                      {({ value, onChange }) => (
-                        <LogoUploadField label="Ana Logo" value={value} onChange={onChange} />
-                      )}
-                    </Form.Item>
+                  <Form.Item label="Ana Logo" name="logoUrl">
+                    <LogoUploadField label="Ana Logo" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item label="Mobil Logo" name="mobileLogoUrl" getValueFromEvent={(v) => v}>
-                    <Form.Item name="mobileLogoUrl" noStyle>
-                      {({ value, onChange }) => (
-                        <LogoUploadField label="Mobil Logo" value={value} onChange={onChange} />
-                      )}
-                    </Form.Item>
+                  <Form.Item label="Mobil Logo" name="mobileLogoUrl">
+                    <LogoUploadField label="Mobil Logo" />
                   </Form.Item>
                 </Col>
               </Row>
