@@ -317,6 +317,7 @@ export function PosScreenPage() {
   const [noteForm] = Form.useForm();
   const [discountForm] = Form.useForm();
   const [barcodeValue, setBarcodeValue] = React.useState("");
+  const [mobileTab, setMobileTab] = React.useState("products");
 
   const persistDraftOrders = React.useCallback((nextValue) => {
     setOrderDraftsBySession(nextValue);
@@ -705,6 +706,7 @@ export function PosScreenPage() {
       return;
     }
 
+    setMobileTab("cart");
     updateActiveOrder((order) => {
       const existing = order.lines.find((item) => item.productId === product.id);
       if (existing) {
@@ -957,6 +959,7 @@ export function PosScreenPage() {
 
       persistDraftOrders({ ...orderDraftsBySession, [activeSessionId]: finalOrders });
       setActiveOrderIdBySession((prev) => ({ ...prev, [activeSessionId]: nextActiveId }));
+      setMobileTab("products");
       void refreshPosContext();
       message.success("Satış tamamlandı.");
     } catch (error) {
@@ -1086,7 +1089,23 @@ export function PosScreenPage() {
       ) : null}
 
       {activeSession ? (
-      <div className="erp-pos-shell">
+      <div className={`erp-pos-shell erp-pos-shell--${mobileTab}`}>
+        <div className="erp-pos-mobile-tabs">
+          <button
+            type="button"
+            className={`erp-pos-mobile-tab ${mobileTab === "products" ? "is-active" : ""}`}
+            onClick={() => setMobileTab("products")}
+          >
+            Ürünler
+          </button>
+          <button
+            type="button"
+            className={`erp-pos-mobile-tab ${mobileTab === "cart" ? "is-active" : ""}`}
+            onClick={() => setMobileTab("cart")}
+          >
+            Sepet {cart.length > 0 ? <span className="erp-pos-mobile-tab-badge">{cart.length}</span> : null}
+          </button>
+        </div>
         <div className="erp-pos-left">
           <div className="erp-pos-toolbar">
             <Input
