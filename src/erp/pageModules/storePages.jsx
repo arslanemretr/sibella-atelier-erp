@@ -54,7 +54,7 @@ export function StoreListPage() {
           rowKey="id"
           loading={loading}
           pagination={false}
-          scroll={{ x: 800 }}
+          scroll={{ x: 'max-content' }}
           dataSource={stores}
           columns={[
             {

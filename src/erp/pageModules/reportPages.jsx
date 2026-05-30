@@ -486,7 +486,7 @@ export default function ConsolidatedEarningsReportPage() {
             dataSource={previewRows}
             pagination={false}
             locale={{ emptyText: "Secili donem icin raporlanacak hakedis satiri bulunamadi." }}
-            scroll={{ x: 1080 }}
+            scroll={{ x: 'max-content' }}
             columns={[
               { title: "Tedarikci", dataIndex: "supplierName", key: "supplierName", width: 220 },
               { title: "Donem", dataIndex: "periodLabel", key: "periodLabel", width: 150 },

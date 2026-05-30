@@ -1063,7 +1063,7 @@ export function SupplierEarningsManagementPage() {
           locale={{ emptyText: "Hakediş oluşturan dönem bulunamadı." }}
           onRow={(record) => ({ onClick: () => openDrawer(record) })}
           rowClassName={() => "erp-clickable-row"}
-          scroll={{ x: 860 }}
+          scroll={{ x: 'max-content' }}
           columns={[
             { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 180 },
             { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130 },
@@ -1157,7 +1157,7 @@ export function SupplierEarningsManagementPage() {
                 rowKey="productId"
                 dataSource={selectedRow.productLines || []}
                 pagination={false}
-                scroll={{ x: 760 }}
+                scroll={{ x: 'max-content' }}
                 summary={(data) => {
                   const totalNet = data.reduce((s, p) => s + p.netAmount, 0);
                   const totalEarnings = data.reduce((s, p) => s + p.earningsAmount, 0);

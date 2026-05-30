@@ -555,7 +555,7 @@ export default function SupplierEarningsReportPage() {
             dataSource={currentSummary.detailRows}
             pagination={false}
             locale={{ emptyText: "Secili tedarikci ve donem icin satis bulunamadi." }}
-            scroll={{ x: 980 }}
+            scroll={{ x: 'max-content' }}
             columns={[
               { title: "Urun Kodu", dataIndex: "productCode", key: "productCode", width: 120 },
               { title: "Urun Adi", dataIndex: "productName", key: "productName", width: 220 },

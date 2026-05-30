@@ -2020,7 +2020,7 @@ export function PosReturnEditorPage() {
           columns={columns}
           dataSource={(sale.lines || []).map((l) => ({ key: l.id, ...l }))}
           pagination={false}
-          scroll={{ x: 700 }}
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 

@@ -542,7 +542,7 @@ export function SupplierPortalEarningsPage() {
           pagination={false}
           dataSource={currentSummary.detailRows}
           locale={{ emptyText: "Bu dönemde satış bulunmamaktadır." }}
-          scroll={{ x: 860 }}
+          scroll={{ x: 'max-content' }}
           columns={[
             { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 120, ellipsis: true },
             { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 180, ellipsis: true },
@@ -610,7 +610,7 @@ export function SupplierPortalEarningsPage() {
             onClick: () => setPeriodDate(record.periodDate),
           })}
           rowClassName={(record) => (record.periodKey === currentSummary.periodKey ? "erp-clickable-row ant-table-row-selected" : "erp-clickable-row")}
-          scroll={{ x: 900 }}
+          scroll={{ x: 'max-content' }}
           columns={[
             { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130 },
             { title: "Brüt Satış", dataIndex: "grossTotal", key: "grossTotal", width: 140, align: "right", render: (v) => formatDisplayMoney(v) },
@@ -950,7 +950,7 @@ export function SupplierPortalProductListPage() {
             columns={columns}
             dataSource={filteredProducts}
             pagination={false}
-            scroll={{ x: 1180 }}
+            scroll={{ x: 'max-content' }}
             locale={{ emptyText: "Henuz urun kaydiniz bulunmuyor." }}
             onRow={(record) => ({
               onClick: () => navigate(`/supplier/products/${record.id}`),
@@ -2589,7 +2589,7 @@ export function SupplierPortalDeliveryEditorPage() {
               rowKey={(record, index) => record.id || `delivery-line-${index}`}
               pagination={false}
               dataSource={watchedLines.map((item, index) => ({ ...item, _rowIndex: index, totalAmount: Number(item.salePrice || 0) * Number(item.quantity || 0) }))}
-              scroll={{ x: 1180 }}
+              scroll={{ x: 'max-content' }}
               columns={[
               {
                 title: "Gorsel",

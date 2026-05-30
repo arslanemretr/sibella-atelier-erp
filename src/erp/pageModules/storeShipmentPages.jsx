@@ -92,7 +92,7 @@ export function StoreShipmentListPage() {
           rowKey="id"
           loading={loading}
           pagination={false}
-          scroll={{ x: 900 }}
+          scroll={{ x: 'max-content' }}
           dataSource={shipments}
           columns={[
             {
@@ -672,7 +672,7 @@ export function StoreShipmentEditorPage() {
             pagination={false}
             dataSource={shipmentLines.map((item, index) => ({ ...item, _rowIndex: index }))}
             locale={{ emptyText: "Henuz satir eklenmedi." }}
-            scroll={{ x: 700 }}
+            scroll={{ x: 'max-content' }}
             columns={[
               {
                 title: "",
