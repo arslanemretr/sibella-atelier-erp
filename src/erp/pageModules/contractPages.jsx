@@ -208,12 +208,14 @@ export function ContractsPage() {
       title: "Firma",
       dataIndex: "supplierName",
       key: "supplierName",
+      width: 180,
       sorter: (a, b) => String(a.supplierName || "").localeCompare(String(b.supplierName || ""), "tr"),
     },
     {
       title: "Baslangic",
       dataIndex: "startDate",
       key: "startDate",
+      width: 130,
       sorter: (a, b) => String(a.startDate || "").localeCompare(String(b.startDate || ""), "tr"),
       render: (value) => (value ? dayjs(value).format("DD.MM.YYYY") : "-"),
     },
@@ -221,6 +223,7 @@ export function ContractsPage() {
       title: "Bitis",
       dataIndex: "endDate",
       key: "endDate",
+      width: 130,
       sorter: (a, b) => String(a.endDate || "").localeCompare(String(b.endDate || ""), "tr"),
       render: (value) => (value ? dayjs(value).format("DD.MM.YYYY") : "-"),
     },
@@ -228,6 +231,7 @@ export function ContractsPage() {
       title: "Komisyon (%)",
       dataIndex: "commissionRate",
       key: "commissionRate",
+      width: 120,
       sorter: (a, b) => Number(a.commissionRate || 0) - Number(b.commissionRate || 0),
       render: (value) => `${Number(value || 0).toFixed(2)}%`,
     },
@@ -235,6 +239,7 @@ export function ContractsPage() {
       title: "PDF",
       dataIndex: "pdfName",
       key: "pdfName",
+      width: 180,
       render: (_, record) =>
         record.pdfDataUrl ? (
           <Space>
@@ -258,6 +263,7 @@ export function ContractsPage() {
     {
       title: "Islemler",
       key: "actions",
+      width: 90,
       render: (_, record) => (
         <Space size={4}>
           <Tooltip title="Düzenle">

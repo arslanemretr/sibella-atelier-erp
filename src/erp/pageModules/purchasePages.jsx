@@ -154,6 +154,7 @@ export function PurchaseListPage() {
       title: "Belge No",
       dataIndex: "documentNo",
       key: "documentNo",
+      width: 160,
       sorter: (a, b) => a.documentNo.localeCompare(b.documentNo, "tr"),
       render: (value, record) => (
         <button
@@ -168,15 +169,16 @@ export function PurchaseListPage() {
         </button>
       ),
     },
-    { title: "Tarih", dataIndex: "date", key: "date", sorter: (a, b) => a.date.localeCompare(b.date, "tr") },
-    { title: "Tedarikci", dataIndex: "supplierName", key: "supplierName", sorter: (a, b) => a.supplierName.localeCompare(b.supplierName, "tr") },
-    { title: "Tedarik Tipi", dataIndex: "procurementTypeLabel", key: "procurementTypeLabel", sorter: (a, b) => a.procurementTypeLabel.localeCompare(b.procurementTypeLabel, "tr") },
-    { title: "Odeme Kosulu", dataIndex: "paymentTermLabel", key: "paymentTermLabel", sorter: (a, b) => a.paymentTermLabel.localeCompare(b.paymentTermLabel, "tr") },
-    { title: "Kalem", dataIndex: "lineCount", key: "lineCount", sorter: (a, b) => a.lineCount - b.lineCount },
-    { title: "Toplam", dataIndex: "totalAmountDisplay", key: "totalAmountDisplay", sorter: (a, b) => a.totalAmount - b.totalAmount },
+    { title: "Tarih", dataIndex: "date", key: "date", width: 130, sorter: (a, b) => a.date.localeCompare(b.date, "tr") },
+    { title: "Tedarikci", dataIndex: "supplierName", key: "supplierName", width: 180, sorter: (a, b) => a.supplierName.localeCompare(b.supplierName, "tr") },
+    { title: "Tedarik Tipi", dataIndex: "procurementTypeLabel", key: "procurementTypeLabel", width: 140, sorter: (a, b) => a.procurementTypeLabel.localeCompare(b.procurementTypeLabel, "tr") },
+    { title: "Odeme Kosulu", dataIndex: "paymentTermLabel", key: "paymentTermLabel", width: 140, sorter: (a, b) => a.paymentTermLabel.localeCompare(b.paymentTermLabel, "tr") },
+    { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 80, sorter: (a, b) => a.lineCount - b.lineCount },
+    { title: "Toplam", dataIndex: "totalAmountDisplay", key: "totalAmountDisplay", width: 130, sorter: (a, b) => a.totalAmount - b.totalAmount },
     {
       title: "Islemler",
       key: "actions",
+      width: 80,
       render: (_, record) => (
         <Space size={8}>
           <Button
@@ -270,10 +272,10 @@ export function PurchaseListPage() {
                 rowKey="id"
                 pagination={false}
                 columns={[
-                  { title: "Urun", dataIndex: "productName", key: "productName" },
-                  { title: "Miktar", dataIndex: "quantity", key: "quantity" },
-                  { title: "Birim Fiyat", dataIndex: "unitPriceDisplay", key: "unitPriceDisplay" },
-                  { title: "Not", dataIndex: "note", key: "note" },
+                  { title: "Urun", dataIndex: "productName", key: "productName", width: 200 },
+                  { title: "Miktar", dataIndex: "quantity", key: "quantity", width: 80 },
+                  { title: "Birim Fiyat", dataIndex: "unitPriceDisplay", key: "unitPriceDisplay", width: 120 },
+                  { title: "Not", dataIndex: "note", key: "note", width: 160 },
                 ]}
                 dataSource={selectedPurchase.lines}
                 size="small"
@@ -463,6 +465,7 @@ export function PurchaseEditorPage() {
                       title: "Urun",
                       dataIndex: "product",
                       key: "product",
+                      width: 260,
                       render: (_, record) => (
                         <Form.Item name={[record.field.name, "productId"]} rules={[{ required: true, message: "Urun seciniz." }]}>
                           <Select
@@ -481,6 +484,7 @@ export function PurchaseEditorPage() {
                     {
                       title: "Miktar",
                       key: "quantity",
+                      width: 100,
                       render: (_, record) => (
                         <Form.Item name={[record.field.name, "quantity"]} rules={[{ required: true, message: "Miktar girin." }]}>
                           <InputNumber min={1} style={{ width: "100%" }} />
@@ -490,6 +494,7 @@ export function PurchaseEditorPage() {
                     {
                       title: "Birim Fiyat",
                       key: "unitPrice",
+                      width: 130,
                       render: (_, record) => (
                         <Form.Item name={[record.field.name, "unitPrice"]} rules={[{ required: true, message: "Birim fiyat girin." }]}>
                           <InputNumber min={0} style={{ width: "100%" }} />
@@ -499,6 +504,7 @@ export function PurchaseEditorPage() {
                     {
                       title: "Not",
                       key: "note",
+                      width: 180,
                       render: (_, record) => (
                         <Form.Item name={[record.field.name, "note"]}>
                           <Input placeholder="Satir notu" />

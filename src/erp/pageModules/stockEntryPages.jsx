@@ -265,6 +265,7 @@ export function StockEntryEditorPage() {
                     {
                       title: "Urun",
                       key: "product",
+                      width: 260,
                       render: (_, record) => (
                         <Form.Item name={[record.field.name, "productId"]} rules={[{ required: true, message: "Urun seciniz." }]}>
                           <Select
@@ -280,6 +281,7 @@ export function StockEntryEditorPage() {
                     {
                       title: "Miktar",
                       key: "quantity",
+                      width: 100,
                       render: (_, record) => (
                         <Form.Item name={[record.field.name, "quantity"]} rules={[{ required: true, message: "Miktar girin." }]}>
                           <InputNumber min={1} style={{ width: "100%" }} />
@@ -289,6 +291,7 @@ export function StockEntryEditorPage() {
                     {
                       title: "Birim Maliyet",
                       key: "unitCost",
+                      width: 130,
                       render: (_, record) => (
                         <Form.Item name={[record.field.name, "unitCost"]} rules={[{ required: true, message: "Birim maliyet girin." }]}>
                           <InputNumber min={0} style={{ width: "100%" }} />
@@ -298,6 +301,7 @@ export function StockEntryEditorPage() {
                     {
                       title: "Not",
                       key: "note",
+                      width: 180,
                       render: (_, record) => (
                         <Form.Item name={[record.field.name, "note"]}>
                           <Input placeholder="Satir notu" />
@@ -421,6 +425,7 @@ export function StockEntryListPage() {
       title: "Belge No",
       dataIndex: "documentNo",
       key: "documentNo",
+      width: 160,
       sorter: (a, b) => a.documentNo.localeCompare(b.documentNo, "tr"),
       render: (value, record) => (
         <button
@@ -435,21 +440,23 @@ export function StockEntryListPage() {
         </button>
       ),
     },
-    { title: "Tarih", dataIndex: "date", key: "date", sorter: (a, b) => a.date.localeCompare(b.date, "tr") },
-    { title: "Teslim Eden", dataIndex: "sourcePartyName", key: "sourcePartyName", sorter: (a, b) => a.sourcePartyName.localeCompare(b.sourcePartyName, "tr") },
-    { title: "Kaynak", dataIndex: "sourceType", key: "sourceType", sorter: (a, b) => a.sourceType.localeCompare(b.sourceType, "tr") },
-    { title: "Kalem", dataIndex: "lineCount", key: "lineCount", sorter: (a, b) => a.lineCount - b.lineCount },
-    { title: "Toplam", dataIndex: "totalAmountDisplay", key: "totalAmountDisplay", sorter: (a, b) => a.totalAmount - b.totalAmount },
+    { title: "Tarih", dataIndex: "date", key: "date", width: 130, sorter: (a, b) => a.date.localeCompare(b.date, "tr") },
+    { title: "Teslim Eden", dataIndex: "sourcePartyName", key: "sourcePartyName", width: 160, sorter: (a, b) => a.sourcePartyName.localeCompare(b.sourcePartyName, "tr") },
+    { title: "Kaynak", dataIndex: "sourceType", key: "sourceType", width: 140, sorter: (a, b) => a.sourceType.localeCompare(b.sourceType, "tr") },
+    { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 80, sorter: (a, b) => a.lineCount - b.lineCount },
+    { title: "Toplam", dataIndex: "totalAmountDisplay", key: "totalAmountDisplay", width: 130, sorter: (a, b) => a.totalAmount - b.totalAmount },
     {
       title: "Durum",
       dataIndex: "status",
       key: "status",
+      width: 110,
       sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
       render: (value) => <Tag color={value === "Tamamlandi" ? "green" : value === "Taslak" ? "gold" : "blue"}>{value || "-"}</Tag>,
     },
     {
       title: "Islemler",
       key: "actions",
+      width: 80,
       render: (_, record) => (
         <Space size={4}>
           <Tooltip title="Düzenle">

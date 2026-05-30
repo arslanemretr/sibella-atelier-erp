@@ -199,7 +199,7 @@ export function DashboardPage() {
           locale={{ emptyText: "Düşük stok uyarısı yok." }}
           columns={[
             { title: "Kod", dataIndex: "code", key: "code", width: 100 },
-            { title: "Ürün Adı", dataIndex: "name", key: "name" },
+            { title: "Ürün Adı", dataIndex: "name", key: "name", width: 180 },
             { title: "Stok", dataIndex: "stock", key: "stock", width: 70, align: "right",
               render: (v) => <span style={{ color: v <= 0 ? "#cf1322" : "#d46b08", fontWeight: 600 }}>{v}</span> },
             { title: "Min.", dataIndex: "minStock", key: "minStock", width: 60, align: "right" },
@@ -248,7 +248,7 @@ export function DashboardPage() {
           locale={{ emptyText: "Bu dönemde satış yok." }}
           columns={[
             { title: "Kod", dataIndex: "code", key: "code", width: 90 },
-            { title: "Ürün Adı", dataIndex: "name", key: "name" },
+            { title: "Ürün Adı", dataIndex: "name", key: "name", width: 180 },
             { title: "Adet", dataIndex: "totalQty", key: "totalQty", width: 70, align: "right", render: (v) => <b>{v}</b> },
             { title: "Tutar", dataIndex: "totalAmount", key: "totalAmount", width: 110, align: "right", render: (v) => formatMoney(v) },
           ]}
@@ -265,8 +265,8 @@ export function DashboardPage() {
           dataSource={recentPurchases}
           locale={{ emptyText: "Bu dönemde satın alma yok." }}
           columns={[
-            { title: "Belge No", dataIndex: "documentNo", key: "documentNo" },
-            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName" },
+            { title: "Belge No", dataIndex: "documentNo", key: "documentNo", width: 140 },
+            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 160 },
             { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 60, align: "right" },
             { title: "Tutar", dataIndex: "totalAmount", key: "totalAmount", width: 110, align: "right", render: (v) => formatMoney(v) },
           ]}
@@ -542,7 +542,7 @@ export function DashboardPage() {
               onRow={(r) => ({ onClick: () => navigate("/pos/orders"), style: { cursor: "pointer" } })}
               columns={[
                 { title: "Fiş No", dataIndex: "receiptNo", key: "receiptNo", width: 90 },
-                { title: "Müşteri", dataIndex: "customerName", key: "customerName", ellipsis: true },
+                { title: "Müşteri", dataIndex: "customerName", key: "customerName", width: 150, ellipsis: true },
                 { title: "Ödeme", dataIndex: "paymentMethod", key: "paymentMethod", width: 90,
                   render: (v) => <Tag>{v}</Tag> },
                 { title: "Tutar", dataIndex: "grandTotal", key: "grandTotal", width: 110, align: "right",
@@ -587,7 +587,7 @@ export function DashboardPage() {
                 onRow={(r) => ({ onClick: () => navigate(`/products/${r.id}`), style: { cursor: "pointer" } })}
                 columns={[
                   { title: "Kod", dataIndex: "code", key: "code", width: 90, render: (v) => <Text code style={{ fontSize: 12 }}>{v}</Text> },
-                  { title: "Ürün", dataIndex: "name", key: "name", ellipsis: true },
+                  { title: "Ürün", dataIndex: "name", key: "name", width: 160, ellipsis: true },
                   { title: "Stok / Min", key: "stockMin", width: 90, align: "right",
                     render: (_, r) => (
                       <span style={{ color: r.stock <= 0 ? "#cf1322" : "#d46b08", fontWeight: 600, fontSize: 13 }}>
@@ -784,10 +784,10 @@ export function SupplierDashboardPage() {
               dataSource={deliveries.slice(0, 5)}
               locale={{ emptyText: "Henüz teslimat kaydınız bulunmuyor." }}
               columns={[
-                { title: "Teslimat No", dataIndex: "deliveryNo", key: "deliveryNo" },
-                { title: "Sevk Tarihi", dataIndex: "date", key: "date", render: (v) => formatDisplayDate(v) },
+                { title: "Teslimat No", dataIndex: "deliveryNo", key: "deliveryNo", width: 140 },
+                { title: "Sevk Tarihi", dataIndex: "date", key: "date", width: 120, render: (v) => formatDisplayDate(v) },
                 { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 70 },
-                { title: "Durum", dataIndex: "status", key: "status", render: (v) => <Tag color={deliveryStatusColorMap[v] || "default"}>{v || "Taslak"}</Tag> },
+                { title: "Durum", dataIndex: "status", key: "status", width: 130, render: (v) => <Tag color={deliveryStatusColorMap[v] || "default"}>{v || "Taslak"}</Tag> },
               ]}
             />
           </Card>
@@ -801,9 +801,9 @@ export function SupplierDashboardPage() {
               dataSource={earningsSummaries}
               locale={{ emptyText: "Henüz hakedişe konu satış bulunmuyor." }}
               columns={[
-                { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel" },
-                { title: "Toplam Hakediş", dataIndex: "earningsTotal", key: "earningsTotal", align: "right", render: (v) => formatEarningsMoney(v) },
-                { title: "Durum", dataIndex: "status", key: "status", render: (v) => <Tag color={EARNINGS_STATUS_META[v]?.color || "default"}>{v}</Tag> },
+                { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130 },
+                { title: "Toplam Hakediş", dataIndex: "earningsTotal", key: "earningsTotal", width: 140, align: "right", render: (v) => formatEarningsMoney(v) },
+                { title: "Durum", dataIndex: "status", key: "status", width: 150, render: (v) => <Tag color={EARNINGS_STATUS_META[v]?.color || "default"}>{v}</Tag> },
               ]}
             />
           </Card>

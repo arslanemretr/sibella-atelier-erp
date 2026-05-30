@@ -61,6 +61,7 @@ export function StoreListPage() {
               title: "Magaza Kodu",
               dataIndex: "code",
               key: "code",
+              width: 120,
               render: (value, record) => (
                 <button
                   type="button"
@@ -74,15 +75,16 @@ export function StoreListPage() {
                 </button>
               ),
             },
-            { title: "Magaza Adi", dataIndex: "name", key: "name" },
-            { title: "VKN", dataIndex: "taxNumber", key: "taxNumber" },
+            { title: "Magaza Adi", dataIndex: "name", key: "name", width: 180 },
+            { title: "VKN", dataIndex: "taxNumber", key: "taxNumber", width: 130 },
             {
               title: "Komisyon",
               dataIndex: "commissionRate",
               key: "commissionRate",
+              width: 100,
               render: (value) => `%${Number(value || 0).toFixed(2)}`,
             },
-            { title: "Stok Yeri", dataIndex: "stockLocationName", key: "stockLocationName" },
+            { title: "Stok Yeri", dataIndex: "stockLocationName", key: "stockLocationName", width: 160 },
             {
               title: "Islemler",
               key: "actions",

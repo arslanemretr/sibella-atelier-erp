@@ -186,7 +186,7 @@ export function SalesReportPage() {
           pagination={false}
           locale={{ emptyText: "Veri bulunamadi." }}
           columns={[
-            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName" },
+            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 200 },
             { title: "Satılan Adet", dataIndex: "qty", key: "qty", align: "right", width: 120 },
             { title: "Toplam Tutar", dataIndex: "total", key: "total", align: "right", width: 150, render: (v) => money(v) },
             { title: "% Pay", dataIndex: "share", key: "share", align: "right", width: 80, render: (v) => `%${v}` },
@@ -216,7 +216,7 @@ export function SalesReportPage() {
           locale={{ emptyText: "Veri bulunamadi." }}
           columns={[
             { title: "Kod", dataIndex: "code", key: "code", width: 110 },
-            { title: "Ürün Adı", dataIndex: "name", key: "name" },
+            { title: "Ürün Adı", dataIndex: "name", key: "name", width: 200 },
             { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 180 },
             { title: "Satılan Adet", dataIndex: "qty", key: "qty", align: "right", width: 110 },
             { title: "Toplam Tutar", dataIndex: "total", key: "total", align: "right", width: 140, render: (v) => money(v) },
@@ -233,7 +233,7 @@ export function SalesReportPage() {
           pagination={false}
           locale={{ emptyText: "Veri bulunamadi." }}
           columns={[
-            { title: "Ödeme Yöntemi", dataIndex: "method", key: "method" },
+            { title: "Ödeme Yöntemi", dataIndex: "method", key: "method", width: 160 },
             { title: "İşlem Sayısı", dataIndex: "count", key: "count", align: "right", width: 120 },
             { title: "Toplam Tutar", dataIndex: "total", key: "total", align: "right", width: 150, render: (v) => money(v) },
           ]}
@@ -373,7 +373,7 @@ export function StockReportPage() {
           locale={{ emptyText: "Filtrelere uygun urun bulunamadi." }}
           columns={[
             { title: "Kod", dataIndex: "code", key: "code", width: 110 },
-            { title: "Ürün Adı", dataIndex: "name", key: "name" },
+            { title: "Ürün Adı", dataIndex: "name", key: "name", width: 200 },
             { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 180 },
             {
               title: "Mevcut Stok",

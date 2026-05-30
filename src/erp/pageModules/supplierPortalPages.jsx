@@ -1367,21 +1367,23 @@ export function SupplierDeliveryListsPage() {
         </button>
       ),
     },
-    { title: "Tedarikci", dataIndex: "supplierName", key: "supplierName", sorter: (a, b) => a.supplierName.localeCompare(b.supplierName, "tr") },
-    { title: "Yetkili", dataIndex: "contactName", key: "contactName", sorter: (a, b) => a.contactName.localeCompare(b.contactName, "tr") },
+    { title: "Tedarikci", dataIndex: "supplierName", key: "supplierName", width: 180, sorter: (a, b) => a.supplierName.localeCompare(b.supplierName, "tr") },
+    { title: "Yetkili", dataIndex: "contactName", key: "contactName", width: 150, sorter: (a, b) => a.contactName.localeCompare(b.contactName, "tr") },
     {
       title: "Tarih",
       dataIndex: "date",
       key: "date",
+      width: 130,
       sorter: (a, b) => (a.date || "").localeCompare(b.date || "", "tr"),
       render: (value) => formatDateTR(value),
     },
-    { title: "Kalem", dataIndex: "lineCount", key: "lineCount", sorter: (a, b) => a.lineCount - b.lineCount },
-    { title: "Toplam", dataIndex: "totalAmountDisplay", key: "totalAmountDisplay", sorter: (a, b) => a.totalAmount - b.totalAmount },
+    { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 80, sorter: (a, b) => a.lineCount - b.lineCount },
+    { title: "Toplam", dataIndex: "totalAmountDisplay", key: "totalAmountDisplay", width: 130, sorter: (a, b) => a.totalAmount - b.totalAmount },
     {
       title: "Teslimat Durumu",
       dataIndex: "status",
       key: "status",
+      width: 150,
       render: (value) => {
         const colorMap = { Taslak: "default", "Onay Bekleniyor": "gold", Onaylandi: "green", Tamamlandi: "blue", "Revizyon Istendi": "red" };
         return <Tag color={colorMap[value || "Taslak"] || "blue"}>{value || "Taslak"}</Tag>;
@@ -1390,6 +1392,7 @@ export function SupplierDeliveryListsPage() {
     {
       title: "Islemler",
       key: "actions",
+      width: 160,
       render: (_, record) => {
         const isCompleted = Boolean(record.stockEntryId || record.inventoryPostedAt);
         const isApproved = (record.status || "Taslak") === "Onaylandi";
@@ -1700,6 +1703,7 @@ export function SupplierPortalDeliveryListPage() {
       title: "Teslimat No",
       dataIndex: "deliveryNo",
       key: "deliveryNo",
+      width: 160,
       sorter: (a, b) => a.deliveryNo.localeCompare(b.deliveryNo, "tr"),
       render: (value, record) => (
         <button

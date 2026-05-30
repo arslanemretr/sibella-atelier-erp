@@ -45,29 +45,34 @@ export function StockLocationListPage() {
       title: "Stok Yeri",
       dataIndex: "name",
       key: "name",
+      width: 180,
       render: (value) => <Text strong>{value}</Text>,
     },
     {
       title: "Bagli Magaza",
       dataIndex: "storeName",
       key: "storeName",
+      width: 160,
       render: (value) => value || "-",
     },
     {
       title: "Merkez",
       dataIndex: "isDefaultMain",
       key: "isDefaultMain",
+      width: 90,
       render: (value) => <Tag color={value ? "blue" : "default"}>{value ? "Evet" : "Hayir"}</Tag>,
     },
     {
       title: "Urun Cesidi",
       dataIndex: "productVariety",
       key: "productVariety",
+      width: 110,
     },
     {
       title: "Toplam Adet",
       dataIndex: "totalQuantity",
       key: "totalQuantity",
+      width: 110,
     },
   ];
 
@@ -120,8 +125,8 @@ export function StockLocationListPage() {
               dataSource={balances}
               locale={{ emptyText: "Pozitif bakiye yok." }}
               columns={[
-                { title: "Urun Kodu", dataIndex: "productCode", key: "productCode" },
-                { title: "Urun Adi", dataIndex: "productName", key: "productName" },
+                { title: "Urun Kodu", dataIndex: "productCode", key: "productCode", width: 120 },
+                { title: "Urun Adi", dataIndex: "productName", key: "productName", width: 200 },
                 { title: "Adet", dataIndex: "quantity", key: "quantity", width: 100 },
               ]}
             />

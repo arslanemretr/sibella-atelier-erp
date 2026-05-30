@@ -178,6 +178,7 @@ export function SupplierListPage() {
       title: "Firma",
       dataIndex: "company",
       key: "company",
+      width: 180,
       sorter: (a, b) => a.company.localeCompare(b.company, "tr"),
       render: (value, record) => (
         <button
@@ -192,15 +193,16 @@ export function SupplierListPage() {
         </button>
       ),
     },
-    { title: "Yetkili", dataIndex: "contact", key: "contact", sorter: (a, b) => a.contact.localeCompare(b.contact, "tr") },
-    { title: "Tedarik Tipi", dataIndex: "procurementTypeLabel", key: "procurementTypeLabel", sorter: (a, b) => a.procurementTypeLabel.localeCompare(b.procurementTypeLabel, "tr") },
-    { title: "Odeme Kosulu", dataIndex: "paymentTermLabel", key: "paymentTermLabel", sorter: (a, b) => a.paymentTermLabel.localeCompare(b.paymentTermLabel, "tr") },
-    { title: "E-posta", dataIndex: "email", key: "email", sorter: (a, b) => a.email.localeCompare(b.email, "tr") },
-    { title: "Telefon", dataIndex: "phone", key: "phone", sorter: (a, b) => a.phone.localeCompare(b.phone, "tr") },
-    { title: "Durum", dataIndex: "status", key: "status", sorter: (a, b) => a.status.localeCompare(b.status, "tr"), render: (value) => <Tag color={value === "Aktif" ? "green" : "default"}>{value}</Tag> },
+    { title: "Yetkili", dataIndex: "contact", key: "contact", width: 150, sorter: (a, b) => a.contact.localeCompare(b.contact, "tr") },
+    { title: "Tedarik Tipi", dataIndex: "procurementTypeLabel", key: "procurementTypeLabel", width: 140, sorter: (a, b) => a.procurementTypeLabel.localeCompare(b.procurementTypeLabel, "tr") },
+    { title: "Odeme Kosulu", dataIndex: "paymentTermLabel", key: "paymentTermLabel", width: 140, sorter: (a, b) => a.paymentTermLabel.localeCompare(b.paymentTermLabel, "tr") },
+    { title: "E-posta", dataIndex: "email", key: "email", width: 180, sorter: (a, b) => a.email.localeCompare(b.email, "tr") },
+    { title: "Telefon", dataIndex: "phone", key: "phone", width: 140, sorter: (a, b) => a.phone.localeCompare(b.phone, "tr") },
+    { title: "Durum", dataIndex: "status", key: "status", width: 90, sorter: (a, b) => a.status.localeCompare(b.status, "tr"), render: (value) => <Tag color={value === "Aktif" ? "green" : "default"}>{value}</Tag> },
     {
       title: "Islemler",
       key: "actions",
+      width: 90,
       render: (_, record) => (
         <Space size={4}>
           <Tooltip title="Düzenle">
@@ -585,6 +587,7 @@ export function SupplierEditorPage() {
                       title: "Urun Kodu",
                       dataIndex: "code",
                       key: "code",
+                      width: 120,
                       render: (value, record) => (
                         <button
                           type="button"
@@ -599,6 +602,7 @@ export function SupplierEditorPage() {
                       title: "Urun Adi",
                       dataIndex: "name",
                       key: "name",
+                      width: 180,
                     },
                   ]}
                 />

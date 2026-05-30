@@ -51,11 +51,12 @@ function StockBreakdownDrawer({ open, onClose, product, items, loading }) {
             dataSource={items}
             locale={{ emptyText: "Pozitif bakiye bulunan stok yeri yok." }}
             columns={[
-              { title: "Stok Yeri", dataIndex: "stockLocationName", key: "stockLocationName" },
+              { title: "Stok Yeri", dataIndex: "stockLocationName", key: "stockLocationName", width: 160 },
               {
                 title: "Bagli Magaza",
                 dataIndex: "storeName",
                 key: "storeName",
+                width: 150,
                 render: (value, record) => value || (record.isDefaultMain ? "Merkez" : "-"),
               },
               {
@@ -452,6 +453,7 @@ export function ProductListPage() {
       title: "Urun Kodu",
       dataIndex: "code",
       key: "code",
+      width: 120,
       sorter: (a, b) => a.code.localeCompare(b.code, "tr"),
       render: (value, record) => (
         <button
@@ -466,13 +468,14 @@ export function ProductListPage() {
         </button>
       ),
     },
-    { title: "Urun Adi", dataIndex: "name", key: "name", sorter: (a, b) => a.name.localeCompare(b.name, "tr") },
-    { title: "Satis Fiyati", dataIndex: "priceDisplay", key: "priceDisplay", sorter: (a, b) => a.salePrice - b.salePrice },
-    { title: "Kategori", dataIndex: "categoryLabel", key: "categoryLabel", sorter: (a, b) => a.categoryLabel.localeCompare(b.categoryLabel, "tr") },
+    { title: "Urun Adi", dataIndex: "name", key: "name", width: 200, sorter: (a, b) => a.name.localeCompare(b.name, "tr") },
+    { title: "Satis Fiyati", dataIndex: "priceDisplay", key: "priceDisplay", width: 130, sorter: (a, b) => a.salePrice - b.salePrice },
+    { title: "Kategori", dataIndex: "categoryLabel", key: "categoryLabel", width: 150, sorter: (a, b) => a.categoryLabel.localeCompare(b.categoryLabel, "tr") },
     {
       title: "Elde Miktar",
       dataIndex: "totalStock",
       key: "stock",
+      width: 110,
       sorter: (a, b) => Number(a.totalStock || 0) - Number(b.totalStock || 0),
       render: (value, record) => (
         <Button
@@ -491,6 +494,7 @@ export function ProductListPage() {
       title: "Satış Adet",
       dataIndex: "soldQuantity",
       key: "soldQuantity",
+      width: 100,
       sorter: (a, b) => Number(a.soldQuantity || 0) - Number(b.soldQuantity || 0),
       render: (value) => <Tag color={Number(value || 0) === 0 ? "red" : "blue"}>{value ?? 0}</Tag>,
     },
@@ -498,6 +502,7 @@ export function ProductListPage() {
       title: "İade Adet",
       dataIndex: "returnQuantity",
       key: "returnQuantity",
+      width: 90,
       sorter: (a, b) => Number(a.returnQuantity || 0) - Number(b.returnQuantity || 0),
       render: (value) => Number(value || 0) > 0
         ? <Tag color="orange">{value}</Tag>
@@ -506,6 +511,7 @@ export function ProductListPage() {
     {
       title: "Toplam Tutar",
       key: "totalValue",
+      width: 140,
       sorter: (a, b) => (Number(a.totalStock || 0) * Number(a.salePrice || 0)) - (Number(b.totalStock || 0) * Number(b.salePrice || 0)),
       render: (_, record) => {
         const total = Number(record.totalStock || 0) * Number(record.salePrice || 0);
@@ -515,6 +521,7 @@ export function ProductListPage() {
     {
       title: "Islemler",
       key: "actions",
+      width: 90,
       render: (_, record) => (
         <Space size={4}>
           <Tooltip title="Düzenle">

@@ -230,10 +230,10 @@ export function PosSessionsPage() {
                 loading={salesLoading}
                 dataSource={sales}
                 columns={[
-                  { title: "Fiş", dataIndex: "receiptNo", key: "receiptNo" },
-                  { title: "Müşteri", dataIndex: "customerName", key: "customerName" },
-                  { title: "Tarih", dataIndex: "soldAt", key: "soldAt", render: (value) => new Date(value).toLocaleString("tr-TR") },
-                  { title: "Toplam", dataIndex: "grandTotalDisplay", key: "grandTotalDisplay" },
+                  { title: "Fiş", dataIndex: "receiptNo", key: "receiptNo", width: 120 },
+                  { title: "Müşteri", dataIndex: "customerName", key: "customerName", width: 150 },
+                  { title: "Tarih", dataIndex: "soldAt", key: "soldAt", width: 150, render: (value) => new Date(value).toLocaleString("tr-TR") },
+                  { title: "Toplam", dataIndex: "grandTotalDisplay", key: "grandTotalDisplay", width: 120 },
                 ]}
               />
             </Card>
@@ -1430,17 +1430,18 @@ export function PosScreenPage() {
               dataSource={[...openDraftOrders, ...paidDraftOrders, ...closedDraftOrders]}
               locale={{ emptyText: "Oturuma ait siparis bulunmuyor." }}
               columns={[
-                { title: "Siparis", dataIndex: "title", key: "title" },
+                { title: "Siparis", dataIndex: "title", key: "title", width: 130 },
                 {
                   title: "Durum",
                   key: "status",
+                  width: 110,
                   render: (_, record) =>
                     record.status === "open" ? "Devam Ediyor"
                       : record.status === "paid" ? <Tag color="success">Ödendi</Tag>
                         : "Kapali",
                 },
-                { title: "Musteri", dataIndex: "customerName", key: "customerName", render: (value) => value || "-" },
-                { title: "Indirim", key: "discount", render: (_, record) => formatMovementMoney(calculateOrderTotals(record).discountAmount) },
+                { title: "Musteri", dataIndex: "customerName", key: "customerName", width: 150, render: (value) => value || "-" },
+                { title: "Indirim", key: "discount", width: 120, render: (_, record) => formatMovementMoney(calculateOrderTotals(record).discountAmount) },
                 {
                   title: "Islemler",
                   key: "actions",
@@ -1476,11 +1477,11 @@ export function PosScreenPage() {
               loading={ordersLoading}
               dataSource={sessionOrders}
               columns={[
-                { title: "Sipariş No", dataIndex: "receiptNo", key: "receiptNo" },
-                { title: "Musteri", dataIndex: "customerName", key: "customerName" },
-                { title: "Tarih", dataIndex: "soldAt", key: "soldAt", render: (value) => new Date(value).toLocaleString("tr-TR") },
-                { title: "Indirim", dataIndex: "discountAmountDisplay", key: "discountAmountDisplay" },
-                { title: "Toplam", dataIndex: "grandTotalDisplay", key: "grandTotalDisplay" },
+                { title: "Sipariş No", dataIndex: "receiptNo", key: "receiptNo", width: 130 },
+                { title: "Musteri", dataIndex: "customerName", key: "customerName", width: 150 },
+                { title: "Tarih", dataIndex: "soldAt", key: "soldAt", width: 150, render: (value) => new Date(value).toLocaleString("tr-TR") },
+                { title: "Indirim", dataIndex: "discountAmountDisplay", key: "discountAmountDisplay", width: 120 },
+                { title: "Toplam", dataIndex: "grandTotalDisplay", key: "grandTotalDisplay", width: 120 },
               ]}
             />
           </Card>
@@ -1652,6 +1653,7 @@ export function PosOrdersPage() {
       title: "Ürün Adı",
       dataIndex: "productName",
       key: "productName",
+      width: 180,
       ellipsis: true,
     },
     {
@@ -1970,18 +1972,20 @@ export function PosReturnEditorPage() {
   if (!sale) return <div style={{ padding: 32 }}>Satış bulunamadı.</div>;
 
   const columns = [
-    { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode" },
-    { title: "Ürün Adı", dataIndex: "productName", key: "productName" },
-    { title: "Satış Adedi", dataIndex: "quantity", key: "quantity" },
-    { title: "Birim Fiyat", dataIndex: "unitPriceDisplay", key: "unitPriceDisplay" },
+    { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 120 },
+    { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 180 },
+    { title: "Satış Adedi", dataIndex: "quantity", key: "quantity", width: 90 },
+    { title: "Birim Fiyat", dataIndex: "unitPriceDisplay", key: "unitPriceDisplay", width: 120 },
     {
       title: "Daha Önce İade",
       key: "alreadyReturned",
+      width: 130,
       render: (_, record) => returnedQtyMap[record.id] || 0,
     },
     {
       title: "İade Edilebilir",
       key: "maxReturnable",
+      width: 120,
       render: (_, record) => Math.max(0, record.quantity - (returnedQtyMap[record.id] || 0)),
     },
     {
@@ -2185,6 +2189,7 @@ export function PosReturnListPage() {
       title: "Ürün Adı",
       dataIndex: "productName",
       key: "productName",
+      width: 180,
       ellipsis: true,
     },
     {

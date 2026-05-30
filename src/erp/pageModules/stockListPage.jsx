@@ -254,6 +254,7 @@ export function StockListPage() {
       title: "Tarih",
       dataIndex: "documentDate",
       key: "documentDate",
+      width: 140,
       sorter: (a, b) =>
         (parseDate(a.documentDate || a.createdAt)?.getTime() || 0) -
         (parseDate(b.documentDate || b.createdAt)?.getTime() || 0),
@@ -263,6 +264,7 @@ export function StockListPage() {
       title: "Hareket Tipi",
       dataIndex: "movementTypeLabel",
       key: "movementTypeLabel",
+      width: 140,
       render: (_, record) => (
         <Tag color={record.affectsStock ? (record.direction === "OUT" ? "volcano" : "green") : "gold"}>
           {record.movementTypeLabel || record.movementType}
@@ -273,6 +275,7 @@ export function StockListPage() {
       title: "Belge No",
       dataIndex: "documentNo",
       key: "documentNo",
+      width: 150,
       render: (value, record) => (
         <button
           type="button"
@@ -290,6 +293,7 @@ export function StockListPage() {
       title: "Stok Yeri",
       dataIndex: "stockLocationName",
       key: "stockLocationName",
+      width: 160,
       render: (value, record) => (
         <Space size={6}>
           <span>{value || "-"}</span>
@@ -301,12 +305,14 @@ export function StockListPage() {
       title: "Urun",
       dataIndex: "productName",
       key: "productName",
+      width: 200,
       render: (_, record) => `${record.productCode} - ${record.productName}`,
     },
     {
       title: "Miktar",
       dataIndex: "quantitySignedDisplay",
       key: "quantitySignedDisplay",
+      width: 90,
       align: "right",
       render: (_, record) => (
         <Tag color={!record.affectsStock ? "default" : record.direction === "OUT" ? "volcano" : "blue"}>
@@ -318,23 +324,27 @@ export function StockListPage() {
       title: "Etki",
       dataIndex: "affectsStock",
       key: "affectsStock",
+      width: 110,
       render: (value) => <Tag color={value ? "green" : "default"}>{value ? "Stok Etkiler" : "Bilgi"}</Tag>,
     },
     {
       title: "Kaynak",
       dataIndex: "partyName",
       key: "partyName",
+      width: 150,
       render: (value, record) => value || record.sourceModule || "-",
     },
     {
       title: "Toplam",
       dataIndex: "totalAmountDisplay",
       key: "totalAmountDisplay",
+      width: 130,
       align: "right",
     },
     {
       title: "Islemler",
       key: "actions",
+      width: 80,
       render: (_, record) => (
         <Tooltip title="Düzenle">
           <Button size="small" className="erp-icon-btn erp-icon-btn-view" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); openDetailPath(record); }} />

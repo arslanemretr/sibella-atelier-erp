@@ -99,6 +99,7 @@ export function StoreShipmentListPage() {
               title: "Gonderi No",
               dataIndex: "shipmentNo",
               key: "shipmentNo",
+              width: 140,
               render: (value, record) => (
                 <button
                   type="button"
@@ -112,20 +113,22 @@ export function StoreShipmentListPage() {
                 </button>
               ),
             },
-            { title: "Magaza", dataIndex: "storeName", key: "storeName" },
+            { title: "Magaza", dataIndex: "storeName", key: "storeName", width: 160 },
             {
               title: "Tarih",
               dataIndex: "date",
               key: "date",
+              width: 130,
               render: (value) => formatDisplayDate(value),
             },
             { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 80 },
             { title: "Toplam Adet", dataIndex: "totalQuantity", key: "totalQuantity", width: 110 },
-            { title: "Toplam Tutar", dataIndex: "totalAmountDisplay", key: "totalAmountDisplay" },
+            { title: "Toplam Tutar", dataIndex: "totalAmountDisplay", key: "totalAmountDisplay", width: 130 },
             {
               title: "Durum",
               dataIndex: "status",
               key: "status",
+              width: 110,
               render: (value) => (
                 <Tag color={value === "Gonderildi" ? "green" : value === "Hazirlandi" ? "gold" : "default"}>{value}</Tag>
               ),
@@ -173,10 +176,10 @@ export function StoreShipmentListPage() {
                     />
                   ),
                 },
-                { title: "Urun Kodu", dataIndex: "code", key: "code" },
-                { title: "Urun Adi", dataIndex: "name", key: "name" },
+                { title: "Urun Kodu", dataIndex: "code", key: "code", width: 120 },
+                { title: "Urun Adi", dataIndex: "name", key: "name", width: 180 },
                 { title: "Adet", dataIndex: "quantity", key: "quantity", width: 70 },
-                { title: "Fiyat", dataIndex: "salePrice", key: "salePrice", render: (value, record) => formatMoney(value, record.saleCurrency) },
+                { title: "Fiyat", dataIndex: "salePrice", key: "salePrice", width: 120, render: (value, record) => formatMoney(value, record.saleCurrency) },
               ]}
             />
           </Space>
@@ -688,7 +691,7 @@ export function StoreShipmentEditorPage() {
                 ),
               },
               { title: "Urun Kodu", dataIndex: "code", key: "code", width: 130 },
-              { title: "Urun Adi", dataIndex: "name", key: "name" },
+              { title: "Urun Adi", dataIndex: "name", key: "name", width: 200 },
               { title: "Adet", dataIndex: "quantity", key: "quantity", width: 80 },
               {
                 title: "Birim Fiyat",
