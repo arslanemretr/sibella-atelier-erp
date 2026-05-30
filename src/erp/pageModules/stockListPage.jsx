@@ -344,6 +344,7 @@ export function StockListPage() {
     {
       title: "Islemler",
       key: "actions",
+      fixed: 'right',
       width: 80,
       render: (_, record) => (
         <Tooltip title="Düzenle">

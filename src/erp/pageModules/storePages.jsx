@@ -88,6 +88,7 @@ export function StoreListPage() {
             {
               title: "Islemler",
               key: "actions",
+              fixed: 'right',
               render: (_, record) => (
                 <Space size={4}>
                   <Tooltip title="Düzenle">

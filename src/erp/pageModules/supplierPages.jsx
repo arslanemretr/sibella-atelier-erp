@@ -202,6 +202,7 @@ export function SupplierListPage() {
     {
       title: "Islemler",
       key: "actions",
+      fixed: 'right',
       width: 90,
       render: (_, record) => (
         <Space size={4}>

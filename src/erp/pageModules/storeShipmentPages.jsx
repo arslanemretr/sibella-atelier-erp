@@ -709,6 +709,7 @@ export function StoreShipmentEditorPage() {
               {
                 title: "Islemler",
                 key: "actions",
+                fixed: 'right',
                 width: 100,
                 render: (_, record) => (
                   <Space size={4}>

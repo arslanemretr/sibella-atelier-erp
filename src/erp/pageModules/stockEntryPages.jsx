@@ -311,6 +311,7 @@ export function StockEntryEditorPage() {
                     {
                       title: "Islemler",
                       key: "actions",
+                      fixed: 'right',
                       width: 110,
                       render: (_, record) => (
                         <Tooltip title="Sil"><Button size="small" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} onClick={() => remove(record.field.name)} /></Tooltip>
@@ -456,6 +457,7 @@ export function StockEntryListPage() {
     {
       title: "Islemler",
       key: "actions",
+      fixed: 'right',
       width: 80,
       render: (_, record) => (
         <Space size={4}>
