@@ -1113,7 +1113,8 @@ html, body {
 }
 
 /* Sayfa intro açıklamaları gizli */
-.erp-page-intro .ant-typography-secondary {
+.erp-page-intro .ant-typography-secondary,
+.erp-page-intro .ant-typography[class*="secondary"] {
   display: none;
 }
 

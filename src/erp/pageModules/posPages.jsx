@@ -172,7 +172,6 @@ export function PosSessionsPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>POS Oturumları</Title>
-          <Text type="secondary">Açılan kasa oturumları, satış toplamları ve açık/kapalı durumları burada tutulur.</Text>
         </div>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={() => { void refreshSessions(); message.success("Oturumlar yenilendi."); }}>Yenile</Button>
