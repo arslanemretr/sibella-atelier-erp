@@ -1106,7 +1106,7 @@ export function PosScreenPage() {
             Sepet {cart.length > 0 ? <span className="erp-pos-mobile-tab-badge">{cart.length}</span> : null}
           </button>
         </div>
-        <div className="erp-pos-left">
+        <div className={`erp-pos-left${mobileTab === "cart" ? " erp-pos-panel-hidden" : ""}`}>
           <div className="erp-pos-toolbar">
             <Input
               prefix={<SearchOutlined />}
@@ -1162,7 +1162,7 @@ export function PosScreenPage() {
           </div>
         </div>
 
-        <div className="erp-pos-right">
+        <div className={`erp-pos-right${mobileTab === "products" ? " erp-pos-panel-hidden" : ""}`}>
           <div className="erp-pos-order-header">
             <div className="erp-pos-order-header-main">
               <div className="erp-pos-session-info">

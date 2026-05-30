@@ -533,35 +533,35 @@ html, body {
   .erp-pos-mobile-tabs {
     display: flex;
     grid-column: 1 / -1;
-    background: #f5f5f5;
-    border-radius: 12px;
-    padding: 4px;
-    gap: 4px;
     order: 0;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
   }
 
   .erp-pos-mobile-tab {
     flex: 1;
-    padding: 10px 0;
-    border: none;
-    background: transparent;
-    border-radius: 9px;
-    font-size: 15px;
+    height: 36px;
+    padding: 0 16px;
+    border: 1px solid #d9d9d9;
+    background: #fff;
+    border-radius: 6px;
+    font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    color: #666;
-    display: flex;
+    color: rgba(0,0,0,0.88);
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    transition: background 0.15s, color 0.15s;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
   }
 
   .erp-pos-mobile-tab.is-active {
-    background: #fff;
+    border-color: #d86d5b;
     color: #d86d5b;
-    font-weight: 700;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    background: #fff6f4;
+    font-weight: 600;
   }
 
   .erp-pos-mobile-tab-badge {
@@ -581,13 +581,27 @@ html, body {
   .erp-pos-shell {
     grid-template-columns: 1fr;
     height: auto;
-    min-height: 100dvh;
+    min-height: unset;
   }
 
-  .erp-pos-shell--products .erp-pos-left  { display: flex; order: 1; }
-  .erp-pos-shell--products .erp-pos-right { display: none; }
-  .erp-pos-shell--cart    .erp-pos-left  { display: none; }
-  .erp-pos-shell--cart    .erp-pos-right { display: flex; order: 1; }
+  .erp-pos-panel-hidden {
+    display: none !important;
+  }
+
+  /* Mobilede panel overflow ve product grid natural scroll */
+  .erp-pos-left,
+  .erp-pos-right {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  .erp-pos-product-grid {
+    flex: 0 0 auto !important;
+    overflow-y: visible !important;
+    min-height: auto !important;
+    height: auto !important;
+  }
+
 }
 
 .erp-pos-left,
