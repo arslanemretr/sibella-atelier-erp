@@ -670,23 +670,31 @@ export function ProductListPage() {
         onClose={() => setDetailOpen(false)}
       >
         {selectedProduct ? (
-          <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="Urun Kodu">{selectedProduct.code}</Descriptions.Item>
-            <Descriptions.Item label="Urun Adi">{selectedProduct.name}</Descriptions.Item>
-            <Descriptions.Item label="Satis Fiyati">{selectedProduct.priceDisplay}</Descriptions.Item>
-            <Descriptions.Item label="Maliyet">{selectedProduct.costDisplay}</Descriptions.Item>
-            <Descriptions.Item label="Kategori">{selectedProduct.categoryLabel}</Descriptions.Item>
-            <Descriptions.Item label="Koleksiyon">{selectedProduct.collectionLabel}</Descriptions.Item>
-            <Descriptions.Item
-              label="Stok"
-            >
-              <Button type="link" style={{ padding: 0 }} onClick={() => void openStockDrawer(selectedProduct)}>
-                {selectedProduct.stock}
-              </Button>
-            </Descriptions.Item>
-            <Descriptions.Item label="Barkod">{selectedProduct.barcode || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Durum">{selectedProduct.status}</Descriptions.Item>
-          </Descriptions>
+          <>
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="Urun Kodu">{selectedProduct.code}</Descriptions.Item>
+              <Descriptions.Item label="Urun Adi">{selectedProduct.name}</Descriptions.Item>
+              <Descriptions.Item label="Satis Fiyati">{selectedProduct.priceDisplay}</Descriptions.Item>
+              <Descriptions.Item label="Maliyet">{selectedProduct.costDisplay}</Descriptions.Item>
+              <Descriptions.Item label="Kategori">{selectedProduct.categoryLabel}</Descriptions.Item>
+              <Descriptions.Item label="Koleksiyon">{selectedProduct.collectionLabel}</Descriptions.Item>
+              <Descriptions.Item
+                label="Stok"
+              >
+                <Button type="link" style={{ padding: 0 }} onClick={() => void openStockDrawer(selectedProduct)}>
+                  {selectedProduct.stock}
+                </Button>
+              </Descriptions.Item>
+              <Descriptions.Item label="Barkod">{selectedProduct.barcode || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Durum">{selectedProduct.status}</Descriptions.Item>
+            </Descriptions>
+            <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Button type="primary" icon={<EditOutlined />} onClick={() => { setDetailOpen(false); navigate(`/products/${selectedProduct?.id}`); }}>Düzenle</Button>
+              <Popconfirm title="Bu ürün silinsin mi?" okText="Sil" cancelText="Vazgeç" onConfirm={() => { handleDelete(selectedProduct?.id); setDetailOpen(false); }}>
+                <Button danger icon={<DeleteOutlined />}>Sil</Button>
+              </Popconfirm>
+            </div>
+          </>
         ) : null}
       </Drawer>
 

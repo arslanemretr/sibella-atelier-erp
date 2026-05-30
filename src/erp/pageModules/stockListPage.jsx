@@ -434,19 +434,24 @@ export function StockListPage() {
 
       <Drawer title="Stok Hareket Detayi" placement="right" styles={{ wrapper: { width: 500 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedMovement ? (
-          <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="Tarih">{formatDateTime(selectedMovement.documentDate || selectedMovement.createdAt)}</Descriptions.Item>
-            <Descriptions.Item label="Hareket Tipi">{selectedMovement.movementTypeLabel || selectedMovement.movementType}</Descriptions.Item>
-            <Descriptions.Item label="Belge No">{selectedMovement.documentNo || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Stok Yeri">{selectedMovement.stockLocationName || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Urun">{selectedMovement.productCode} - {selectedMovement.productName}</Descriptions.Item>
-            <Descriptions.Item label="Miktar">{selectedMovement.affectsStock ? selectedMovement.quantitySignedDisplay : String(Number(selectedMovement.quantity || 0))}</Descriptions.Item>
-            <Descriptions.Item label="Stok Etkisi">{selectedMovement.affectsStock ? "Evet" : "Hayir"}</Descriptions.Item>
-            <Descriptions.Item label="Kaynak">{selectedMovement.partyName || selectedMovement.sourceModule || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Birim Tutar">{selectedMovement.unitAmountDisplay}</Descriptions.Item>
-            <Descriptions.Item label="Toplam Tutar">{selectedMovement.totalAmountDisplay}</Descriptions.Item>
-            <Descriptions.Item label="Not">{selectedMovement.note || "-"}</Descriptions.Item>
-          </Descriptions>
+          <>
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="Tarih">{formatDateTime(selectedMovement.documentDate || selectedMovement.createdAt)}</Descriptions.Item>
+              <Descriptions.Item label="Hareket Tipi">{selectedMovement.movementTypeLabel || selectedMovement.movementType}</Descriptions.Item>
+              <Descriptions.Item label="Belge No">{selectedMovement.documentNo || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Stok Yeri">{selectedMovement.stockLocationName || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Urun">{selectedMovement.productCode} - {selectedMovement.productName}</Descriptions.Item>
+              <Descriptions.Item label="Miktar">{selectedMovement.affectsStock ? selectedMovement.quantitySignedDisplay : String(Number(selectedMovement.quantity || 0))}</Descriptions.Item>
+              <Descriptions.Item label="Stok Etkisi">{selectedMovement.affectsStock ? "Evet" : "Hayir"}</Descriptions.Item>
+              <Descriptions.Item label="Kaynak">{selectedMovement.partyName || selectedMovement.sourceModule || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Birim Tutar">{selectedMovement.unitAmountDisplay}</Descriptions.Item>
+              <Descriptions.Item label="Toplam Tutar">{selectedMovement.totalAmountDisplay}</Descriptions.Item>
+              <Descriptions.Item label="Not">{selectedMovement.note || "-"}</Descriptions.Item>
+            </Descriptions>
+            <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Button type="primary" icon={<EditOutlined />} onClick={() => { setDetailOpen(false); openDetailPath(selectedMovement); }}>Düzenle</Button>
+            </div>
+          </>
         ) : null}
       </Drawer>
     </Space>

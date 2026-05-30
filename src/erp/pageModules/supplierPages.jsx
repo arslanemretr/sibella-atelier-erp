@@ -315,18 +315,26 @@ export function SupplierListPage() {
 
       <Drawer title="Tedarikci Detayi" placement="right" styles={{ wrapper: { width: 420 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedSupplier ? (
-          <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="Kisa Kod">{selectedSupplier.shortCode || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Firma">{selectedSupplier.company}</Descriptions.Item>
-            <Descriptions.Item label="Yetkili">{selectedSupplier.contact}</Descriptions.Item>
-            <Descriptions.Item label="Tedarik Tipi">{selectedSupplier.procurementTypeLabel}</Descriptions.Item>
-            <Descriptions.Item label="Odeme Kosulu">{selectedSupplier.paymentTermLabel}</Descriptions.Item>
-            <Descriptions.Item label="E-posta">{selectedSupplier.email}</Descriptions.Item>
-            <Descriptions.Item label="Telefon">{selectedSupplier.phone}</Descriptions.Item>
-            <Descriptions.Item label="Sehir">{selectedSupplier.city || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Durum">{selectedSupplier.status}</Descriptions.Item>
-            <Descriptions.Item label="Not">{selectedSupplier.note || "-"}</Descriptions.Item>
-          </Descriptions>
+          <>
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="Kisa Kod">{selectedSupplier.shortCode || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Firma">{selectedSupplier.company}</Descriptions.Item>
+              <Descriptions.Item label="Yetkili">{selectedSupplier.contact}</Descriptions.Item>
+              <Descriptions.Item label="Tedarik Tipi">{selectedSupplier.procurementTypeLabel}</Descriptions.Item>
+              <Descriptions.Item label="Odeme Kosulu">{selectedSupplier.paymentTermLabel}</Descriptions.Item>
+              <Descriptions.Item label="E-posta">{selectedSupplier.email}</Descriptions.Item>
+              <Descriptions.Item label="Telefon">{selectedSupplier.phone}</Descriptions.Item>
+              <Descriptions.Item label="Sehir">{selectedSupplier.city || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Durum">{selectedSupplier.status}</Descriptions.Item>
+              <Descriptions.Item label="Not">{selectedSupplier.note || "-"}</Descriptions.Item>
+            </Descriptions>
+            <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Button type="primary" icon={<EditOutlined />} onClick={() => { setDetailOpen(false); navigate(`/purchasing/suppliers/${selectedSupplier?.id}`); }}>Düzenle</Button>
+              <Popconfirm title="Bu tedarikçi silinsin mi?" okText="Sil" cancelText="Vazgeç" onConfirm={() => { handleDelete(selectedSupplier?.id); setDetailOpen(false); }}>
+                <Button danger icon={<DeleteOutlined />}>Sil</Button>
+              </Popconfirm>
+            </div>
+          </>
         ) : null}
       </Drawer>
 

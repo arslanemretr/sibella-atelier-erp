@@ -282,6 +282,9 @@ export function PurchaseListPage() {
                 size="small"
               />
             </Card>
+            <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Button type="primary" icon={<EditOutlined />} onClick={() => { setDetailOpen(false); navigate(`/purchasing/entry/${selectedPurchase?.id}`); }}>Düzenle</Button>
+            </div>
           </Space>
         ) : null}
       </Drawer>

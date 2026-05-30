@@ -114,17 +114,25 @@ export function StoreListPage() {
 
       <Drawer title="Magaza Detayi" placement="right" styles={{ wrapper: { width: 440 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedStore ? (
-          <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="Magaza Adi">{selectedStore.name}</Descriptions.Item>
-            <Descriptions.Item label="Magaza Kodu">{selectedStore.code}</Descriptions.Item>
-            <Descriptions.Item label="VKN">{selectedStore.taxNumber || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Komisyon">{`%${Number(selectedStore.commissionRate || 0).toFixed(2)}`}</Descriptions.Item>
-            <Descriptions.Item label="Stok Yeri">{selectedStore.stockLocationName || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Yetkili">{selectedStore.contactName || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Telefon">{selectedStore.contactPhone || "-"}</Descriptions.Item>
-            <Descriptions.Item label="E-posta">{selectedStore.contactEmail || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Adres">{selectedStore.address || "-"}</Descriptions.Item>
-          </Descriptions>
+          <>
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="Magaza Adi">{selectedStore.name}</Descriptions.Item>
+              <Descriptions.Item label="Magaza Kodu">{selectedStore.code}</Descriptions.Item>
+              <Descriptions.Item label="VKN">{selectedStore.taxNumber || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Komisyon">{`%${Number(selectedStore.commissionRate || 0).toFixed(2)}`}</Descriptions.Item>
+              <Descriptions.Item label="Stok Yeri">{selectedStore.stockLocationName || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Yetkili">{selectedStore.contactName || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Telefon">{selectedStore.contactPhone || "-"}</Descriptions.Item>
+              <Descriptions.Item label="E-posta">{selectedStore.contactEmail || "-"}</Descriptions.Item>
+              <Descriptions.Item label="Adres">{selectedStore.address || "-"}</Descriptions.Item>
+            </Descriptions>
+            <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Button type="primary" icon={<EditOutlined />} onClick={() => { setDetailOpen(false); navigate(`/stores/${selectedStore?.id}`); }}>Düzenle</Button>
+              <Popconfirm title="Bu mağaza silinsin mi?" okText="Sil" cancelText="Vazgeç" onConfirm={() => { handleDelete(selectedStore?.id); setDetailOpen(false); }}>
+                <Button danger icon={<DeleteOutlined />}>Sil</Button>
+              </Popconfirm>
+            </div>
+          </>
         ) : null}
       </Drawer>
     </Space>

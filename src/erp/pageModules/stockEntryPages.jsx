@@ -542,16 +542,21 @@ export function StockEntryListPage() {
 
       <Drawer title="Stok Giris Detayi" placement="right" styles={{ wrapper: { width: 420 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedEntry ? (
-          <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="Belge No">{selectedEntry.documentNo}</Descriptions.Item>
-            <Descriptions.Item label="Tarih">{selectedEntry.date}</Descriptions.Item>
-            <Descriptions.Item label="Teslim Eden">{selectedEntry.sourcePartyName}</Descriptions.Item>
-            <Descriptions.Item label="Giris Kaynagi">{selectedEntry.sourceType}</Descriptions.Item>
-            <Descriptions.Item label="Durum">{selectedEntry.status}</Descriptions.Item>
-            <Descriptions.Item label="Kalem">{selectedEntry.lineCount}</Descriptions.Item>
-            <Descriptions.Item label="Toplam">{selectedEntry.totalAmountDisplay}</Descriptions.Item>
-            <Descriptions.Item label="Not">{selectedEntry.note || "-"}</Descriptions.Item>
-          </Descriptions>
+          <>
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="Belge No">{selectedEntry.documentNo}</Descriptions.Item>
+              <Descriptions.Item label="Tarih">{selectedEntry.date}</Descriptions.Item>
+              <Descriptions.Item label="Teslim Eden">{selectedEntry.sourcePartyName}</Descriptions.Item>
+              <Descriptions.Item label="Giris Kaynagi">{selectedEntry.sourceType}</Descriptions.Item>
+              <Descriptions.Item label="Durum">{selectedEntry.status}</Descriptions.Item>
+              <Descriptions.Item label="Kalem">{selectedEntry.lineCount}</Descriptions.Item>
+              <Descriptions.Item label="Toplam">{selectedEntry.totalAmountDisplay}</Descriptions.Item>
+              <Descriptions.Item label="Not">{selectedEntry.note || "-"}</Descriptions.Item>
+            </Descriptions>
+            <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Button type="primary" icon={<EditOutlined />} onClick={() => { setDetailOpen(false); navigate(`/stock/entry/${selectedEntry?.id}`); }}>Düzenle</Button>
+            </div>
+          </>
         ) : null}
       </Drawer>
     </Space>

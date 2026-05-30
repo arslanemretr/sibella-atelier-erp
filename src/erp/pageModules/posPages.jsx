@@ -238,6 +238,15 @@ export function PosSessionsPage() {
                 ]}
               />
             </Card>
+
+            <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Button type="primary" icon={<EditOutlined />} onClick={() => { setDetailOpen(false); navigate(`/pos/store?session=${selectedSession?.id}`); }}>Oturuma Gir</Button>
+              {selectedSession?.status === "Açık" ? (
+                <Popconfirm title="Oturum kapatılsın mı?" okText="Kapat" cancelText="Vazgeç" onConfirm={() => { handleCloseSession(selectedSession?.id); setDetailOpen(false); }}>
+                  <Button danger icon={<CloseCircleOutlined />}>Oturumu Kapat</Button>
+                </Popconfirm>
+              ) : null}
+            </div>
           </Space>
         ) : null}
       </Drawer>
