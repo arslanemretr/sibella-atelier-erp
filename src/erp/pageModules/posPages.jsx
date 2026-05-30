@@ -189,6 +189,7 @@ export function PosSessionsPage() {
           columns={columns}
           dataSource={sessions.map((item) => ({ key: item.id, ...item }))}
           pagination={false}
+          scroll={{ x: 'max-content' }}
           onRow={(record) => ({
             onClick: () => openSessionDetail(record),
           })}
@@ -1747,6 +1748,7 @@ export function PosOrdersPage() {
           columns={columns}
           dataSource={flatRows}
           size="small"
+          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (total, range) => `${range[0]}-${range[1]} / ${total}` }}
         />
       </Card>
@@ -2252,6 +2254,7 @@ export function PosReturnListPage() {
           loading={loading}
           columns={columns}
           dataSource={flatRows}
+          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (total, range) => `${range[0]}-${range[1]} / ${total}` }}
         />
       </Card>

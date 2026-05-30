@@ -599,6 +599,7 @@ export function ProductListPage() {
             loading={tableLoading}
             columns={columns}
             dataSource={filteredProducts.map((product) => ({ key: product.id, ...product }))}
+            scroll={{ x: 'max-content' }}
             pagination={{
               current: currentPage,
               pageSize,

@@ -91,6 +91,7 @@ export function StockLocationListPage() {
           columns={columns}
           dataSource={locations}
           pagination={false}
+          scroll={{ x: 'max-content' }}
           onRow={(record) => ({
             onClick: () => {
               void openDrawer(record);

@@ -323,6 +323,7 @@ export function ContractsPage() {
           columns={columns}
           dataSource={filteredRecords}
           pagination={false}
+          scroll={{ x: 'max-content' }}
           locale={{ emptyText: "Henuz sozlesme kaydi bulunmuyor." }}
           onRow={(record) => ({
             onClick: () => openEditModal(record),

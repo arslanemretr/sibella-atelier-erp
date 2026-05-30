@@ -525,6 +525,7 @@ export function StockEntryListPage() {
           columns={columns}
           dataSource={filteredEntries}
           pagination={false}
+          scroll={{ x: 'max-content' }}
           locale={{ emptyText: "Henuz stok giris ana kaydi bulunmuyor." }}
           onRow={(record) => ({
             onClick: () => openDetailFromRow(setSelectedEntry, setDetailOpen, record),

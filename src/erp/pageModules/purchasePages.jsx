@@ -237,6 +237,7 @@ export function PurchaseListPage() {
           columns={columns}
           dataSource={filteredPurchases.map((purchase) => ({ key: purchase.id, ...purchase }))}
           pagination={false}
+          scroll={{ x: 'max-content' }}
           onRow={(record) => ({
             onClick: () => openDetailFromRow(setSelectedPurchase, setDetailOpen, record),
           })}

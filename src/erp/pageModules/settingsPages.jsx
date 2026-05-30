@@ -205,6 +205,7 @@ export function SettingsDefinitionPage({ entityKey }) {
           columns={tableColumns}
           dataSource={records}
           pagination={false}
+          scroll={{ x: 'max-content' }}
           onRow={(record) => ({
             onClick: () => handleOpenEdit(record),
           })}
@@ -701,6 +702,7 @@ export function BarcodeStandardsPage() {
           columns={columns}
           dataSource={records.map((r) => ({ key: r.id, ...r }))}
           pagination={false}
+          scroll={{ x: 'max-content' }}
           onRow={(record) => ({ onClick: () => openEdit(record) })}
           rowClassName={() => "erp-clickable-row"}
         />

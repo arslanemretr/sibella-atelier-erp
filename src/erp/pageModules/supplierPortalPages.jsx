@@ -1464,6 +1464,7 @@ export function SupplierDeliveryListsPage() {
           dataSource={filteredRecords}
           pagination={{ pageSize: 25, showSizeChanger: true, pageSizeOptions: ["25", "50", "100"], showTotal: (total, range) => `${range[0]} - ${range[1]} / ${total}` }}
           locale={{ emptyText: "Tedarikci portalindan gelen kayit bulunmuyor." }}
+          scroll={{ x: 'max-content' }}
           onRow={(record) => ({ onClick: () => navigate(`/supplier-portal/delivery-lists/${record.id}`) })}
           rowClassName={() => "erp-clickable-row"}
         />
@@ -1824,6 +1825,7 @@ export function SupplierPortalDeliveryListPage() {
           columns={columns}
           dataSource={filteredRecords}
           pagination={false}
+          scroll={{ x: 'max-content' }}
           locale={{ emptyText: "Henuz teslimat kaydiniz bulunmuyor." }}
           onRow={(record) => ({
             onClick: () => openDetailFromRow(setSelectedRecord, setDetailOpen, record),

@@ -269,6 +269,7 @@ export function SupplierListPage() {
             columns={columns}
             dataSource={filteredSuppliers.map((supplier) => ({ key: supplier.id, ...supplier }))}
             pagination={false}
+            scroll={{ x: 'max-content' }}
             onRow={(record) => ({
               onClick: () => openDetailFromRow(setSelectedSupplier, setDetailOpen, record),
             })}

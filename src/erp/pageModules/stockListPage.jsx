@@ -419,6 +419,7 @@ export function StockListPage() {
           loading={tableLoading}
           columns={columns}
           dataSource={filteredMovements}
+          scroll={{ x: 'max-content' }}
           pagination={{
             showSizeChanger: true,
             pageSizeOptions: ["25", "50", "100"],
