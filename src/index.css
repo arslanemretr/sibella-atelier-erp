@@ -540,9 +540,9 @@ html, body {
   }
 
   .erp-pos-mobile-tab {
-    flex: 1;
+    flex: 0 0 auto;
     height: 36px;
-    padding: 0 16px;
+    padding: 0 20px;
     border: 1px solid #d9d9d9;
     background: #fff;
     border-radius: 6px;
@@ -554,6 +554,7 @@ html, body {
     align-items: center;
     justify-content: center;
     gap: 6px;
+    white-space: nowrap;
     transition: border-color 0.15s, color 0.15s, background 0.15s;
   }
 
@@ -588,18 +589,33 @@ html, body {
     display: none !important;
   }
 
-  /* Mobilede panel overflow ve product grid natural scroll */
+  /* Mobilede paneller sabit yükseklik — ikisi eşit */
   .erp-pos-left,
   .erp-pos-right {
-    overflow: visible !important;
-    height: auto !important;
+    overflow: hidden !important;
+    height: calc(100dvh - 160px) !important;
   }
 
+  /* Ürün grid: 2 sütun, panel içinde kaydırma */
   .erp-pos-product-grid {
-    flex: 0 0 auto !important;
-    overflow-y: visible !important;
-    min-height: auto !important;
-    height: auto !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    flex: 1 1 0 !important;
+    overflow-y: auto !important;
+    min-height: 0 !important;
+    height: unset !important;
+  }
+
+  /* Kategori satırı yatay kaydırma */
+  .erp-pos-category-row {
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+
+  /* Sipariş listesi panel içinde kaydırma */
+  .erp-pos-order-list {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
   }
 
 }
