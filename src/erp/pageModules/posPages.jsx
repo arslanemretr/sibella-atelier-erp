@@ -120,6 +120,7 @@ export function PosSessionsPage() {
       title: "Oturum No",
       dataIndex: "sessionNo",
       key: "sessionNo",
+      width: 130,
       sorter: (a, b) => a.sessionNo.localeCompare(b.sessionNo, "tr"),
       render: (value, record) => (
         <button
@@ -138,18 +139,20 @@ export function PosSessionsPage() {
       title: "Depo Yeri",
       dataIndex: "stockLocationId",
       key: "stockLocationId",
+      width: 140,
       render: (value) => stockLocationMap.get(value) || "-",
     },
-    { title: "Kasiyer", dataIndex: "cashierName", key: "cashierName", sorter: (a, b) => (a.cashierName || "").localeCompare(b.cashierName || "", "tr") },
-    { title: "Açılış Tarihi", dataIndex: "openedAt", key: "openedAt", sorter: (a, b) => (a.openedAt || "").localeCompare(b.openedAt || "", "tr"), render: (value) => value ? new Date(value).toLocaleString("tr-TR") : "-" },
-    { title: "Kapanış Tarihi", dataIndex: "closedAt", key: "closedAt", render: (value) => value ? new Date(value).toLocaleString("tr-TR") : "-" },
-    { title: "Açılış Bakiye", dataIndex: "openingBalanceDisplay", key: "openingBalanceDisplay", sorter: (a, b) => a.openingBalance - b.openingBalance },
-    { title: "Satış", dataIndex: "totalSalesDisplay", key: "totalSalesDisplay", sorter: (a, b) => a.totalSales - b.totalSales },
-    { title: "Fiş", dataIndex: "salesCount", key: "salesCount", sorter: (a, b) => a.salesCount - b.salesCount },
-    { title: "Durum", dataIndex: "status", key: "status", sorter: (a, b) => (a.status || "").localeCompare(b.status || "", "tr"), render: (value) => <Tag color={value === "Açık" ? "green" : "default"}>{value}</Tag> },
+    { title: "Kasiyer", dataIndex: "cashierName", key: "cashierName", width: 140, sorter: (a, b) => (a.cashierName || "").localeCompare(b.cashierName || "", "tr") },
+    { title: "Açılış Tarihi", dataIndex: "openedAt", key: "openedAt", width: 155, sorter: (a, b) => (a.openedAt || "").localeCompare(b.openedAt || "", "tr"), render: (value) => value ? new Date(value).toLocaleString("tr-TR") : "-" },
+    { title: "Kapanış Tarihi", dataIndex: "closedAt", key: "closedAt", width: 155, render: (value) => value ? new Date(value).toLocaleString("tr-TR") : "-" },
+    { title: "Açılış Bakiye", dataIndex: "openingBalanceDisplay", key: "openingBalanceDisplay", width: 130, sorter: (a, b) => a.openingBalance - b.openingBalance },
+    { title: "Satış", dataIndex: "totalSalesDisplay", key: "totalSalesDisplay", width: 110, sorter: (a, b) => a.totalSales - b.totalSales },
+    { title: "Fiş", dataIndex: "salesCount", key: "salesCount", width: 70, sorter: (a, b) => a.salesCount - b.salesCount },
+    { title: "Durum", dataIndex: "status", key: "status", width: 90, sorter: (a, b) => (a.status || "").localeCompare(b.status || "", "tr"), render: (value) => <Tag color={value === "Açık" ? "green" : "default"}>{value}</Tag> },
     {
       title: "İşlemler",
       key: "actions",
+      width: 90,
       render: (_, record) => (
         <Space size={4}>
           <Tooltip title="Oturuma Gir">
