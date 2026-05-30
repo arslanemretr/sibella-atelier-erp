@@ -22,6 +22,16 @@ data/assets/
 *.sqlite-wal
 .claude/
 
+# Veritabani yedekleri
+*.dump
+*.backup
+
+# Dokuman gorselleri ve ofis dosyalari
+dokumanlar/gorseller/
+dokumanlar/*.pdf
+dokumanlar/*.docx
+dokumanlar/~$*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
