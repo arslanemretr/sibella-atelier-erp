@@ -1466,7 +1466,6 @@ export function SupplierDeliveryListsPage() {
         />
         <div className="erp-table-footer">
           <span>Toplam Kayit: {filteredRecords.length}</span>
-          <span>Satira tiklayarak teslimat formunu acabilirsiniz.</span>
         </div>
       </Card>
 

@@ -386,14 +386,15 @@ html, body {
 .erp-list-table-card .ant-table-wrapper {
   border: 1px solid #edf1f5;
   border-radius: 10px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .erp-list-table-card .ant-table-content,
 .erp-list-table-card .ant-table-body,
 .ant-table-wrapper .ant-table-content,
 .ant-table-wrapper .ant-table-body {
-  overflow-x: auto;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
 }
 
 .erp-list-table-card .ant-table {
@@ -1109,6 +1110,11 @@ html, body {
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+}
+
+/* Sayfa intro açıklamaları gizli */
+.erp-page-intro .ant-typography-secondary {
+  display: none;
 }
 
 .erp-page-intro-actions {

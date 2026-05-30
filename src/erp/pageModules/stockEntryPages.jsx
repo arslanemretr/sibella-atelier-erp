@@ -529,7 +529,6 @@ export function StockEntryListPage() {
             <span>Toplam Kayit:</span>
             <strong>{filteredEntries.length}</strong>
           </Space>
-          <span>Kaydi acarak kalemleri yonetebilirsiniz.</span>
         </div>
       </Card>
 
