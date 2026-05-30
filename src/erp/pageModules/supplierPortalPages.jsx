@@ -897,7 +897,6 @@ export function SupplierPortalProductListPage() {
     {
       title: "Islemler",
       key: "actions",
-      fixed: 'right',
       width: 100,
       render: (_, record) => (
         <Tooltip title="Düzenle"><Button size="small" className="erp-icon-btn erp-icon-btn-view" icon={<EditOutlined />} onClick={() => navigate(`/supplier/products/${record.id}`)} /></Tooltip>
@@ -1393,7 +1392,6 @@ export function SupplierDeliveryListsPage() {
     {
       title: "Islemler",
       key: "actions",
-      fixed: 'right',
       width: 160,
       render: (_, record) => {
         const isCompleted = Boolean(record.stockEntryId || record.inventoryPostedAt);
@@ -1752,7 +1750,6 @@ export function SupplierPortalDeliveryListPage() {
     {
       title: "İşlemler",
       key: "actions",
-      fixed: 'right',
       width: 120,
       render: (_, record) => (
         <Space size={4}>
@@ -2633,7 +2630,6 @@ export function SupplierPortalDeliveryEditorPage() {
               {
                 title: "Islemler",
                 key: "actions",
-                fixed: 'right',
                 width: isAdminView ? 260 : 150,
                 render: (_, record) => (
                   <Space size={4}>

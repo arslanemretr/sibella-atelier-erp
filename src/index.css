@@ -392,9 +392,11 @@ html, body {
 .erp-list-table-card .ant-table-content,
 .erp-list-table-card .ant-table-body,
 .ant-table-wrapper .ant-table-content,
-.ant-table-wrapper .ant-table-body {
+.ant-table-wrapper .ant-table-body,
+.ant-table-wrapper .ant-table-container {
   overflow-x: auto !important;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 .erp-list-table-card .ant-table {

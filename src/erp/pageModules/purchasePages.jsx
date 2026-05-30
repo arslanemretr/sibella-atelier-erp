@@ -178,7 +178,6 @@ export function PurchaseListPage() {
     {
       title: "Islemler",
       key: "actions",
-      fixed: 'right',
       width: 80,
       render: (_, record) => (
         <Space size={8}>
@@ -516,7 +515,6 @@ export function PurchaseEditorPage() {
                     {
                       title: "Islemler",
                       key: "actions",
-                      fixed: 'right',
                       width: 110,
                       render: (_, record) => (
                         <Button type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} onClick={() => remove(record.field.name)} />

@@ -521,7 +521,6 @@ export function ProductListPage() {
     {
       title: "Islemler",
       key: "actions",
-      fixed: 'right',
       width: 90,
       render: (_, record) => (
         <Space size={4}>

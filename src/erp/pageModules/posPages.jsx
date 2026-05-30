@@ -152,7 +152,6 @@ export function PosSessionsPage() {
     {
       title: "İşlemler",
       key: "actions",
-      fixed: 'right',
       width: 90,
       render: (_, record) => (
         <Space size={4}>
@@ -1447,7 +1446,6 @@ export function PosScreenPage() {
                 {
                   title: "Islemler",
                   key: "actions",
-                  fixed: 'right',
                   render: (_, record) => (
                     <Space size={8}>
                       <Button size="small" onClick={() => {
@@ -1685,7 +1683,6 @@ export function PosOrdersPage() {
     {
       title: "İşlemler",
       key: "actions",
-      fixed: 'right',
       width: 100,
       render: (_, record) => (
         <Space size={4}>
