@@ -420,7 +420,7 @@ export function PurchaseEditorPage() {
     try {
       setLoading(true);
       const values = await form.validateFields();
-      const savedPurchase = isEditMode ? updatePurchase(purchaseId, values) : createPurchase(values);
+      const savedPurchase = await (isEditMode ? updatePurchase(purchaseId, values) : createPurchase(values));
       message.success(isEditMode ? "Satinalma guncellendi." : "Satinalma kaydedildi.");
       navigate(`/purchasing/entry/${savedPurchase.id}`);
     } catch {

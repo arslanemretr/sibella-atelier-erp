@@ -529,7 +529,7 @@ export function SupplierEditorPage() {
         return;
       }
 
-      const savedSupplier = isEditMode ? updateSupplier(supplierId, values) : createSupplier(values);
+      const savedSupplier = await (isEditMode ? updateSupplier(supplierId, values) : createSupplier(values));
       message.success(isEditMode ? "Tedarikci guncellendi." : "Tedarikci kaydedildi.");
       navigate(`/purchasing/suppliers/${savedSupplier.id}`);
     } catch {

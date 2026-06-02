@@ -200,7 +200,7 @@ export function StoreEditorPage() {
     try {
       setLoading(true);
       const values = await form.validateFields();
-      const savedStore = isEditMode ? updateStore(storeId, values) : createStore(values);
+      const savedStore = await (isEditMode ? updateStore(storeId, values) : createStore(values));
       message.success(isEditMode ? "Magaza guncellendi." : "Magaza kaydedildi.");
       navigate(`/stores/${savedStore.id}`);
     } catch (error) {
