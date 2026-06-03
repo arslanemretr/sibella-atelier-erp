@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm, Row, Select, Space, Table, Tooltip, Typography, message } from "antd";
+import { Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { requestJson } from "../apiClient";
@@ -252,21 +252,20 @@ export function StoreInvoiceListPage() {
         ) : null}
       </Drawer>
 
-      {/* Yeni / Düzenle Drawer */}
-      <Drawer
+      {/* Yeni / Düzenle Modal */}
+      <Modal
         title={editing ? "Fatura Düzenle" : "Yeni Fatura"}
-        placement="right"
-        styles={{ wrapper: { width: 500 } }}
         open={drawerOpen}
-        onClose={() => { if (!saving) setDrawerOpen(false); }}
-        footer={
-          <Space style={{ justifyContent: "flex-end", width: "100%", display: "flex" }}>
-            <Button onClick={() => setDrawerOpen(false)} disabled={saving}>Vazgeç</Button>
-            <Button type="primary" loading={saving} onClick={() => void handleSave()}>Kaydet</Button>
-          </Space>
-        }
+        onCancel={() => { if (!saving) setDrawerOpen(false); }}
+        onOk={() => void handleSave()}
+        okText="Kaydet"
+        cancelText="Vazgeç"
+        confirmLoading={saving}
+        width={640}
+        destroyOnClose
+        centered
       >
-        <Form form={form} layout="vertical">
+        <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
           <Row gutter={[12, 0]}>
             <Col span={14}>
               <Form.Item label="Fatura No">
@@ -312,7 +311,7 @@ export function StoreInvoiceListPage() {
           </Row>
 
           {/* Hesaplanan alanlar */}
-          <Card size="small" bordered style={{ background: "#f8fbff", marginTop: 8, marginBottom: 12 }}>
+          <Card size="small" bordered style={{ background: "#f8fbff", marginBottom: 12 }}>
             <Row gutter={[12, 8]}>
               <Col span={8}>
                 <Text type="secondary" style={{ fontSize: 12 }}>KDV Tutarı</Text>
@@ -330,14 +329,10 @@ export function StoreInvoiceListPage() {
           </Card>
 
           <Form.Item name="description" label="Açıklama">
-            <textarea
-              rows={3}
-              style={{ width: "100%", padding: "6px 11px", borderRadius: 6, border: "1px solid #d9d9d9", fontSize: 14, resize: "vertical" }}
-              placeholder="Genel açıklama..."
-            />
+            <Input.TextArea rows={3} placeholder="Genel açıklama..." />
           </Form.Item>
         </Form>
-      </Drawer>
+      </Modal>
     </Space>
   );
 }
