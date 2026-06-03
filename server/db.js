@@ -202,12 +202,25 @@ async function ensureDefaultStockLocationAndBalances() {
   }
 }
 
+async function ensurePerformanceIndexes() {
+  // Status kolonları — dashboard COUNT(*) sorgularında full scan önlenir
+  await sqlExec(`CREATE INDEX IF NOT EXISTS idx_products_status ON products (status)`);
+  await sqlExec(`CREATE INDEX IF NOT EXISTS idx_suppliers_status ON suppliers (status)`);
+  // Tarih kolonları — dashboard tarih aralığı sorgularında index kullanılır
+  await sqlExec(`CREATE INDEX IF NOT EXISTS idx_pos_sales_sold_at ON pos_sales (sold_at)`);
+  await sqlExec(`CREATE INDEX IF NOT EXISTS idx_pos_sales_created_at ON pos_sales (created_at)`);
+  await sqlExec(`CREATE INDEX IF NOT EXISTS idx_pos_returns_return_date ON pos_returns (return_date)`);
+  await sqlExec(`CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases (date)`);
+  await sqlExec(`CREATE INDEX IF NOT EXISTS idx_stock_entries_date ON stock_entries (date)`);
+}
+
 async function ensureInitialized() {
   if (!initPromise) {
     initPromise = (async () => {
       await ensureCoreSchema();
       await ensureApplicationSchema();
       await ensureDefaultStockLocationAndBalances();
+      await ensurePerformanceIndexes();
     })().catch((error) => {
       initPromise = null;
       throw error;

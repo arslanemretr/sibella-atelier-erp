@@ -77,7 +77,7 @@ async function getDashboardSummary({ startDate, endDate }) {
       COALESCE(ps.grand_total, 0) AS grand_total
     FROM pos_sales ps
     LEFT JOIN pos_sale_lines psl ON psl.sale_id = ps.id
-    WHERE COALESCE(SUBSTRING(ps.sold_at::text, 1, 10), SUBSTRING(ps.created_at::text, 1, 10)) BETWEEN $1 AND $2
+    WHERE COALESCE(ps.sold_at::date, ps.created_at::date) BETWEEN $1::date AND $2::date
     GROUP BY ps.id, ps.receipt_no, ps.sold_at, ps.customer_name, ps.payment_method, ps.grand_total, ps.created_at
     ORDER BY COALESCE(ps.sold_at, ps.created_at) DESC
   `, [startDate, endDate]);
@@ -89,11 +89,11 @@ async function getDashboardSummary({ startDate, endDate }) {
   // --- Günlük satış dağılımı (bar chart) ---
   const dailySalesRows = await sqlMany(`
     SELECT
-      COALESCE(SUBSTRING(ps.sold_at::text, 1, 10), SUBSTRING(ps.created_at::text, 1, 10)) AS sale_date,
+      COALESCE(ps.sold_at::date, ps.created_at::date)::text AS sale_date,
       COUNT(*)::int AS sale_count,
       COALESCE(SUM(ps.grand_total), 0) AS total_amount
     FROM pos_sales ps
-    WHERE COALESCE(SUBSTRING(ps.sold_at::text, 1, 10), SUBSTRING(ps.created_at::text, 1, 10)) BETWEEN $1 AND $2
+    WHERE COALESCE(ps.sold_at::date, ps.created_at::date) BETWEEN $1::date AND $2::date
     GROUP BY sale_date
     ORDER BY sale_date ASC
   `, [startDate, endDate]);
@@ -109,7 +109,7 @@ async function getDashboardSummary({ startDate, endDate }) {
     FROM pos_sale_lines psl
     JOIN products p ON p.id = psl.product_id
     JOIN pos_sales ps ON ps.id = psl.sale_id
-    WHERE COALESCE(SUBSTRING(ps.sold_at::text, 1, 10), SUBSTRING(ps.created_at::text, 1, 10)) BETWEEN $1 AND $2
+    WHERE COALESCE(ps.sold_at::date, ps.created_at::date) BETWEEN $1::date AND $2::date
     GROUP BY p.id, p.code, p.name
     ORDER BY total_qty DESC
     LIMIT 8
@@ -125,7 +125,7 @@ async function getDashboardSummary({ startDate, endDate }) {
       COUNT(prl.id)::int AS line_count
     FROM pos_returns pr
     LEFT JOIN pos_return_lines prl ON prl.return_id = pr.id
-    WHERE SUBSTRING(pr.return_date::text, 1, 10) BETWEEN $1 AND $2
+    WHERE pr.return_date::date BETWEEN $1::date AND $2::date
     GROUP BY pr.id, pr.return_no, pr.return_date
     ORDER BY pr.return_date DESC
   `, [startDate, endDate]);
@@ -144,7 +144,7 @@ async function getDashboardSummary({ startDate, endDate }) {
     FROM purchases p
     LEFT JOIN suppliers s ON s.id = p.supplier_id
     LEFT JOIN purchase_lines pl ON pl.purchase_id = p.id
-    WHERE COALESCE(p.date::text, SUBSTRING(COALESCE(p.created_at::text, ''), 1, 10)) BETWEEN $1 AND $2
+    WHERE COALESCE(p.date, p.created_at::date) BETWEEN $1::date AND $2::date
     GROUP BY p.id, p.document_no, p.date, s.company, p.created_at
     ORDER BY COALESCE(p.date, p.created_at::date) DESC, p.created_at DESC
   `, [startDate, endDate]);
@@ -172,7 +172,7 @@ async function getDashboardSummary({ startDate, endDate }) {
     FROM stock_entries se
     LEFT JOIN suppliers s ON s.id = se.source_party_id
     LEFT JOIN stock_lines sl ON sl.stock_entry_id = se.id
-    WHERE COALESCE(se.date::text, SUBSTRING(COALESCE(se.created_at::text, ''), 1, 10)) BETWEEN $1 AND $2
+    WHERE COALESCE(se.date, se.created_at::date) BETWEEN $1::date AND $2::date
     GROUP BY se.id, se.document_no, se.date, s.company, se.stock_type, se.source_type, se.created_at
     ORDER BY COALESCE(se.date, se.created_at::date) DESC, se.created_at DESC
   `, [startDate, endDate]);
