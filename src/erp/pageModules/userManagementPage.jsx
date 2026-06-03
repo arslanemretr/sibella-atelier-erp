@@ -268,6 +268,14 @@ function UserManagementPage() {
     { title: "E-posta", dataIndex: "email", key: "email" },
     { title: "Rol", dataIndex: "role", key: "role" },
     {
+      title: "Tedarikçi", dataIndex: "supplierId", key: "supplierId",
+      render: (v) => {
+        if (!v) return <Text type="secondary">-</Text>;
+        const opt = supplierOptions.find((s) => s.value === v);
+        return opt ? opt.label : <Text type="secondary">{v}</Text>;
+      },
+    },
+    {
       title: "Durum", dataIndex: "status", key: "status",
       render: (v) => <Tag color={v === "Aktif" ? "green" : "default"}>{v}</Tag>,
     },
