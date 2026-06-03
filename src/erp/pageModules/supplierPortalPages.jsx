@@ -273,6 +273,9 @@ function buildEarningsSummary({ periodDate, products = [], sales = [], returns =
   const netSalesTotal = detailRows.reduce((sum, item) => sum + item.salesAmount, 0);
   const commissionTotal = detailRows.reduce((sum, item) => sum + item.commissionAmount, 0);
   const earningsTotal = detailRows.reduce((sum, item) => sum + item.netAmount, 0);
+  const kdvRate = 20;
+  const hizmetTutari = earningsTotal / (1 + kdvRate / 100);
+  const kdvAmount = hizmetTutari * (kdvRate / 100);
   const status = resolveEarningsStatus(periodDate, earningsTotal, earningsRecord);
 
   return {
@@ -287,6 +290,9 @@ function buildEarningsSummary({ periodDate, products = [], sales = [], returns =
     netSalesTotal,
     commissionTotal,
     earningsTotal,
+    kdvRate,
+    hizmetTutari,
+    kdvAmount,
     invoiceNo: earningsRecord?.invoiceNo || null,
     invoiceDate: earningsRecord?.invoiceDate || null,
     paymentDueDate: earningsRecord?.paymentDueDate || null,
@@ -439,14 +445,17 @@ export function SupplierPortalEarningsPage() {
 
   const handleExportHistory = () => {
     const rows = [
-      ["Dönem", "Toplam Satış Tutar", "Komisyon Oranı", "Toplam Hakediş Tutar", "Fatura Hizmet Tutar", "Fatura KDV Tutar (%20)", "Ödeme Durumu"],
+      ["Dönem", "Brüt Satış", "İade Tutar", "Net Satış", "Komisyon Oranı", "Toplam Hakediş", "KDV Oranı", "Hizmet Tutarı", "KDV Tutarı", "Ödeme Durumu"],
       ...historySummaries.map((item) => [
         item.periodLabel,
         formatDisplayMoney(item.grossTotal),
+        formatDisplayMoney(item.returnTotal),
+        formatDisplayMoney(item.netSalesTotal),
         `${Number(item.commissionRate || 0).toFixed(2)}%`,
-        formatDisplayMoney(Number(item.earningsTotal || 0) * 1.2),
         formatDisplayMoney(item.earningsTotal),
-        formatDisplayMoney(Number(item.earningsTotal || 0) * 0.2),
+        `%${Number(item.kdvRate || 20).toFixed(0)}`,
+        formatDisplayMoney(item.hizmetTutari),
+        formatDisplayMoney(item.kdvAmount),
         item.status,
       ]),
     ];
@@ -624,9 +633,10 @@ export function SupplierPortalEarningsPage() {
             },
             { title: "Net Satış", dataIndex: "netSalesTotal", key: "netSalesTotal", width: 140, align: "right", render: (v) => <Text strong>{formatDisplayMoney(v)}</Text> },
             { title: "Komisyon Oranı", dataIndex: "commissionRate", key: "commissionRate", width: 120, align: "right", render: (value) => `%${Number(value || 0).toFixed(2)}` },
-            { title: "Fatura Hizmet Tutar", dataIndex: "earningsTotal", key: "invoiceServiceAmount", width: 155, align: "right", render: (value) => formatDisplayMoney(value) },
-            { title: "Fatura KDV Tutar", key: "invoiceKdv", width: 135, align: "right", render: (_, record) => formatDisplayMoney(Number(record.earningsTotal || 0) * 0.2) },
-            { title: "Toplam Hakediş", key: "earningsTotalKdv", width: 140, align: "right", render: (_, record) => <Text strong>{formatDisplayMoney(Number(record.earningsTotal || 0) * 1.2)}</Text> },
+            { title: "Toplam Hakediş", dataIndex: "earningsTotal", key: "earningsTotal", width: 150, align: "right", render: (value) => <Text strong>{formatDisplayMoney(value)}</Text> },
+            { title: "KDV Oranı", dataIndex: "kdvRate", key: "kdvRate", width: 100, align: "right", render: (value) => `%${Number(value || 20).toFixed(0)}` },
+            { title: "Hizmet Tutarı", dataIndex: "hizmetTutari", key: "hizmetTutari", width: 140, align: "right", render: (value) => formatDisplayMoney(value) },
+            { title: "KDV Tutarı", dataIndex: "kdvAmount", key: "kdvAmount", width: 120, align: "right", render: (value) => formatDisplayMoney(value) },
             {
               title: "Ödeme Durumu",
               dataIndex: "status",
@@ -643,28 +653,21 @@ export function SupplierPortalEarningsPage() {
             const totalReturn = historySummaries.reduce((sum, item) => sum + Number(item.returnTotal || 0), 0);
             const totalNetSales = historySummaries.reduce((sum, item) => sum + Number(item.netSalesTotal || 0), 0);
             const totalEarnings = historySummaries.reduce((sum, item) => sum + Number(item.earningsTotal || 0), 0);
-            const totalKdv = totalEarnings * 0.2;
+            const totalHizmet = historySummaries.reduce((sum, item) => sum + Number(item.hizmetTutari || 0), 0);
+            const totalKdv = historySummaries.reduce((sum, item) => sum + Number(item.kdvAmount || 0), 0);
             return (
-              <Table
-          .Summary>
-                <Table
-          .Summary.Row style={{ background: "#d86d5b" }}>
-                  <Table
-          .Summary.Cell index={0}><Text strong style={{ color: "#fff" }}>Toplam</Text></Table.Summary.Cell>
-                  <Table
-          .Summary.Cell index={1} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalGross)}</Text></Table.Summary.Cell>
-                  <Table
-          .Summary.Cell index={2} align="right"><Text strong style={{ color: "#fff" }}>{totalReturn > 0 ? `-${formatDisplayMoney(totalReturn)}` : "-"}</Text></Table.Summary.Cell>
-                  <Table
-          .Summary.Cell index={3} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalNetSales)}</Text></Table.Summary.Cell>
+              <Table.Summary>
+                <Table.Summary.Row style={{ background: "#d86d5b" }}>
+                  <Table.Summary.Cell index={0}><Text strong style={{ color: "#fff" }}>Toplam</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={1} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalGross)}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={2} align="right"><Text strong style={{ color: "#fff" }}>{totalReturn > 0 ? `-${formatDisplayMoney(totalReturn)}` : "-"}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={3} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalNetSales)}</Text></Table.Summary.Cell>
                   <Table.Summary.Cell index={4} />
-                  <Table
-          .Summary.Cell index={5} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings)}</Text></Table.Summary.Cell>
-                  <Table
-          .Summary.Cell index={6} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalKdv)}</Text></Table.Summary.Cell>
-                  <Table
-          .Summary.Cell index={7} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings * 1.2)}</Text></Table.Summary.Cell>
-                  <Table.Summary.Cell index={8} />
+                  <Table.Summary.Cell index={5} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalEarnings)}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={6} />
+                  <Table.Summary.Cell index={7} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalHizmet)}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={8} align="right"><Text strong style={{ color: "#fff" }}>{formatDisplayMoney(totalKdv)}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={9} />
                 </Table.Summary.Row>
               </Table.Summary>
             );
