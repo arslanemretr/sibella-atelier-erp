@@ -58,15 +58,28 @@ const DAY_OPTIONS = [
   { value: 90, label: "Son 90 Gün" },
 ];
 
+const ROLE_OPTIONS = [
+  { value: "Yonetici",  label: "Yönetici" },
+  { value: "Muhasebe",  label: "Muhasebe" },
+  { value: "Magaza",    label: "Mağaza" },
+  { value: "Kasiyer",   label: "Kasiyer" },
+  { value: "Tedarikci", label: "Tedarikçi" },
+];
+
 export default function ActivityReportPage() {
   const [data, setData]       = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [days, setDays]       = React.useState(30);
+  const [userRole, setUserRole] = React.useState(undefined);
+  const [userId, setUserId]     = React.useState(undefined);
 
-  const fetchData = React.useCallback(async (d) => {
+  const fetchData = React.useCallback(async (d, role, uid) => {
     try {
       setLoading(true);
-      const result = await requestJson("GET", `/api/audit-logs/analytics?days=${d}`);
+      const params = new URLSearchParams({ days: String(d) });
+      if (role) params.set("userRole", role);
+      if (uid)  params.set("userId",   uid);
+      const result = await requestJson("GET", `/api/audit-logs/analytics?${params.toString()}`);
       setData(result);
     } catch {
       setData(null);
@@ -75,7 +88,12 @@ export default function ActivityReportPage() {
     }
   }, []);
 
-  React.useEffect(() => { void fetchData(days); }, [fetchData, days]);
+  React.useEffect(() => { void fetchData(days, userRole, userId); }, [fetchData, days, userRole, userId]);
+
+  const userOptions = React.useMemo(
+    () => (data?.allUsers || []).map((u) => ({ value: u.user_id, label: `${u.user_name} (${u.user_role || "-"})` })),
+    [data?.allUsers],
+  );
 
   const dailyChart    = data ? buildDailyChart(data.daily, days) : [];
   const actionChart   = (data?.actions || []).map((r) => ({
@@ -103,11 +121,36 @@ export default function ActivityReportPage() {
         <Space wrap className="erp-page-intro-actions">
           <Select
             value={days}
-            onChange={(v) => setDays(v)}
+            onChange={(v) => { setDays(v); setUserId(undefined); }}
             options={DAY_OPTIONS}
             style={{ width: 140 }}
           />
-          <Button icon={<ReloadOutlined />} onClick={() => void fetchData(days)} loading={loading}>Yenile</Button>
+          <Select
+            placeholder="Kullanıcı Rolü"
+            allowClear
+            value={userRole}
+            onChange={(v) => { setUserRole(v); setUserId(undefined); }}
+            options={ROLE_OPTIONS}
+            style={{ width: 150 }}
+          />
+          <Select
+            placeholder="Kullanıcı"
+            allowClear
+            value={userId}
+            onChange={(v) => setUserId(v)}
+            options={userOptions}
+            style={{ width: 220 }}
+            showSearch
+            optionFilterProp="label"
+            disabled={!userOptions.length}
+          />
+          <Button
+            onClick={() => { setUserRole(undefined); setUserId(undefined); }}
+            disabled={!userRole && !userId}
+          >
+            Temizle
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={() => void fetchData(days, userRole, userId)} loading={loading}>Yenile</Button>
         </Space>
       </div>
 

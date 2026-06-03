@@ -212,61 +212,84 @@ export async function handleAuditLogsList(req, res) {
 
 // GET /api/audit-logs/analytics — Grafik verisi (Yönetici)
 export async function handleAuditLogAnalytics(req, res) {
-  const days = Math.min(90, Math.max(7, Number(req.query.days || 30)));
+  const days     = Math.min(90, Math.max(7, Number(req.query.days || 30)));
+  const userId   = req.query.userId   || null;
+  const userRole = req.query.userRole || null;
 
-  const [dailyRows, actionRows, userRows, resourceRows, hourRows, summaryRows] = await Promise.all([
-    // Günlük aktivite (aksiyon tipine göre)
+  // Dinamik WHERE koşulları
+  const extraConds = [];
+  const extraParams = [];
+  let   pIdx = 2; // $1 = days
+
+  if (userId) {
+    extraConds.push(`user_id = $${pIdx++}`);
+    extraParams.push(userId);
+  }
+  if (userRole) {
+    extraConds.push(`user_role = $${pIdx++}`);
+    extraParams.push(userRole);
+  }
+
+  const extraWhere = extraConds.length ? ` AND ${extraConds.join(" AND ")}` : "";
+  const baseParams = [String(days), ...extraParams];
+
+  // Kullanıcı listesi (filtre seçenekleri için) — tüm dönem, filtresiz
+  const allUsersPromise = sqlMany(
+    `SELECT DISTINCT user_id, user_name, user_role
+     FROM audit_logs
+     WHERE created_at > NOW() - ($1 || ' days')::interval
+       AND user_name IS NOT NULL
+     ORDER BY user_name`,
+    [String(days)],
+  );
+
+  const [dailyRows, actionRows, userRows, resourceRows, hourRows, summaryRows, allUsers] = await Promise.all([
     sqlMany(
       `SELECT TO_CHAR(created_at AT TIME ZONE 'Europe/Istanbul', 'YYYY-MM-DD') AS day,
               action_type, COUNT(*)::int AS count
        FROM audit_logs
-       WHERE created_at > NOW() - ($1 || ' days')::interval
+       WHERE created_at > NOW() - ($1 || ' days')::interval${extraWhere}
        GROUP BY day, action_type
        ORDER BY day`,
-      [String(days)],
+      baseParams,
     ),
-    // Aksiyon dağılımı
     sqlMany(
       `SELECT action_type, COUNT(*)::int AS count
        FROM audit_logs
-       WHERE created_at > NOW() - ($1 || ' days')::interval
+       WHERE created_at > NOW() - ($1 || ' days')::interval${extraWhere}
        GROUP BY action_type
        ORDER BY count DESC`,
-      [String(days)],
+      baseParams,
     ),
-    // En aktif kullanıcılar
     sqlMany(
       `SELECT user_name, user_role, COUNT(*)::int AS count
        FROM audit_logs
-       WHERE created_at > NOW() - ($1 || ' days')::interval
+       WHERE created_at > NOW() - ($1 || ' days')::interval${extraWhere}
          AND user_name IS NOT NULL
        GROUP BY user_name, user_role
        ORDER BY count DESC
        LIMIT 10`,
-      [String(days)],
+      baseParams,
     ),
-    // En çok erişilen kaynaklar
     sqlMany(
       `SELECT resource, COUNT(*)::int AS count
        FROM audit_logs
-       WHERE created_at > NOW() - ($1 || ' days')::interval
+       WHERE created_at > NOW() - ($1 || ' days')::interval${extraWhere}
          AND resource IS NOT NULL
        GROUP BY resource
        ORDER BY count DESC
        LIMIT 10`,
-      [String(days)],
+      baseParams,
     ),
-    // Saatlik yoğunluk
     sqlMany(
       `SELECT EXTRACT(HOUR FROM created_at AT TIME ZONE 'Europe/Istanbul')::int AS hour,
               COUNT(*)::int AS count
        FROM audit_logs
-       WHERE created_at > NOW() - ($1 || ' days')::interval
+       WHERE created_at > NOW() - ($1 || ' days')::interval${extraWhere}
        GROUP BY hour
        ORDER BY hour`,
-      [String(days)],
+      baseParams,
     ),
-    // Özet sayılar
     sqlMany(
       `SELECT
          COUNT(*)::int AS total_events,
@@ -274,19 +297,23 @@ export async function handleAuditLogAnalytics(req, res) {
          COUNT(*) FILTER (WHERE action_type = 'LOGIN')::int AS total_logins,
          COUNT(*) FILTER (WHERE action_type IN ('CREATE','UPDATE','DELETE'))::int AS total_mutations
        FROM audit_logs
-       WHERE created_at > NOW() - ($1 || ' days')::interval`,
-      [String(days)],
+       WHERE created_at > NOW() - ($1 || ' days')::interval${extraWhere}`,
+      baseParams,
     ),
+    allUsersPromise,
   ]);
 
   return res.json({
     ok: true,
     days,
-    summary: summaryRows[0] || {},
-    daily: dailyRows,
-    actions: actionRows,
-    users: userRows,
+    userId,
+    userRole,
+    summary:   summaryRows[0] || {},
+    daily:     dailyRows,
+    actions:   actionRows,
+    users:     userRows,
     resources: resourceRows,
-    hourly: hourRows,
+    hourly:    hourRows,
+    allUsers,
   });
 }
