@@ -2,6 +2,7 @@ import React from "react";
 import { Drawer, Layout, Menu } from "antd";
 import {
   Activity,
+  BarChart2,
   Boxes,
   ClipboardList,
   FolderTree,
@@ -70,6 +71,7 @@ const iconMap = {
   "reports-group": menuIcon(ClipboardList),
   "/reports/sales": menuIcon(TrendingUp),
   "/reports/stock": menuIcon(PackageSearch),
+  "/reports/activity": menuIcon(BarChart2),
   "/reports/consolidated-earnings": menuIcon(HandCoins),
   "/reports/supplier-earnings": menuIcon(HandCoins),
   settings: menuIcon(Settings2),

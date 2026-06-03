@@ -2,7 +2,7 @@
 import express from "express";
 import fs from "node:fs";
 import path from "node:path";
-import { auditMiddleware, cleanupOldAuditLogs, ensureAuditLogTable, handleAuditLogsList, handlePageViewLog } from "./auditLog.js";
+import { auditMiddleware, cleanupOldAuditLogs, ensureAuditLogTable, handleAuditLogAnalytics, handleAuditLogsList, handlePageViewLog } from "./auditLog.js";
 import {
   ensureRolesTable,
   handleForgotPasswordConfirm,
@@ -177,6 +177,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.get("/api/audit-logs", requireRole("Yonetici"), handleAuditLogsList);
+app.get("/api/audit-logs/analytics", requireRole("Yonetici"), handleAuditLogAnalytics);
 app.post("/api/audit-logs/page-view", requireRole("Yonetici", "Magaza", "Muhasebe", "Kasiyer", "Tedarikci"), handlePageViewLog);
 app.post("/api/auth/login", handleLogin);
 app.get("/api/auth/session", handleSession);

@@ -47,6 +47,7 @@ const SupplierPortalEarningsPage = React.lazy(() => import("./erp/pageModules/su
 const SupplierPortalProductEditorPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalProductEditorPage })));
 const SupplierPortalProductListPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalProductListPage })));
 const AuditLogPage = React.lazy(() => import("./erp/pageModules/auditLogPage"));
+const ActivityReportPage = React.lazy(() => import("./erp/pageModules/activityReportPage"));
 
 function PageFallback() {
   return (
@@ -194,6 +195,7 @@ function ProtectedApp() {
         <Route path="/settings/mail-management" element={withLazyPage(<MailManagementPage />)} />
         <Route path="/settings/branding" element={withLazyPage(<BrandingPage />)} />
         <Route path="/settings/audit-log" element={withRolePage(<AuditLogPage />, authUser, "Yonetici")} />
+        <Route path="/reports/activity" element={withRolePage(<ActivityReportPage />, authUser, "Yonetici")} />
         <Route path="/settings/smtp" element={<Navigate to="/settings/mail-management" replace />} />
 
         <Route path="/supplier/products" element={withLazyPage(<SupplierPortalProductListPage />)} />

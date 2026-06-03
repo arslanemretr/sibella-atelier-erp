@@ -209,3 +209,84 @@ export async function handleAuditLogsList(req, res) {
 
   return res.json({ ok: true, items: rows, total: countRows[0]?.total || 0, page: pageNum, limit: pageSize });
 }
+
+// GET /api/audit-logs/analytics — Grafik verisi (Yönetici)
+export async function handleAuditLogAnalytics(req, res) {
+  const days = Math.min(90, Math.max(7, Number(req.query.days || 30)));
+
+  const [dailyRows, actionRows, userRows, resourceRows, hourRows, summaryRows] = await Promise.all([
+    // Günlük aktivite (aksiyon tipine göre)
+    sqlMany(
+      `SELECT TO_CHAR(created_at AT TIME ZONE 'Europe/Istanbul', 'YYYY-MM-DD') AS day,
+              action_type, COUNT(*)::int AS count
+       FROM audit_logs
+       WHERE created_at > NOW() - ($1 || ' days')::interval
+       GROUP BY day, action_type
+       ORDER BY day`,
+      [String(days)],
+    ),
+    // Aksiyon dağılımı
+    sqlMany(
+      `SELECT action_type, COUNT(*)::int AS count
+       FROM audit_logs
+       WHERE created_at > NOW() - ($1 || ' days')::interval
+       GROUP BY action_type
+       ORDER BY count DESC`,
+      [String(days)],
+    ),
+    // En aktif kullanıcılar
+    sqlMany(
+      `SELECT user_name, user_role, COUNT(*)::int AS count
+       FROM audit_logs
+       WHERE created_at > NOW() - ($1 || ' days')::interval
+         AND user_name IS NOT NULL
+       GROUP BY user_name, user_role
+       ORDER BY count DESC
+       LIMIT 10`,
+      [String(days)],
+    ),
+    // En çok erişilen kaynaklar
+    sqlMany(
+      `SELECT resource, COUNT(*)::int AS count
+       FROM audit_logs
+       WHERE created_at > NOW() - ($1 || ' days')::interval
+         AND resource IS NOT NULL
+       GROUP BY resource
+       ORDER BY count DESC
+       LIMIT 10`,
+      [String(days)],
+    ),
+    // Saatlik yoğunluk
+    sqlMany(
+      `SELECT EXTRACT(HOUR FROM created_at AT TIME ZONE 'Europe/Istanbul')::int AS hour,
+              COUNT(*)::int AS count
+       FROM audit_logs
+       WHERE created_at > NOW() - ($1 || ' days')::interval
+       GROUP BY hour
+       ORDER BY hour`,
+      [String(days)],
+    ),
+    // Özet sayılar
+    sqlMany(
+      `SELECT
+         COUNT(*)::int AS total_events,
+         COUNT(DISTINCT user_id)::int AS unique_users,
+         COUNT(*) FILTER (WHERE action_type = 'LOGIN')::int AS total_logins,
+         COUNT(*) FILTER (WHERE action_type IN ('CREATE','UPDATE','DELETE'))::int AS total_mutations
+       FROM audit_logs
+       WHERE created_at > NOW() - ($1 || ' days')::interval`,
+      [String(days)],
+    ),
+  ]);
+
+  return res.json({
+    ok: true,
+    days,
+    summary: summaryRows[0] || {},
+    daily: dailyRows,
+    actions: actionRows,
+    users: userRows,
+    resources: resourceRows,
+    hourly: hourRows,
+  });
+}

@@ -62,6 +62,7 @@ export const mainMenuItems = [
       { key: "/reports/stock", label: "Stok Raporu", permissionKey: "reports_stock" },
       { key: "/reports/consolidated-earnings", label: "Toplu Hakedis Raporu", permissionKey: "reports_consolidated" },
       { key: "/reports/supplier-earnings", label: "Tedarikci Hakedis Raporu", permissionKey: "reports_supplier" },
+      { key: "/reports/activity", label: "Aktivite Raporu", permissionKey: "settings_audit_log" },
     ],
   },
   {
@@ -150,6 +151,7 @@ export const sidebarGroups = [
           { key: "/reports/stock", label: "Stok Raporu", permissionKey: "reports_stock" },
           { key: "/reports/consolidated-earnings", label: "Toplu Hakedis Raporu", permissionKey: "reports_consolidated" },
           { key: "/reports/supplier-earnings", label: "Tedarikci Hakedis Raporu", permissionKey: "reports_supplier" },
+          { key: "/reports/activity", label: "Aktivite Raporu", permissionKey: "settings_audit_log" },
         ],
       },
       {
