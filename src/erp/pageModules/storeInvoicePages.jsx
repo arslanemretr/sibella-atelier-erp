@@ -196,7 +196,7 @@ export function StoreInvoiceListPage() {
   return (
     <Space direction="vertical" size={20} style={{ width: "100%" }}>
       <div className="erp-page-intro">
-        <div><Title level={3} style={{ marginBottom: 6 }}>Mağaza Satış Faturaları</Title></div>
+        <div><Title level={3} style={{ marginBottom: 6 }}>Mağaza Fatura Listesi</Title></div>
         <Space wrap className="erp-page-intro-actions">
           <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>Yenile</Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => void openNew()}>Yeni Fatura</Button>
