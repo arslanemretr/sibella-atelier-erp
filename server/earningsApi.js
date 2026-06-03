@@ -61,7 +61,17 @@ function mapRecordRow(row) {
   };
 }
 
-export async function handleEarningsRecordsList(_req, res) {
+export async function handleEarningsRecordsList(req, res) {
+  // Tedarikci sadece kendi hakediş kayıtlarını görebilir
+  if (req.authUser?.role === "Tedarikci") {
+    const supplierId = req.authUser.supplierId;
+    if (!supplierId) return res.json({ ok: true, items: [] });
+    const rows = await sqlMany(
+      "SELECT * FROM supplier_earnings_records WHERE supplier_id = $1 ORDER BY period_key DESC",
+      [supplierId],
+    );
+    return res.json({ ok: true, items: rows.map(mapRecordRow) });
+  }
   const rows = await sqlMany(
     "SELECT * FROM supplier_earnings_records ORDER BY period_key DESC, supplier_id ASC",
   );

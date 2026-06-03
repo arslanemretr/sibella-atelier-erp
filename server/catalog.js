@@ -658,17 +658,26 @@ export async function handleMasterDataUpdate(req, res) {
 
 export async function handleSuppliersList(req, res) {
   const slim = req.query.slim === "true";
-  return res.json({
-    ok: true,
-    items: await listSuppliersRows({ slim }),
-  });
+  // Tedarikci rolü sadece kendi kaydını görebilir
+  if (req.authUser?.role === "Tedarikci") {
+    const supplierId = req.authUser.supplierId;
+    if (!supplierId) return res.json({ ok: true, items: [] });
+    const item = await getSupplierRow(supplierId);
+    return res.json({ ok: true, items: item ? [item] : [] });
+  }
+  return res.json({ ok: true, items: await listSuppliersRows({ slim }) });
 }
 
 export async function handleSuppliersGet(req, res) {
-  const item = await getSupplierRow(req.params.id);
-  if (!item) {
-    return httpError(res, 404, "Tedarikci bulunamadi.");
+  // Tedarikci rolü sadece kendi kaydına erişebilir
+  if (req.authUser?.role === "Tedarikci") {
+    const supplierId = req.authUser.supplierId;
+    if (!supplierId || req.params.id !== supplierId) {
+      return httpError(res, 403, "Bu kaynaga erisim yetkiniz bulunmuyor.");
+    }
   }
+  const item = await getSupplierRow(req.params.id);
+  if (!item) return httpError(res, 404, "Tedarikci bulunamadi.");
   return res.json({ ok: true, item });
 }
 
@@ -735,16 +744,25 @@ export async function handleSuppliersDelete(req, res) {
 export async function handleProductsList(req, res) {
   const slim = req.query.slim === "true";
   const catalog = req.query.catalog === "true";
-  return res.json({
-    ok: true,
-    items: await listProductsRows({ slim, catalog }),
-  });
+  let items = await listProductsRows({ slim, catalog });
+  // Tedarikci rolü sadece kendi ürünlerini görebilir
+  if (req.authUser?.role === "Tedarikci") {
+    const supplierId = req.authUser.supplierId;
+    if (!supplierId) return res.json({ ok: true, items: [] });
+    items = items.filter((p) => p.supplierId === supplierId);
+  }
+  return res.json({ ok: true, items });
 }
 
 export async function handleProductsGet(req, res) {
   const item = await getProductRow(req.params.id);
-  if (!item) {
-    return httpError(res, 404, "Urun bulunamadi.");
+  if (!item) return httpError(res, 404, "Urun bulunamadi.");
+  // Tedarikci rolü sadece kendi ürününe erişebilir
+  if (req.authUser?.role === "Tedarikci") {
+    const supplierId = req.authUser.supplierId;
+    if (!supplierId || item.supplierId !== supplierId) {
+      return httpError(res, 403, "Bu kaynaga erisim yetkiniz bulunmuyor.");
+    }
   }
   return res.json({ ok: true, item });
 }
@@ -752,6 +770,12 @@ export async function handleProductsGet(req, res) {
 export async function handleProductsCreate(req, res) {
   try {
     const item = normalizeProduct(req.body || {});
+    // Tedarikci kendi supplierId'si dışında ürün oluşturamaz
+    if (req.authUser?.role === "Tedarikci") {
+      const authSupplierId = req.authUser.supplierId;
+      if (!authSupplierId) return httpError(res, 403, "Tedarikci eslesmesi bulunamadi.");
+      item.supplierId = authSupplierId;
+    }
     await sqlExec(`
       INSERT INTO products (
         id, code, name, sale_price, sale_currency, cost, cost_currency, category_id, collection_id, pos_category_id,
@@ -777,8 +801,13 @@ export async function handleProductsCreate(req, res) {
 
 export async function handleProductsUpdate(req, res) {
   const existing = await getProductRow(req.params.id);
-  if (!existing) {
-    return httpError(res, 404, "Urun bulunamadi.");
+  if (!existing) return httpError(res, 404, "Urun bulunamadi.");
+  // Tedarikci yalnızca kendi ürününü güncelleyebilir
+  if (req.authUser?.role === "Tedarikci") {
+    const authSupplierId = req.authUser.supplierId;
+    if (!authSupplierId || existing.supplierId !== authSupplierId) {
+      return httpError(res, 403, "Bu kaynaga erisim yetkiniz bulunmuyor.");
+    }
   }
   try {
     const item = normalizeProduct(req.body || {}, existing);

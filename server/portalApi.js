@@ -568,17 +568,15 @@ async function replaceDeliveryLines(record) {
 }
 
 export async function handleContractsList(req, res) {
-  const items = await listContractsRows();
-  if (req.authUser?.role !== "Tedarikci") {
-    return res.json({ ok: true, items });
+  // Tedarikci: sadece kendi sözleşmesini görebilir
+  if (req.authUser?.role === "Tedarikci") {
+    const supplierId = await resolveSupplierIdForAuthUser(req.authUser);
+    if (!supplierId) return res.json({ ok: true, items: [] });
+    const allItems = await listContractsRows();
+    return res.json({ ok: true, items: allItems.filter((item) => item.supplierId === supplierId) });
   }
-
-  const supplierId = await resolveSupplierIdForAuthUser(req.authUser);
-
-  return res.json({
-    ok: true,
-    items: items.filter((item) => item.supplierId === supplierId),
-  });
+  const items = await listContractsRows();
+  return res.json({ ok: true, items });
 }
 
 export async function handleContractsCreate(req, res) {
@@ -723,13 +721,27 @@ export async function handlePosSalesCreate(req, res) {
 }
 
 export async function handleDeliveryListsList(req, res) {
-  const slim = req.query.slim === "true"; // varsayılan full
-  return res.json({ ok: true, items: await listDeliveryRows({ slim }) });
+  const slim = req.query.slim === "true";
+  let items = await listDeliveryRows({ slim });
+  // Tedarikci sadece kendi teslimatlarını görebilir
+  if (req.authUser?.role === "Tedarikci") {
+    const supplierId = await resolveSupplierIdForAuthUser(req.authUser);
+    if (!supplierId) return res.json({ ok: true, items: [] });
+    items = items.filter((d) => d.supplierId === supplierId);
+  }
+  return res.json({ ok: true, items });
 }
 
 export async function handleDeliveryListsGet(req, res) {
   const item = await getDeliveryRowDirect(req.params.id);
   if (!item) return httpError(res, 404, "Teslimat kaydi bulunamadi.");
+  // Tedarikci sadece kendi teslimatına erişebilir
+  if (req.authUser?.role === "Tedarikci") {
+    const supplierId = await resolveSupplierIdForAuthUser(req.authUser);
+    if (!supplierId || item.supplierId !== supplierId) {
+      return httpError(res, 403, "Bu kaynaga erisim yetkiniz bulunmuyor.");
+    }
+  }
   return res.json({ ok: true, item });
 }
 
@@ -753,8 +765,13 @@ export async function handleDeliveryListsCreate(req, res) {
 
 export async function handleDeliveryListsUpdate(req, res) {
   const existing = await getDeliveryRowDirect(req.params.id);
-  if (!existing) {
-    return httpError(res, 404, "Teslimat kaydi bulunamadi.");
+  if (!existing) return httpError(res, 404, "Teslimat kaydi bulunamadi.");
+  // Tedarikci sadece kendi teslimatını güncelleyebilir
+  if (req.authUser?.role === "Tedarikci") {
+    const supplierId = await resolveSupplierIdForAuthUser(req.authUser);
+    if (!supplierId || existing.supplierId !== supplierId) {
+      return httpError(res, 403, "Bu kaynaga erisim yetkiniz bulunmuyor.");
+    }
   }
   try {
     const item = normalizeDelivery(req.body || {}, existing);
@@ -777,6 +794,13 @@ export async function handleDeliveryListsUpdate(req, res) {
 export async function handleDeliveryLineCreate(req, res) {
   const existing = await getDeliveryRowDirect(req.params.id);
   if (!existing) return httpError(res, 404, "Teslimat kaydi bulunamadi.");
+  // Tedarikci sadece kendi teslimatına satır ekleyebilir
+  if (req.authUser?.role === "Tedarikci") {
+    const supplierId = await resolveSupplierIdForAuthUser(req.authUser);
+    if (!supplierId || existing.supplierId !== supplierId) {
+      return httpError(res, 403, "Bu kaynaga erisim yetkiniz bulunmuyor.");
+    }
+  }
   try {
     const schemaInfo = await ensureDeliveryLineSchema();
     const body = req.body || {};
@@ -810,6 +834,16 @@ export async function handleDeliveryLineCreate(req, res) {
 }
 
 export async function handleDeliveryLineDelete(req, res) {
+  // Tedarikci sadece kendi teslimatından satır silebilir
+  if (req.authUser?.role === "Tedarikci") {
+    const parent = await getDeliveryRowDirect(req.params.id);
+    if (parent) {
+      const supplierId = await resolveSupplierIdForAuthUser(req.authUser);
+      if (!supplierId || parent.supplierId !== supplierId) {
+        return httpError(res, 403, "Bu kaynaga erisim yetkiniz bulunmuyor.");
+      }
+    }
+  }
   try {
     await sqlExec("DELETE FROM delivery_lines WHERE id = $1 AND delivery_list_id = $2", [req.params.lineId, req.params.id]);
     return res.json({ ok: true, item: await getDeliveryRowDirect(req.params.id) });
