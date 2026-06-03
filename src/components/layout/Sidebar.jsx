@@ -74,6 +74,7 @@ const iconMap = {
   "/reports/sales": menuIcon(TrendingUp),
   "/reports/stock": menuIcon(PackageSearch),
   "/reports/activity": menuIcon(BarChart2),
+  "/reports/store-invoices": menuIcon(FileText),
   "/reports/consolidated-earnings": menuIcon(HandCoins),
   "/reports/supplier-earnings": menuIcon(HandCoins),
   settings: menuIcon(Settings2),

@@ -103,12 +103,15 @@ function mapRow(row) {
 
 // ── GET /api/store-invoices ────────────────────────────────────────────────
 export async function handleStoreInvoicesList(req, res) {
-  const { storeId, periodKey } = req.query;
+  const { storeId, periodKey, periodFrom, periodTo, kdvRate } = req.query;
   const conds  = [];
   const params = [];
   let   idx    = 1;
-  if (storeId)   { conds.push(`si.store_id = $${idx++}`);    params.push(storeId); }
-  if (periodKey) { conds.push(`si.period_key = $${idx++}`);  params.push(periodKey); }
+  if (storeId)    { conds.push(`si.store_id = $${idx++}`);                       params.push(storeId); }
+  if (periodKey)  { conds.push(`si.period_key = $${idx++}`);                     params.push(periodKey); }
+  if (periodFrom) { conds.push(`si.period_key >= $${idx++}`);                    params.push(periodFrom); }
+  if (periodTo)   { conds.push(`si.period_key <= $${idx++}`);                    params.push(periodTo); }
+  if (kdvRate)    { conds.push(`si.kdv_rate = $${idx++}`);                       params.push(Number(kdvRate)); }
   const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
   const rows = await sqlMany(
     `SELECT si.*, s.name AS store_name
