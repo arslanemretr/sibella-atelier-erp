@@ -1,6 +1,7 @@
 import React from "react";
 import { Drawer, Layout, Menu } from "antd";
 import {
+  Activity,
   Boxes,
   ClipboardList,
   FolderTree,
@@ -11,11 +12,13 @@ import {
   MonitorSmartphone,
   Package,
   PackagePlus,
+  PackageSearch,
   Palette,
   ScanLine,
   Settings2,
   ShieldUser,
   Store,
+  TrendingUp,
   Truck,
   Users,
   Warehouse,
@@ -65,6 +68,8 @@ const iconMap = {
   "/supplier-portal/earnings": menuIcon(HandCoins),
   reports: menuIcon(ClipboardList),
   "reports-group": menuIcon(ClipboardList),
+  "/reports/sales": menuIcon(TrendingUp),
+  "/reports/stock": menuIcon(PackageSearch),
   "/reports/consolidated-earnings": menuIcon(HandCoins),
   "/reports/supplier-earnings": menuIcon(HandCoins),
   settings: menuIcon(Settings2),
@@ -80,6 +85,7 @@ const iconMap = {
   "/settings/mail-management": menuIcon(Mail),
   "/settings/smtp": menuIcon(Mail),
   "/settings/branding": menuIcon(Palette),
+  "/settings/audit-log": menuIcon(Activity),
   "/supplier/dashboard": menuIcon(LayoutDashboard),
   "/supplier/products": menuIcon(Package),
   "/supplier/earnings": menuIcon(HandCoins),
