@@ -25,11 +25,13 @@ export async function ensureStoreInvoicesReady() {
       period_key   TEXT NOT NULL,
       due_date     DATE NOT NULL,
       description  TEXT,
+      ext_invoice_no TEXT,
       created_by   TEXT,
       created_at   TIMESTAMPTZ,
       updated_at   TIMESTAMPTZ
     )
   `);
+  await sqlExec(`ALTER TABLE store_invoices ADD COLUMN IF NOT EXISTS ext_invoice_no TEXT`);
   await sqlExec(`CREATE INDEX IF NOT EXISTS idx_store_invoices_store_id ON store_invoices (store_id)`);
   await sqlExec(`CREATE INDEX IF NOT EXISTS idx_store_invoices_period ON store_invoices (period_key)`);
 }
@@ -92,6 +94,7 @@ function mapRow(row) {
     periodKey:     row.period_key || "",
     dueDate:       row.due_date ? String(row.due_date).slice(0, 10) : null,
     description:   row.description || "",
+    extInvoiceNo:  row.ext_invoice_no || "",
     createdBy:     row.created_by || null,
     createdAt:     row.created_at || null,
     updatedAt:     row.updated_at || null,
@@ -139,7 +142,7 @@ export async function handleStoreInvoicesNextNo(req, res) {
 // ── POST /api/store-invoices ───────────────────────────────────────────────
 export async function handleStoreInvoicesCreate(req, res) {
   const body = req.body || {};
-  const { storeId, invoiceDate, totalAmount, kdvRate, quantity, periodKey, description } = body;
+  const { storeId, invoiceDate, totalAmount, kdvRate, quantity, periodKey, description, extInvoiceNo } = body;
   if (!storeId || !invoiceDate || !totalAmount || !periodKey) {
     return httpError(res, 400, "storeId, invoiceDate, totalAmount ve periodKey zorunludur.");
   }
@@ -157,12 +160,12 @@ export async function handleStoreInvoicesCreate(req, res) {
     `INSERT INTO store_invoices
        (id, invoice_no, store_id, invoice_date, total_amount, kdv_rate, quantity,
         kdv_amount, unit_amount, service_amount, period_key, due_date, description,
-        created_by, created_at, updated_at)
-     VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8,$9,$10,$11,$12::date,$13,$14,$15::timestamptz,$16::timestamptz)`,
+        ext_invoice_no, created_by, created_at, updated_at)
+     VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8,$9,$10,$11,$12::date,$13,$14,$15,$16::timestamptz,$17::timestamptz)`,
     [id, invoiceNo, storeId, invoiceDate, Number(totalAmount), Number(kdvRate || 0),
      Number(quantity || 1), kdvAmount, unitAmount, serviceAmount,
      periodKey, dueDate, description || "",
-     req.authUser?.id || null, now, now],
+     extInvoiceNo || null, req.authUser?.id || null, now, now],
   );
   const created = await sqlOne(
     `SELECT si.*, s.name AS store_name FROM store_invoices si
@@ -182,7 +185,8 @@ export async function handleStoreInvoicesUpdate(req, res) {
   const kdvRate     = body.kdvRate     !== undefined ? body.kdvRate     : existing.kdv_rate;
   const quantity    = body.quantity    !== undefined ? body.quantity    : existing.quantity;
   const periodKey   = body.periodKey   || existing.period_key;
-  const description = body.description !== undefined ? body.description : existing.description;
+  const description  = body.description  !== undefined ? body.description  : existing.description;
+  const extInvoiceNo = body.extInvoiceNo !== undefined ? body.extInvoiceNo : existing.ext_invoice_no;
 
   const store = await sqlOne("SELECT payment_due_days FROM stores WHERE id = $1", [storeId]);
   if (!store) return httpError(res, 404, "Magaza bulunamadi.");
@@ -194,11 +198,11 @@ export async function handleStoreInvoicesUpdate(req, res) {
     `UPDATE store_invoices
      SET store_id=$2, invoice_date=$3::date, total_amount=$4, kdv_rate=$5, quantity=$6,
          kdv_amount=$7, unit_amount=$8, service_amount=$9, period_key=$10,
-         due_date=$11::date, description=$12, updated_at=$13::timestamptz
+         due_date=$11::date, description=$12, ext_invoice_no=$13, updated_at=$14::timestamptz
      WHERE id=$1`,
     [req.params.id, storeId, invoiceDate, Number(totalAmount), Number(kdvRate || 0),
      Number(quantity || 1), kdvAmount, unitAmount, serviceAmount,
-     periodKey, dueDate, description || "", nowIso()],
+     periodKey, dueDate, description || "", extInvoiceNo || null, nowIso()],
   );
   const updated = await sqlOne(
     `SELECT si.*, s.name AS store_name FROM store_invoices si

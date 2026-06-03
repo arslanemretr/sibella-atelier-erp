@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Card, Col, DatePicker, Descriptions, Drawer, Form, InputNumber, Popconfirm, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm, Row, Select, Space, Table, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { requestJson } from "../apiClient";
@@ -116,13 +116,14 @@ export function StoreInvoiceListPage() {
     setEditing(record);
     setNextNo(record.invoiceNo);
     form.setFieldsValue({
-      storeId:     record.storeId,
-      invoiceDate: record.invoiceDate ? dayjs(record.invoiceDate) : dayjs(),
-      totalAmount: record.totalAmount,
-      kdvRate:     record.kdvRate,
-      quantity:    record.quantity,
-      periodKey:   record.periodKey,
-      description: record.description,
+      storeId:      record.storeId,
+      invoiceDate:  record.invoiceDate ? dayjs(record.invoiceDate) : dayjs(),
+      totalAmount:  record.totalAmount,
+      kdvRate:      record.kdvRate,
+      quantity:     record.quantity,
+      periodKey:    record.periodKey,
+      description:  record.description,
+      extInvoiceNo: record.extInvoiceNo || "",
     });
     setDrawerOpen(true);
     setDetailOpen(false);
@@ -166,6 +167,8 @@ export function StoreInvoiceListPage() {
   const columns = [
     { title: "Fatura No", dataIndex: "invoiceNo", key: "invoiceNo", width: 140,
       render: (v, r) => <button type="button" className="erp-link-button" onClick={(e) => { e.stopPropagation(); setSelected(r); setDetailOpen(true); }}>{v}</button> },
+    { title: "Gib Fatura No", dataIndex: "extInvoiceNo", key: "extInvoiceNo", width: 150,
+      render: (v) => v || <Text type="secondary">-</Text> },
     { title: "Firma", dataIndex: "storeName", key: "storeName", width: 160 },
     { title: "Fatura Tarihi", dataIndex: "invoiceDate", key: "invoiceDate", width: 120, render: formatDate },
     { title: "Toplam Tutar", dataIndex: "totalAmount", key: "totalAmount", width: 140, align: "right", render: formatMoney },
@@ -225,6 +228,7 @@ export function StoreInvoiceListPage() {
           <>
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label="Fatura No">{selected.invoiceNo}</Descriptions.Item>
+              <Descriptions.Item label="Gib Fatura No">{selected.extInvoiceNo || "-"}</Descriptions.Item>
               <Descriptions.Item label="Firma">{selected.storeName}</Descriptions.Item>
               <Descriptions.Item label="Fatura Tarihi">{formatDate(selected.invoiceDate)}</Descriptions.Item>
               <Descriptions.Item label="Toplam Tutar">{formatMoney(selected.totalAmount)}</Descriptions.Item>
@@ -264,10 +268,15 @@ export function StoreInvoiceListPage() {
       >
         <Form form={form} layout="vertical">
           <Row gutter={[12, 0]}>
-            <Col span={24}>
+            <Col span={14}>
               <Form.Item label="Fatura No">
                 <Text strong style={{ fontSize: 15 }}>{nextNo || "—"}</Text>
                 <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>(otomatik)</Text>
+              </Form.Item>
+            </Col>
+            <Col span={10}>
+              <Form.Item name="extInvoiceNo" label="Gib Fatura No">
+                <Input placeholder="GİB No (opsiyonel)" />
               </Form.Item>
             </Col>
             <Col span={24}>
