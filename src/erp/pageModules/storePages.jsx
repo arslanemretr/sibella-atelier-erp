@@ -84,6 +84,13 @@ export function StoreListPage() {
               width: 100,
               render: (value) => `%${Number(value || 0).toFixed(2)}`,
             },
+            {
+              title: "Vade (Gün)",
+              dataIndex: "paymentDueDays",
+              key: "paymentDueDays",
+              width: 110,
+              render: (value) => value !== null && value !== undefined ? `${value} gün` : <Text type="secondary">-</Text>,
+            },
             { title: "Stok Yeri", dataIndex: "stockLocationName", key: "stockLocationName", width: 160 },
             {
               title: "Islemler",
@@ -120,6 +127,7 @@ export function StoreListPage() {
               <Descriptions.Item label="Magaza Kodu">{selectedStore.code}</Descriptions.Item>
               <Descriptions.Item label="VKN">{selectedStore.taxNumber || "-"}</Descriptions.Item>
               <Descriptions.Item label="Komisyon">{`%${Number(selectedStore.commissionRate || 0).toFixed(2)}`}</Descriptions.Item>
+              <Descriptions.Item label="Vade">{selectedStore.paymentDueDays !== null && selectedStore.paymentDueDays !== undefined ? `${selectedStore.paymentDueDays} gün` : "-"}</Descriptions.Item>
               <Descriptions.Item label="Stok Yeri">{selectedStore.stockLocationName || "-"}</Descriptions.Item>
               <Descriptions.Item label="Yetkili">{selectedStore.contactName || "-"}</Descriptions.Item>
               <Descriptions.Item label="Telefon">{selectedStore.contactPhone || "-"}</Descriptions.Item>
@@ -246,6 +254,7 @@ export function StoreEditorPage() {
                   <Col xs={24} md={12}><Form.Item name="code" label="Magaza Kodu" rules={[{ required: true, message: "Magaza kodu zorunludur." }]}><Input /></Form.Item></Col>
                   <Col xs={24} md={12}><Form.Item name="taxNumber" label="VKN" rules={[{ required: true, message: "VKN zorunludur." }]}><Input /></Form.Item></Col>
                   <Col xs={24} md={12}><Form.Item name="commissionRate" label="Calisan Komisyon Orani" rules={[{ required: true, message: "Komisyon orani zorunludur." }]}><InputNumber min={0} max={100} style={{ width: "100%" }} addonAfter="%" /></Form.Item></Col>
+                  <Col xs={24} md={12}><Form.Item name="paymentDueDays" label="Vade (Gün)"><InputNumber min={0} max={365} style={{ width: "100%" }} addonAfter="gün" placeholder="örn: 30" /></Form.Item></Col>
                   <Col xs={24}><Form.Item name="stockLocationName" label="Stok Yeri Adi" rules={[{ required: true, message: "Stok yeri adi zorunludur." }]}><Input placeholder="Sarkoy Magaza / Nisantasi Showroom" /></Form.Item></Col>
                 </Row>
               </Card>

@@ -29,6 +29,7 @@ function mapStoreRow(row) {
     name: row.name || "",
     taxNumber: row.tax_number || "",
     commissionRate: Number(row.commission_rate || 0),
+    paymentDueDays: row.payment_due_days !== null && row.payment_due_days !== undefined ? Number(row.payment_due_days) : null,
     address: row.address || "",
     contactName: row.contact_name || "",
     contactPhone: row.contact_phone || "",
@@ -88,6 +89,7 @@ function normalizeStore(values, existingRecord) {
     name: String(values.name || "").trim(),
     taxNumber: String(values.taxNumber || "").trim(),
     commissionRate: Number(values.commissionRate || 0),
+    paymentDueDays: values.paymentDueDays !== undefined && values.paymentDueDays !== "" && values.paymentDueDays !== null ? Number(values.paymentDueDays) : null,
     address: String(values.address || "").trim(),
     contactName: String(values.contactName || "").trim(),
     contactPhone: String(values.contactPhone || "").trim(),
@@ -155,10 +157,10 @@ async function createOrUpdateStoreRecord(values, existingRecord) {
       await tx.exec(
         `
           INSERT INTO stores (
-            id, code, name, tax_number, commission_rate, address, contact_name,
+            id, code, name, tax_number, commission_rate, payment_due_days, address, contact_name,
             contact_phone, contact_email, stock_location_id, created_at, updated_at
           )
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::timestamptz,$12::timestamptz)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::timestamptz,$13::timestamptz)
         `,
         [
           item.id,
@@ -166,6 +168,7 @@ async function createOrUpdateStoreRecord(values, existingRecord) {
           item.name,
           item.taxNumber,
           item.commissionRate,
+          item.paymentDueDays,
           item.address,
           item.contactName,
           item.contactPhone,
@@ -183,12 +186,13 @@ async function createOrUpdateStoreRecord(values, existingRecord) {
               name = $3,
               tax_number = $4,
               commission_rate = $5,
-              address = $6,
-              contact_name = $7,
-              contact_phone = $8,
-              contact_email = $9,
-              stock_location_id = $10,
-              updated_at = $11::timestamptz
+              payment_due_days = $6,
+              address = $7,
+              contact_name = $8,
+              contact_phone = $9,
+              contact_email = $10,
+              stock_location_id = $11,
+              updated_at = $12::timestamptz
           WHERE id = $1
         `,
         [
@@ -197,6 +201,7 @@ async function createOrUpdateStoreRecord(values, existingRecord) {
           item.name,
           item.taxNumber,
           item.commissionRate,
+          item.paymentDueDays,
           item.address,
           item.contactName,
           item.contactPhone,

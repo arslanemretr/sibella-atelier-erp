@@ -202,6 +202,10 @@ async function ensureDefaultStockLocationAndBalances() {
   }
 }
 
+async function ensureStoresSchema() {
+  await sqlExec(`ALTER TABLE stores ADD COLUMN IF NOT EXISTS payment_due_days INT`);
+}
+
 async function ensurePerformanceIndexes() {
   // Status kolonları — dashboard COUNT(*) sorgularında full scan önlenir
   await sqlExec(`CREATE INDEX IF NOT EXISTS idx_products_status ON products (status)`);
@@ -220,6 +224,7 @@ async function ensureInitialized() {
       await ensureCoreSchema();
       await ensureApplicationSchema();
       await ensureDefaultStockLocationAndBalances();
+      await ensureStoresSchema();
       await ensurePerformanceIndexes();
     })().catch((error) => {
       initPromise = null;
