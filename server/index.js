@@ -91,6 +91,15 @@ import {
   handleStoresUpdate,
 } from "./stores.js";
 import {
+  ensureStoreInvoicesReady,
+  handleStoreInvoicesCreate,
+  handleStoreInvoicesDelete,
+  handleStoreInvoicesGet,
+  handleStoreInvoicesList,
+  handleStoreInvoicesNextNo,
+  handleStoreInvoicesUpdate,
+} from "./storeInvoicesApi.js";
+import {
   handleEmailDeliveryLogsList,
   handleEmailScenariosCreate,
   handleEmailScenariosDelete,
@@ -162,6 +171,7 @@ void ensureDatabaseReady()
   .then(() => ensureRolesTable())
   .then(() => ensureBrandingReady())
   .then(() => migrateLegacyPasswords())
+  .then(() => ensureStoreInvoicesReady())
   .catch((error) => {
     console.error("Database init / auth migration hatasi:", error?.message || error);
   });
@@ -257,6 +267,12 @@ app.post("/api/delivery-lists/:id/lines", requireRole("Yonetici", "Tedarikci"), 
 app.delete("/api/delivery-lists/:id/lines/:lineId", requireRole("Yonetici", "Tedarikci"), handleDeliveryLineDelete);
 app.delete("/api/delivery-lists/:id", requireRole("Yonetici", "Tedarikci"), handleDeliveryListsDelete);
 app.post("/api/delivery-lists/:id/complete", requireRole("Yonetici"), handleDeliveryListsComplete);
+app.get("/api/store-invoices/next-no", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicesNextNo);
+app.get("/api/store-invoices", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicesList);
+app.get("/api/store-invoices/:id", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicesGet);
+app.post("/api/store-invoices", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicesCreate);
+app.put("/api/store-invoices/:id", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicesUpdate);
+app.delete("/api/store-invoices/:id", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicesDelete);
 app.get("/api/stores", requireRole("Yonetici", "Muhasebe"), handleStoresList);
 app.post("/api/stores", requireRole("Yonetici", "Muhasebe"), handleStoresCreate);
 app.put("/api/stores/:id", requireRole("Yonetici", "Muhasebe"), handleStoresUpdate);

@@ -14,7 +14,7 @@ const VALID_STATUSES = new Set(["Aktif", "Pasif"]);
 
 const SCREEN_KEYS = [
   "dashboard", "products_list", "pos_sessions", "pos_store", "pos_orders", "pos_returns",
-  "purchasing_suppliers", "purchasing_contracts", "stores_list", "stores_shipments",
+  "purchasing_suppliers", "purchasing_contracts", "stores_list", "stores_shipments", "stores_invoices",
   "stock_entry", "stock_list", "stock_locations", "reports_sales", "reports_stock", "reports_consolidated", "reports_supplier",
   "settings_users", "settings_categories", "settings_collections", "settings_pos_categories",
   "settings_barcode", "settings_procurement", "settings_payment_terms", "settings_parameters", "settings_mail", "settings_branding", "settings_audit_log",

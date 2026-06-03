@@ -35,6 +35,7 @@ export const mainMenuItems = [
       { key: "/stores/new", label: "Magaza Tanimla", permissionKey: "stores_list", permissionWrite: true },
       { key: "/stores/shipments", label: "Gonderi Listesi", permissionKey: "stores_shipments" },
       { key: "/stores/shipments/new", label: "Gonderi Olustur", permissionKey: "stores_shipments", permissionWrite: true },
+      { key: "/stores/invoices", label: "Mağaza Satış", permissionKey: "stores_invoices" },
     ],
   },
   {
@@ -124,6 +125,7 @@ export const sidebarGroups = [
           { key: "/stores/new", label: "Magaza Tanimla", permissionKey: "stores_list", permissionWrite: true },
           { key: "/stores/shipments", label: "Gonderi Listesi", permissionKey: "stores_shipments" },
           { key: "/stores/shipments/new", label: "Gonderi Olustur", permissionKey: "stores_shipments", permissionWrite: true },
+          { key: "/stores/invoices", label: "Mağaza Satış", permissionKey: "stores_invoices" },
         ],
       },
       {
