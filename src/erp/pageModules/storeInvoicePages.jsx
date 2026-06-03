@@ -266,45 +266,51 @@ export function StoreInvoiceListPage() {
         centered
       >
         <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
-          <Row gutter={[12, 0]}>
-            <Col span={14}>
-              <Form.Item label="Fatura No">
-                <Text strong style={{ fontSize: 15 }}>{nextNo || "—"}</Text>
-                <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>(otomatik)</Text>
-              </Form.Item>
-            </Col>
-            <Col span={10}>
-              <Form.Item name="extInvoiceNo" label="Gib Fatura No">
-                <Input placeholder="GİB No (opsiyonel)" />
-              </Form.Item>
-            </Col>
-            <Col span={24}>
-              <Form.Item name="storeId" label="Firma" rules={[{ required: true, message: "Firma seçiniz." }]}>
-                <Select options={storeOptions} showSearch optionFilterProp="label" placeholder="Mağaza seçin" />
+          <Row gutter={[16, 0]}>
+            {/* Satır 1: Fatura No + GİB No */}
+            <Col span={12}>
+              <Form.Item label="Fatura No" style={{ marginBottom: 16 }}>
+                <div style={{ padding: "5px 11px", background: "#f5f5f5", borderRadius: 6, border: "1px solid #d9d9d9" }}>
+                  <Text strong>{nextNo || "—"}</Text>
+                  <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>otomatik</Text>
+                </div>
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="invoiceDate" label="Fatura Tarihi" rules={[{ required: true, message: "Tarih zorunludur." }]}>
+              <Form.Item name="extInvoiceNo" label="GİB Fatura No" style={{ marginBottom: 16 }}>
+                <Input placeholder="Opsiyonel" />
+              </Form.Item>
+            </Col>
+            {/* Satır 2: Firma */}
+            <Col span={24}>
+              <Form.Item name="storeId" label="Firma" rules={[{ required: true, message: "Firma seçiniz." }]} style={{ marginBottom: 16 }}>
+                <Select options={storeOptions} showSearch optionFilterProp="label" placeholder="Mağaza seçin" />
+              </Form.Item>
+            </Col>
+            {/* Satır 3: Tarih + Dönem */}
+            <Col span={12}>
+              <Form.Item name="invoiceDate" label="Fatura Tarihi" rules={[{ required: true, message: "Tarih zorunludur." }]} style={{ marginBottom: 16 }}>
                 <DatePicker style={{ width: "100%" }} format="DD.MM.YYYY" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="periodKey" label="İlgili Dönem" rules={[{ required: true, message: "Dönem seçiniz." }]}>
+              <Form.Item name="periodKey" label="İlgili Dönem" rules={[{ required: true, message: "Dönem seçiniz." }]} style={{ marginBottom: 16 }}>
                 <Select options={periodOptions} />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item name="totalAmount" label="Fatura Toplam Tutar (KDV Dahil)" rules={[{ required: true, message: "Tutar zorunludur." }]}>
+            {/* Satır 4: Toplam Tutar + KDV + Miktar */}
+            <Col span={10}>
+              <Form.Item name="totalAmount" label="Toplam Tutar (KDV Dahil)" rules={[{ required: true, message: "Tutar zorunludur." }]} style={{ marginBottom: 16 }}>
                 <InputNumber style={{ width: "100%" }} min={0} addonAfter="₺" precision={2} />
               </Form.Item>
             </Col>
-            <Col span={6}>
-              <Form.Item name="kdvRate" label="KDV Oranı" rules={[{ required: true }]}>
+            <Col span={7}>
+              <Form.Item name="kdvRate" label="KDV Oranı" rules={[{ required: true }]} style={{ marginBottom: 16 }}>
                 <Select options={KDV_OPTIONS} />
               </Form.Item>
             </Col>
-            <Col span={6}>
-              <Form.Item name="quantity" label="Miktar" rules={[{ required: true }]}>
+            <Col span={7}>
+              <Form.Item name="quantity" label="Miktar" rules={[{ required: true }]} style={{ marginBottom: 16 }}>
                 <InputNumber style={{ width: "100%" }} min={0.0001} precision={4} />
               </Form.Item>
             </Col>
