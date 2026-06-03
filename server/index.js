@@ -2,6 +2,7 @@
 import express from "express";
 import fs from "node:fs";
 import path from "node:path";
+import { auditMiddleware, cleanupOldAuditLogs, ensureAuditLogTable, handleAuditLogsList, handlePageViewLog } from "./auditLog.js";
 import {
   ensureRolesTable,
   handleForgotPasswordConfirm,
@@ -114,6 +115,7 @@ const port = Number(process.env.API_PORT || 4001);
 const assetStoragePath = path.resolve(String(process.env.ASSET_STORAGE_PATH || path.resolve(process.cwd(), "data/assets")).trim());
 
 app.use(express.json({ limit: "25mb" }));
+app.use(auditMiddleware);
 fs.mkdirSync(assetStoragePath, { recursive: true });
 
 // Upload route statik middleware'den ONCE tanimlanmali —
@@ -147,6 +149,8 @@ app.use("/api/assets", express.static(assetStoragePath, {
 }));
 
 void ensureDatabaseReady()
+  .then(() => ensureAuditLogTable())
+  .then(() => cleanupOldAuditLogs())
   .then(() => ensureStockMovementsReady())
   .then(() => ensureEarningsReady())
   .then(() => ensureStockLocationInSessions())
@@ -172,6 +176,8 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+app.get("/api/audit-logs", requireRole("Yonetici"), handleAuditLogsList);
+app.post("/api/audit-logs/page-view", requireRole("Yonetici", "Magaza", "Muhasebe", "Kasiyer", "Tedarikci"), handlePageViewLog);
 app.post("/api/auth/login", handleLogin);
 app.get("/api/auth/session", handleSession);
 app.post("/api/auth/logout", handleLogout);

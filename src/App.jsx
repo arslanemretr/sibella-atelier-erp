@@ -46,6 +46,7 @@ const SupplierPortalDeliveryListPage = React.lazy(() => import("./erp/pageModule
 const SupplierPortalEarningsPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalEarningsPage })));
 const SupplierPortalProductEditorPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalProductEditorPage })));
 const SupplierPortalProductListPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalProductListPage })));
+const AuditLogPage = React.lazy(() => import("./erp/pageModules/auditLogPage"));
 
 function PageFallback() {
   return (
@@ -71,6 +72,17 @@ function ProtectedApp() {
   const [authenticated, setAuthenticated] = React.useState(() => isAuthenticated());
   const [authUser, setAuthUser] = React.useState(() => getAuthUser());
   const [authReady, setAuthReady] = React.useState(() => hasAuthLoaded());
+
+  // Sayfa ziyareti logu
+  React.useEffect(() => {
+    if (!isAuthenticated()) return;
+    fetch("/api/audit-logs/page-view", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ path: location.pathname }),
+    }).catch(() => {});
+  }, [location.pathname]);
 
   React.useEffect(() => {
     resetOperationalDataIfNeeded();
@@ -181,6 +193,7 @@ function ProtectedApp() {
         <Route path="/settings/parameters" element={withLazyPage(<ParametersPage />)} />
         <Route path="/settings/mail-management" element={withLazyPage(<MailManagementPage />)} />
         <Route path="/settings/branding" element={withLazyPage(<BrandingPage />)} />
+        <Route path="/settings/audit-log" element={withRolePage(<AuditLogPage />, authUser, "Yonetici")} />
         <Route path="/settings/smtp" element={<Navigate to="/settings/mail-management" replace />} />
 
         <Route path="/supplier/products" element={withLazyPage(<SupplierPortalProductListPage />)} />

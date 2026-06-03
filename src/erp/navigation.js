@@ -78,6 +78,7 @@ export const mainMenuItems = [
       { key: "/settings/parameters", label: "Parametreler", permissionKey: "settings_parameters" },
       { key: "/settings/mail-management", label: "Mail Yonetimi", permissionKey: "settings_mail" },
       { key: "/settings/branding", label: "Tema Ayarlari", permissionKey: "settings_branding" },
+      { key: "/settings/audit-log", label: "Aktivite Günlüğü", permissionKey: "settings_audit_log" },
     ],
   },
 ];
@@ -165,6 +166,7 @@ export const sidebarGroups = [
           { key: "/settings/parameters", label: "Parametreler", permissionKey: "settings_parameters" },
           { key: "/settings/mail-management", label: "Mail Yonetimi", permissionKey: "settings_mail" },
           { key: "/settings/branding", label: "Tema Ayarlari", permissionKey: "settings_branding" },
+          { key: "/settings/audit-log", label: "Aktivite Günlüğü", permissionKey: "settings_audit_log" },
         ],
       },
     ],

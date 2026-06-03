@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { sqlExec, sqlMany, sqlOne } from "./db.js";
+import { writeAuditLog } from "./auditLog.js";
 import { isSmtpConfigured, sendPasswordResetEmail } from "./mailer.js";
 import { hashPassword, isPasswordHash, verifyPassword } from "./passwords.js";
 
@@ -16,7 +17,7 @@ const SCREEN_KEYS = [
   "purchasing_suppliers", "purchasing_contracts", "stores_list", "stores_shipments",
   "stock_entry", "stock_list", "stock_locations", "reports_sales", "reports_stock", "reports_consolidated", "reports_supplier",
   "settings_users", "settings_categories", "settings_collections", "settings_pos_categories",
-  "settings_barcode", "settings_procurement", "settings_payment_terms", "settings_parameters", "settings_mail", "settings_branding",
+  "settings_barcode", "settings_procurement", "settings_payment_terms", "settings_parameters", "settings_mail", "settings_branding", "settings_audit_log",
   "supplier_portal_dashboard", "supplier_portal_products", "supplier_portal_deliveries", "supplier_portal_earnings",
 ];
 
@@ -499,6 +500,18 @@ export async function handleLogin(req, res) {
 
   await recordLoginAttempt({ email, success: true, userId: user.id, ipAddress });
 
+  writeAuditLog({
+    userId: user.id,
+    userName: user.fullName || user.email,
+    userRole: user.role,
+    actionType: "LOGIN",
+    resource: "Auth",
+    description: `Giriş yapıldı: ${user.email}`,
+    ipAddress,
+    userAgent: req.headers["user-agent"] || null,
+    statusCode: 200,
+  });
+
   return res.json({
     ok: true,
     user: {
@@ -541,6 +554,20 @@ export async function handleSession(req, res) {
 
 export async function handleLogout(req, res) {
   const rawToken = getCookieValue(req, AUTH_COOKIE_NAME);
+  const logoutUser = await getAuthenticatedUser(req);
+  if (logoutUser) {
+    writeAuditLog({
+      userId: logoutUser.id,
+      userName: logoutUser.fullName || logoutUser.email,
+      userRole: logoutUser.role,
+      actionType: "LOGOUT",
+      resource: "Auth",
+      description: `Çıkış yapıldı: ${logoutUser.email}`,
+      ipAddress: String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || req.socket?.remoteAddress || "",
+      userAgent: req.headers["user-agent"] || null,
+      statusCode: 200,
+    });
+  }
   await deleteSessionByToken(rawToken);
   res.setHeader("Set-Cookie", serializeCookie(AUTH_COOKIE_NAME, "", {
     httpOnly: true,
