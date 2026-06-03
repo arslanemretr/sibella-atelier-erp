@@ -654,11 +654,17 @@ export async function handlePosSalesList(req, res) {
   }
 
   const supplierId = await resolveSupplierIdForAuthUser(req.authUser);
+  if (!supplierId) return res.json({ ok: true, items: [] });
   const supplierProductRows = await sqlMany("SELECT id FROM products WHERE supplier_id = $1", [supplierId]);
   const allowedProductIds = new Set(supplierProductRows.map((row) => row.id));
+
+  // Tedarikci: sadece kendi ürün satırları + tarih — müşteri/ödeme/tutar bilgisi GÖNDERILMEZ
   const filteredItems = items
     .map((sale) => ({
-      ...sale,
+      id: sale.id,
+      sessionId: sale.sessionId,
+      stockLocationId: sale.stockLocationId,
+      soldAt: sale.soldAt,
       lines: (sale.lines || []).filter((line) => allowedProductIds.has(line.productId)),
     }))
     .filter((sale) => sale.lines.length > 0);
@@ -907,6 +913,13 @@ export async function handleDeliveryListsDelete(req, res) {
     const existing = await sqlOne("SELECT * FROM delivery_lists WHERE id = $1", [req.params.id]);
     if (!existing) return httpError(res, 404, "Teslimat bulunamadi.");
     if (existing.status !== "Taslak") return httpError(res, 400, "Sadece taslak durumundaki teslimatlar silinebilir.");
+    // Tedarikci sadece kendi teslimatini silebilir
+    if (req.authUser?.role === "Tedarikci") {
+      const supplierId = await resolveSupplierIdForAuthUser(req.authUser);
+      if (!supplierId || existing.supplier_id !== supplierId) {
+        return httpError(res, 403, "Bu kaynaga erisim yetkiniz bulunmuyor.");
+      }
+    }
     await sqlExec("DELETE FROM delivery_lines WHERE delivery_list_id = $1", [req.params.id]);
     await sqlExec("DELETE FROM delivery_lists WHERE id = $1", [req.params.id]);
     return res.json({ ok: true });
@@ -1006,11 +1019,16 @@ export async function handlePosReturnsList(req, res) {
   }
 
   const supplierId = await resolveSupplierIdForAuthUser(req.authUser);
+  if (!supplierId) return res.json({ ok: true, items: [] });
   const supplierProductRows = await sqlMany("SELECT id FROM products WHERE supplier_id = $1", [supplierId]);
   const allowedProductIds = new Set(supplierProductRows.map((row) => row.id));
+
+  // Tedarikci: sadece kendi ürün satırları + tarih — iade notu/fiş/müşteri bilgisi GÖNDERILMEZ
   const filteredItems = items
     .map((ret) => ({
-      ...ret,
+      id: ret.id,
+      stockLocationId: ret.stockLocationId,
+      returnDate: ret.returnDate,
       lines: (ret.lines || []).filter((line) => allowedProductIds.has(line.productId)),
     }))
     .filter((ret) => ret.lines.length > 0);
