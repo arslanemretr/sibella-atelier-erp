@@ -13,10 +13,6 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function seedShipments() {
-  return [];
-}
-
 function formatMoney(value, currency = "TRY") {
   return new Intl.NumberFormat("tr-TR", {
     style: "currency",
@@ -27,7 +23,7 @@ function formatMoney(value, currency = "TRY") {
 }
 
 function loadStore() {
-  return requestCollectionSync("/api/store-shipments", seedShipments());
+  return requestCollectionSync("/api/store-shipments", []);
 }
 
 function normalizeShipmentLine(line, index, shipmentId) {
@@ -89,7 +85,7 @@ export function listStoreShipments() {
 }
 
 export async function listStoreShipmentsFresh() {
-  const records = await requestCollection("/api/store-shipments", seedShipments());
+  const records = await requestCollection("/api/store-shipments", []);
   return records.map(enrichShipment);
 }
 
@@ -215,7 +211,7 @@ export async function createStoreShipmentPdf(shipmentOrId) {
 
 export async function getNextStoreShipmentNoPreviewFresh(storeId) {
   const [records] = await Promise.all([
-    requestCollection("/api/store-shipments", seedShipments()),
+    requestCollection("/api/store-shipments", []),
     listStoresFresh(),
   ]);
   return buildNextShipmentNo(records, storeId);

@@ -1,13 +1,9 @@
 import { requestCollection, requestCollectionSync } from "./apiClient";
 
-function seedStockMovements() {
-  return [];
-}
-
 export function listStockMovements() {
-  return requestCollectionSync("/api/stock-movements", seedStockMovements());
+  return requestCollectionSync("/api/stock-movements", []);
 }
 
 export async function listStockMovementsFresh() {
-  return requestCollection("/api/stock-movements", seedStockMovements());
+  return requestCollection("/api/stock-movements", []);
 }

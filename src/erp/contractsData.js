@@ -12,12 +12,8 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function seedContracts() {
-  return [];
-}
-
 function loadStore() {
-  return requestCollectionSync("/api/contracts", seedContracts());
+  return requestCollectionSync("/api/contracts", []);
 }
 
 function normalizeContract(values, existingContract) {
@@ -48,7 +44,7 @@ export function listContracts() {
 
 export async function listContractsFresh() {
   const [contracts, suppliers] = await Promise.all([
-    requestCollection("/api/contracts", seedContracts()),
+    requestCollection("/api/contracts", []),
     listSuppliersFresh({ slim: true }),
   ]);
   const supplierMap = Object.fromEntries(suppliers.map((supplier) => [supplier.id, supplier.company]));

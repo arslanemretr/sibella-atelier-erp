@@ -11,12 +11,8 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function seedStores() {
-  return [];
-}
-
 function loadStore() {
-  return requestCollectionSync("/api/stores", seedStores());
+  return requestCollectionSync("/api/stores", []);
 }
 
 function normalizeStore(values, existingStore) {
@@ -53,7 +49,7 @@ export function listStores() {
 }
 
 export async function listStoresFresh() {
-  const stores = await requestCollection("/api/stores", seedStores());
+  const stores = await requestCollection("/api/stores", []);
   return stores.map(enrichStore);
 }
 

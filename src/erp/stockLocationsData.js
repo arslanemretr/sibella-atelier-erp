@@ -1,15 +1,11 @@
 import { requestCollection, requestCollectionSync } from "./apiClient";
 
-function seedStockLocations() {
-  return [];
-}
-
 export function listStockLocations() {
-  return requestCollectionSync("/api/stock-locations", seedStockLocations());
+  return requestCollectionSync("/api/stock-locations", []);
 }
 
 export async function listStockLocationsFresh() {
-  return requestCollection("/api/stock-locations", seedStockLocations());
+  return requestCollection("/api/stock-locations", []);
 }
 
 export function listStockLocationBalances(stockLocationId) {

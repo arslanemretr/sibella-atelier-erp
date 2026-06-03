@@ -3,12 +3,8 @@ import { listProducts } from "./productsData";
 import { listSuppliers } from "./suppliersData";
 import { mutateResourceSync, requestCollection, requestCollectionSync } from "./apiClient";
 
-function seedPurchases() {
-  return [];
-}
-
 function loadStore() {
-  return requestCollectionSync("/api/purchases", seedPurchases());
+  return requestCollectionSync("/api/purchases", []);
 }
 
 function money(value) {
@@ -97,7 +93,7 @@ export function listPurchases() {
 }
 
 export async function listPurchasesFresh(lookups = {}) {
-  const purchases = await requestCollection("/api/purchases", seedPurchases());
+  const purchases = await requestCollection("/api/purchases", []);
   return enrichPurchasesWithLookups(purchases, lookups);
 }
 

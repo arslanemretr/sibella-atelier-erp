@@ -53,10 +53,7 @@ export const masterDataDefinitions = {
       };
     },
     emptyValues: { level1: "", level2: "", level3: "", level4: "", status: "Aktif" },
-    seed: [
-      { id: "cat-001", level1: "Urunler", level2: "Konsinye", level3: "Kolye", level4: "Seramik", fullPath: "Urunler / Konsinye / Kolye / Seramik", status: "Aktif", createdAt: nowIso(), updatedAt: nowIso() },
-      { id: "cat-002", level1: "Urunler", level2: "Kendi Uretim", level3: "Kupe", level4: "Nazar", fullPath: "Urunler / Kendi Uretim / Kupe / Nazar", status: "Aktif", createdAt: nowIso(), updatedAt: nowIso() },
-    ],
+    seed: [],
   },
   collections: {
     entityKey: "collections",
@@ -86,10 +83,7 @@ export const masterDataDefinitions = {
       };
     },
     emptyValues: { name: "", description: "", status: "Aktif" },
-    seed: [
-      { id: "col-001", name: "Atelier Core", description: "Temel seri", status: "Aktif", createdAt: nowIso(), updatedAt: nowIso() },
-      { id: "col-002", name: "Yaz 2026", description: "Sezon koleksiyonu", status: "Aktif", createdAt: nowIso(), updatedAt: nowIso() },
-    ],
+    seed: [],
   },
   "pos-categories": {
     entityKey: "pos-categories",
@@ -119,10 +113,7 @@ export const masterDataDefinitions = {
       };
     },
     emptyValues: { name: "", description: "", status: "Aktif" },
-    seed: [
-      { id: "poscat-001", name: "Kolye", description: "Kolye urun grubu", status: "Aktif", createdAt: nowIso(), updatedAt: nowIso() },
-      { id: "poscat-002", name: "Kupe", description: "Kupe urun grubu", status: "Aktif", createdAt: nowIso(), updatedAt: nowIso() },
-    ],
+    seed: [],
   },
   "barcode-standards": {
     entityKey: "barcode-standards",
@@ -161,9 +152,7 @@ export const masterDataDefinitions = {
       };
     },
     emptyValues: { name: "", prefix: "SBL", separator: "-", digits: 6, nextNumber: 1, status: "Aktif" },
-    seed: [
-      { id: "barcode-001", name: "Sibella Urun", prefix: "SBL", separator: "-", digits: 6, nextNumber: 128, status: "Aktif", createdAt: nowIso(), updatedAt: nowIso() },
-    ],
+    seed: [],
   },
   "procurement-types": {
     entityKey: "procurement-types",
@@ -193,10 +182,7 @@ export const masterDataDefinitions = {
       };
     },
     emptyValues: { name: "", description: "", status: "Aktif" },
-    seed: [
-      { id: "proc-001", name: "Konsinye", description: "Satildikca odeme modeli", status: "Aktif", createdAt: nowIso(), updatedAt: nowIso() },
-      { id: "proc-002", name: "Direkt Alim", description: "Direkt satin alma modeli", status: "Aktif", createdAt: nowIso(), updatedAt: nowIso() },
-    ],
+    seed: [],
   },
   "payment-terms": {
     entityKey: "payment-terms",
@@ -229,10 +215,7 @@ export const masterDataDefinitions = {
       };
     },
     emptyValues: { name: "", days: 0, description: "", status: "Aktif" },
-    seed: [
-      { id: "pay-001", name: "Pesin", days: 0, description: "Pesin odeme", status: "Aktif", createdAt: nowIso(), updatedAt: nowIso() },
-      { id: "pay-002", name: "30 Gun Vade", days: 30, description: "Teslim sonrasi odeme", status: "Aktif", createdAt: nowIso(), updatedAt: nowIso() },
-    ],
+    seed: [],
   },
 };
 

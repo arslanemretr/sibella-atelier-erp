@@ -13,73 +13,8 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function seedSuppliers() {
-  return [
-    {
-      id: "sup-001",
-      shortCode: "MINA",
-      company: "Mina Aksesuar",
-      logo: "",
-      contact: "Mina Demir",
-      email: "mina@atelier.com",
-      phone: "0532 455 11 22",
-      city: "Istanbul",
-      iban: "TR12 0006 2000 1234 5678 9012 34",
-      taxNumber: "1234567890",
-      taxOffice: "Beyoglu",
-      address: "Cihangir Mah. Siraselviler Cad. No:12 Beyoglu / Istanbul",
-      procurementTypeId: "proc-001",
-      paymentTermId: "pay-002",
-      status: "Aktif",
-      note: "Konsinye calisilan ana tedarikci",
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    },
-    {
-      id: "sup-002",
-      shortCode: "ANKA",
-      company: "Anka Seramik",
-      logo: "",
-      contact: "Can Ozturk",
-      email: "anka@atelier.com",
-      phone: "0533 101 10 10",
-      city: "Kutahya",
-      iban: "TR54 0006 4000 9988 7766 5544 33",
-      taxNumber: "9988776655",
-      taxOffice: "Kutahya",
-      address: "Saray Mah. Seramik Sok. No:8 Merkez / Kutahya",
-      procurementTypeId: "proc-002",
-      paymentTermId: "pay-001",
-      status: "Aktif",
-      note: "Direkt alim yapiyor",
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    },
-    {
-      id: "sup-003",
-      shortCode: "LORA",
-      company: "Lora Design",
-      logo: "",
-      contact: "Lora Koc",
-      email: "lora@atelier.com",
-      phone: "0537 777 34 55",
-      city: "Izmir",
-      iban: "TR88 0006 7000 4455 6677 8899 00",
-      taxNumber: "4455667788",
-      taxOffice: "Konak",
-      address: "Alsancak Mah. Kordon Cad. No:45 Konak / Izmir",
-      procurementTypeId: "proc-002",
-      paymentTermId: "pay-002",
-      status: "Aktif",
-      note: "",
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    },
-  ];
-}
-
 function loadStore() {
-  return requestCollectionSync("/api/suppliers", seedSuppliers());
+  return requestCollectionSync("/api/suppliers", []);
 }
 
 function normalizeSupplier(values, existingSupplier) {
@@ -131,7 +66,7 @@ export async function listSuppliersFresh({ slim = false } = {}) {
 
   // slim modda tedarikçi listesi yeterli; etiket alanları gerekmez, master-data çekilmez
   if (slim) {
-    const suppliers = await requestCollection(suppliersUrl, seedSuppliers());
+    const suppliers = await requestCollection(suppliersUrl, []);
     return suppliers.map((supplier) => ({
       ...supplier,
       procurementTypeLabel: "-",
@@ -146,7 +81,7 @@ export async function listSuppliersFresh({ slim = false } = {}) {
   }
 
   const [suppliers, procurementTypes, paymentTerms] = await Promise.all([
-    requestCollection(suppliersUrl, seedSuppliers()),
+    requestCollection(suppliersUrl, []),
     requestCollection("/api/master-data/procurement-types", []),
     requestCollection("/api/master-data/payment-terms", []),
   ]);

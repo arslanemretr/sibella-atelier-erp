@@ -21,20 +21,12 @@ function formatMoney(value) {
   }).format(Number(value || 0));
 }
 
-function seedSessions() {
-  return [];
-}
-
-function seedSales() {
-  return [];
-}
-
 function loadSessions() {
-  return requestCollectionSync("/api/pos-sessions", seedSessions());
+  return requestCollectionSync("/api/pos-sessions", []);
 }
 
 function loadSales() {
-  return requestCollectionSync("/api/pos-sales", seedSales());
+  return requestCollectionSync("/api/pos-sales", []);
 }
 
 function normalizeSession(values, existingSession) {
@@ -138,7 +130,7 @@ export function listPosSessions() {
 }
 
 export async function listPosSessionsFresh() {
-  const sessions = await requestCollection("/api/pos-sessions", seedSessions());
+  const sessions = await requestCollection("/api/pos-sessions", []);
   return sessions.map((session) => ({
     ...session,
     totalSalesDisplay: formatMoney(session.totalSales || 0),
@@ -170,7 +162,7 @@ export async function listPosSalesFresh(productsOverride = null, options = {}) {
   const query = options.sessionId ? `?sessionId=${encodeURIComponent(options.sessionId)}` : "";
   // Backend artık satır bazında product_name / product_code JOIN ile döndürüyor.
   // productsOverride yalnızca ek enrichment (görsel vb.) için kullanılır.
-  const sales = await requestCollection(`/api/pos-sales${query}`, seedSales());
+  const sales = await requestCollection(`/api/pos-sales${query}`, []);
   const productMap = productsOverride
     ? Object.fromEntries(productsOverride.map((item) => [item.id, item]))
     : {};

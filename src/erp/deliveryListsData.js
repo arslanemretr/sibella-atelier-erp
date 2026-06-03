@@ -32,12 +32,8 @@ function formatMoney(value, currency = "TRY") {
 }
 
 
-function seedDeliveryLists() {
-  return [];
-}
-
 function loadStore() {
-  return requestCollectionSync("/api/delivery-lists", seedDeliveryLists());
+  return requestCollectionSync("/api/delivery-lists", []);
 }
 
 function normalizeLine(line, index) {
@@ -111,7 +107,7 @@ export function listDeliveryLists() {
 
 export async function listDeliveryListsFresh({ slim = false } = {}) {
   const url = slim ? "/api/delivery-lists?slim=true" : "/api/delivery-lists";
-  const records = await requestCollection(url, seedDeliveryLists());
+  const records = await requestCollection(url, []);
 
   return records.map((record) => {
     const totalQuantity = record.totalQuantity ?? (record.lines || []).reduce((sum, line) => sum + Number(line.quantity || 0), 0);
@@ -157,7 +153,7 @@ export function getNextDeliveryNoPreview(supplierId) {
 }
 
 export async function getNextDeliveryNoPreviewFresh(supplierId, supplierShortCode) {
-  const records = await requestCollection("/api/delivery-lists?slim=true", seedDeliveryLists());
+  const records = await requestCollection("/api/delivery-lists?slim=true", []);
   let resolvedCode = supplierShortCode;
   if (!resolvedCode) {
     const suppliers = await listSuppliersFresh({ slim: true });

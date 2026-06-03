@@ -11,12 +11,8 @@ function money(value) {
   }).format(Number(value || 0));
 }
 
-function seedStockEntries() {
-  return [];
-}
-
 function loadStore() {
-  return requestCollectionSync("/api/stock-entries", seedStockEntries());
+  return requestCollectionSync("/api/stock-entries", []);
 }
 
 function enrichStockEntry(entry) {
@@ -85,7 +81,7 @@ export function listStockEntries() {
 }
 
 export async function listStockEntriesFresh(lookups = {}) {
-  const entries = await requestCollection("/api/stock-entries", seedStockEntries());
+  const entries = await requestCollection("/api/stock-entries", []);
   return enrichStockEntriesWithLookups(entries, lookups);
 }
 
