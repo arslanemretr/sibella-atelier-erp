@@ -23,7 +23,7 @@ const STATUS_FILTER_OPTIONS = [
 ];
 
 function fmt(v) {
-  return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", minimumFractionDigits: 2 }).format(Number(v || 0));
+  return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(v || 0));
 }
 function fmtDate(v) {
   if (!v) return "-";
@@ -122,6 +122,7 @@ export default function StoreCariPage() {
   const openPaymentModal = (invoice) => {
     setPaymentModal({ invoice });
     paymentForm.setFieldsValue({
+      dueDate:       invoice.dueDate ? dayjs(invoice.dueDate) : null,
       paidAt:        dayjs(),
       paymentMethod: "Havale/EFT",
       paidAmount:    invoice.totalAmount,
@@ -134,6 +135,7 @@ export default function StoreCariPage() {
       const values = await paymentForm.validateFields();
       setSaving(true);
       await requestJson("PUT", `/api/store-invoices/${paymentModal.invoice.id}/payment`, {
+        dueDate:       values.dueDate ? values.dueDate.format("YYYY-MM-DD") : undefined,
         paidAt:        values.paidAt.format("YYYY-MM-DD"),
         paymentMethod: values.paymentMethod,
         paidAmount:    Number(values.paidAmount),
@@ -256,6 +258,8 @@ export default function StoreCariPage() {
           dataSource={displayedInvoices} scroll={{ x: "max-content" }}
           pagination={{ pageSize: 50, showTotal: (t, r) => `${r[0]}–${r[1]} / ${t}` }}
           locale={{ emptyText: "Kayıt bulunamadı." }}
+          onRow={(record) => ({ onClick: () => openPaymentModal(record), style: { cursor: "pointer" } })}
+          rowClassName={() => "erp-clickable-row"}
           summary={() => {
             if (!displayedInvoices.length) return null;
             const totalAmt = displayedInvoices.reduce((s, r) => s + Number(r.totalAmount || 0), 0);
@@ -309,6 +313,11 @@ export default function StoreCariPage() {
                     {paymentModal.invoice.storeName} · {periodLabel(paymentModal.invoice.periodKey)}
                   </Text>
                 </div>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="dueDate" label="Vade Tarihi">
+                  <DatePicker style={{ width: "100%" }} format="DD.MM.YYYY" />
+                </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="paidAt" label="Ödeme Tarihi" rules={[{ required: true }]}>

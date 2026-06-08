@@ -229,7 +229,7 @@ export async function handleStoreInvoicePayment(req, res) {
   const existing = await sqlOne("SELECT * FROM store_invoices WHERE id = $1", [req.params.id]);
   if (!existing) return httpError(res, 404, "Fatura bulunamadi.");
 
-  const { paidAt, paymentMethod, paidAmount, paymentNote } = req.body || {};
+  const { paidAt, paymentMethod, paidAmount, paymentNote, dueDate } = req.body || {};
   if (!paidAt) return httpError(res, 400, "Odeme tarihi zorunludur.");
 
   const invoiceTotal = Number(existing.total_amount || 0);
@@ -239,9 +239,11 @@ export async function handleStoreInvoicePayment(req, res) {
   await sqlExec(
     `UPDATE store_invoices
      SET payment_status=$2, paid_amount=$3, paid_at=$4::date,
-         payment_method=$5, payment_note=$6, updated_at=$7::timestamptz
+         payment_method=$5, payment_note=$6,
+         due_date=COALESCE($7::date, due_date),
+         updated_at=$8::timestamptz
      WHERE id=$1`,
-    [req.params.id, status, paid, paidAt, paymentMethod || "", paymentNote || "", nowIso()],
+    [req.params.id, status, paid, paidAt, paymentMethod || "", paymentNote || "", dueDate || null, nowIso()],
   );
   const updated = await sqlOne(
     `SELECT si.*, s.name AS store_name FROM store_invoices si
