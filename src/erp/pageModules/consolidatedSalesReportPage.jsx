@@ -214,6 +214,14 @@ export default function ConsolidatedSalesReportPage() {
       sorter: (a, b) => a.totalQuantity - b.totalQuantity },
     { title: "POS Satış", dataIndex: "totalAmount", align: "right",
       sorter: (a, b) => a.totalAmount - b.totalAmount, render: fmt },
+    { title: "Kom.%", dataIndex: "commissionRate", align: "center", width: 80,
+      sorter: (a, b) => a.commissionRate - b.commissionRate,
+      render: (v, r) => r.isSibella ? <Text type="secondary">—</Text> : <Tag color="orange">%{v}</Tag> },
+    { title: "Sibella Payı", dataIndex: "sibellaCommission", align: "right",
+      sorter: (a, b) => a.sibellaCommission - b.sibellaCommission,
+      render: (v, r) => r.isSibella
+        ? <Text type="secondary">—</Text>
+        : <Text style={{ color: C.sibellaPos }}>{fmt(v)}</Text> },
   ];
 
   const catCols = [
@@ -296,7 +304,7 @@ export default function ConsolidatedSalesReportPage() {
             />
             <div style={{ marginTop: 6, fontSize: 12, lineHeight: 1.8 }}>
               <Text type="secondary">Sibella Hakediş: </Text>
-              <Text strong style={{ color: C.storeService }}>{fmt(s.serviceTotal)}</Text>
+              <Text strong style={{ color: C.storeService }}>{fmt(s.invoiceTotal)}</Text>
               <br />
               <Text type="secondary">Mağaza Komisyon: </Text>
               <Text style={{ color: C.storeComm }}>{fmt(s.storeCommission)}</Text>
@@ -334,10 +342,10 @@ export default function ConsolidatedSalesReportPage() {
             />
             <div style={{ marginTop: 6, fontSize: 12, lineHeight: 1.8 }}>
               <Text type="secondary">Şarköy Hakediş: </Text>
-              <Text>{fmt(s.sibellaPosTotal)}</Text>
+              <Text>{fmt(s.sarkoyHakEdis)}</Text>
               <br />
               <Text type="secondary">Mağaza Hakediş: </Text>
-              <Text>{fmt(s.serviceTotal)}</Text>
+              <Text>{fmt(s.invoiceTotal)}</Text>
             </div>
           </Card>
         </Col>

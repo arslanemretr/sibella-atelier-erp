@@ -82,22 +82,41 @@ export async function handleConsolidatedSalesReport(req, res) {
       [dateFrom, dateTo, sibellaSupplierIds],
     );
 
-    // ── 2. POS — toplam tedarikçi bazlı özet (ileride hakediş linklemesi için) ──
+    // ── 2. POS — tedarikçi bazlı özet + Sibella komisyon payı hesabı ──────────
+    //  Her tedarikçi için aktif konsinyasyon sözleşmesindeki komisyon oranı alınır.
+    //  sibella_commission = tedarikçi satış × (commission_rate / 100)
     const posSupplierBreakdown = await sqlMany(
       `
+      WITH latest_contracts AS (
+        SELECT DISTINCT ON (supplier_id)
+          supplier_id,
+          commission_rate
+        FROM consignment_contracts
+        WHERE status IS DISTINCT FROM 'Pasif'
+        ORDER BY supplier_id, COALESCE(start_date, '2000-01-01') DESC
+      )
       SELECT
-        COALESCE(s.company, 'Tanımsız')                         AS supplier_name,
+        COALESCE(sup.company, 'Tanımsız')                           AS supplier_name,
         p.supplier_id,
         CASE WHEN p.supplier_id = ANY($3::text[]) THEN true ELSE false END AS is_sibella,
-        COALESCE(SUM(psl.line_total), 0)                        AS total_amount,
-        COALESCE(SUM(psl.quantity),   0)                        AS total_quantity
+        COALESCE(SUM(psl.line_total), 0)                            AS total_amount,
+        COALESCE(SUM(psl.quantity),   0)                            AS total_quantity,
+        COALESCE(MAX(lc.commission_rate), 0)                        AS commission_rate,
+        COALESCE(SUM(
+          CASE
+            WHEN p.supplier_id IS NOT NULL AND NOT (p.supplier_id = ANY($3::text[]))
+              THEN psl.line_total * COALESCE(lc.commission_rate, 0) / 100.0
+            ELSE 0
+          END
+        ), 0)                                                       AS sibella_commission
       FROM pos_sales ps
       JOIN pos_sale_lines psl ON psl.sale_id = ps.id
-      LEFT JOIN products    p  ON p.id = psl.product_id
-      LEFT JOIN suppliers   s  ON s.id = p.supplier_id
+      LEFT JOIN products        p   ON p.id = psl.product_id
+      LEFT JOIN suppliers       sup ON sup.id = p.supplier_id
+      LEFT JOIN latest_contracts lc  ON lc.supplier_id = p.supplier_id
       WHERE ps.sold_at >= $1::timestamptz
         AND ps.sold_at <  $2::timestamptz
-      GROUP BY s.company, p.supplier_id
+      GROUP BY sup.company, p.supplier_id
       ORDER BY total_amount DESC
       `,
       [dateFrom, dateTo, sibellaSupplierIds],
@@ -179,13 +198,21 @@ export async function handleConsolidatedSalesReport(req, res) {
     );
 
     // ── Scalar summary ────────────────────────────────────────────────────────
-    const posTotal         = posMonthly.reduce((s, r) => s + Number(r.pos_total),       0);
-    const sibellaPosTotal  = posMonthly.reduce((s, r) => s + Number(r.sibella_amount),  0);
-    const tedarikciPosTotal= posMonthly.reduce((s, r) => s + Number(r.tedarikci_amount),0);
-    const grossStoreTotal  = storeMonthly.reduce((s, r) => s + Number(r.gross_store_sales), 0);
-    const invoiceTotal     = storeMonthly.reduce((s, r) => s + Number(r.invoice_total),    0);
-    const serviceTotal     = storeMonthly.reduce((s, r) => s + Number(r.service_amount),   0);
-    const storeCommission  = grossStoreTotal - invoiceTotal;
+    const posTotal              = posMonthly.reduce((s, r) => s + Number(r.pos_total),        0);
+    const sibellaPosTotal       = posMonthly.reduce((s, r) => s + Number(r.sibella_amount),   0);
+    const tedarikciPosTotal     = posMonthly.reduce((s, r) => s + Number(r.tedarikci_amount), 0);
+    const grossStoreTotal       = storeMonthly.reduce((s, r) => s + Number(r.gross_store_sales), 0);
+    const invoiceTotal          = storeMonthly.reduce((s, r) => s + Number(r.invoice_total),     0);
+    const serviceTotal          = storeMonthly.reduce((s, r) => s + Number(r.service_amount),    0);
+    const storeCommission       = grossStoreTotal - invoiceTotal;
+    // Tedarikçi POS'tan Sibella'ya düşen komisyon payı (sözleşme oranlarından)
+    const tedarikciPosCommission = posSupplierBreakdown.reduce(
+      (s, r) => s + Number(r.sibella_commission), 0,
+    );
+    // Şarköy Hakediş = Sibella kendi ürün satışı + tedarikçi satışlarındaki Sibella komisyonu
+    const sarkoyHakEdis   = sibellaPosTotal + tedarikciPosCommission;
+    // Net Sibella Ciro = Şarköy Hakediş + Mağaza Hakediş (invoiceTotal = KDV dahil fatura)
+    const netSibellaCiro  = sarkoyHakEdis + invoiceTotal;
 
     return res.json({
       ok: true,
@@ -193,15 +220,14 @@ export async function handleConsolidatedSalesReport(req, res) {
         posTotal,
         sibellaPosTotal,
         tedarikciPosTotal,
+        tedarikciPosCommission,
+        sarkoyHakEdis,
         grossStoreTotal,
         invoiceTotal,
         serviceTotal,
         storeCommission,
-        // Toplam Ciro = Şarköy Toplam + Mağazalar Toplam
-        totalCiro: posTotal + grossStoreTotal,
-        // SMM Öncesi = Sibella POS + Mağaza Sibella Hakediş (service_amount)
-        // (Tedarikçi POS hakediş bağlantısı ileride eklenecek)
-        netSibellaCiro: sibellaPosTotal + serviceTotal,
+        totalCiro:     posTotal + grossStoreTotal,
+        netSibellaCiro,
       },
       posMonthly: posMonthly.map((r) => ({
         periodKey:       r.period_key,
@@ -229,11 +255,13 @@ export async function handleConsolidatedSalesReport(req, res) {
         commissionAmount: Number(r.gross_store_sales) - Number(r.invoice_total),
       })),
       posSupplierBreakdown: posSupplierBreakdown.map((r) => ({
-        supplierId:    r.supplier_id,
-        supplierName:  r.supplier_name,
-        isSibella:     r.is_sibella,
-        totalAmount:   Number(r.total_amount),
-        totalQuantity: Number(r.total_quantity),
+        supplierId:        r.supplier_id,
+        supplierName:      r.supplier_name,
+        isSibella:         r.is_sibella,
+        totalAmount:       Number(r.total_amount),
+        totalQuantity:     Number(r.total_quantity),
+        commissionRate:    Number(r.commission_rate),
+        sibellaCommission: Number(r.sibella_commission),
       })),
       categoryBreakdown: categoryBreakdown.map((r) => ({
         level1:        r.level1,
