@@ -30,22 +30,54 @@ export async function handleConsolidatedSalesReport(req, res) {
     const sibellaSupplierIds = sibellaSupplier?.id ? [sibellaSupplier.id] : [];
 
     // ── 1. POS — Sibella vs Tedarikçi aylık kırılım ─────────────────────────
+    //  grand_total'ı ayrı CTE'de topla (JOIN fan-out önlenir).
+    //  Kalem bazlı tutarlar ayrı CTE'de hesaplanır.
+    //  NULL supplier_id → Sibella ürünü sayılır.
     const posMonthly = await sqlMany(
       `
+      WITH sale_totals AS (
+        SELECT
+          TO_CHAR(sold_at AT TIME ZONE 'Europe/Istanbul', 'YYYY-MM') AS period_key,
+          COUNT(id)::int                                              AS sale_count,
+          COALESCE(SUM(grand_total), 0)                              AS pos_total
+        FROM pos_sales
+        WHERE sold_at >= $1::timestamptz
+          AND sold_at <  $2::timestamptz
+        GROUP BY period_key
+      ),
+      line_totals AS (
+        SELECT
+          TO_CHAR(ps.sold_at AT TIME ZONE 'Europe/Istanbul', 'YYYY-MM') AS period_key,
+          COALESCE(SUM(
+            CASE
+              WHEN p.supplier_id IS NULL
+                OR p.supplier_id = ANY($3::text[])
+              THEN psl.line_total ELSE 0
+            END
+          ), 0) AS sibella_amount,
+          COALESCE(SUM(
+            CASE
+              WHEN p.supplier_id IS NOT NULL
+               AND NOT (p.supplier_id = ANY($3::text[]))
+              THEN psl.line_total ELSE 0
+            END
+          ), 0) AS tedarikci_amount
+        FROM pos_sales ps
+        LEFT JOIN pos_sale_lines psl ON psl.sale_id = ps.id
+        LEFT JOIN products        p  ON p.id = psl.product_id
+        WHERE ps.sold_at >= $1::timestamptz
+          AND ps.sold_at <  $2::timestamptz
+        GROUP BY period_key
+      )
       SELECT
-        TO_CHAR(ps.sold_at AT TIME ZONE 'Europe/Istanbul', 'YYYY-MM') AS period_key,
-        COUNT(DISTINCT ps.id)::int                                     AS sale_count,
-        COALESCE(SUM(ps.grand_total), 0)                               AS pos_total,
-        COALESCE(SUM(CASE WHEN p.supplier_id = ANY($3::text[]) THEN psl.line_total ELSE 0 END), 0) AS sibella_amount,
-        COALESCE(SUM(CASE WHEN p.supplier_id IS NOT NULL AND NOT (p.supplier_id = ANY($3::text[]))
-                          THEN psl.line_total ELSE 0 END), 0)          AS tedarikci_amount
-      FROM pos_sales ps
-      LEFT JOIN pos_sale_lines psl ON psl.sale_id = ps.id
-      LEFT JOIN products        p  ON p.id = psl.product_id
-      WHERE ps.sold_at >= $1::timestamptz
-        AND ps.sold_at <  $2::timestamptz
-      GROUP BY period_key
-      ORDER BY period_key
+        st.period_key,
+        st.sale_count,
+        st.pos_total,
+        COALESCE(lt.sibella_amount,   0) AS sibella_amount,
+        COALESCE(lt.tedarikci_amount, 0) AS tedarikci_amount
+      FROM sale_totals  st
+      LEFT JOIN line_totals lt ON lt.period_key = st.period_key
+      ORDER BY st.period_key
       `,
       [dateFrom, dateTo, sibellaSupplierIds],
     );
