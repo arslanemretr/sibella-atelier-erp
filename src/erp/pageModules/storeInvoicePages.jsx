@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tooltip, Typography, message } from "antd";
+import { Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { requestJson } from "../apiClient";
@@ -30,16 +30,25 @@ function periodLabel(key) {
   return new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" }).format(new Date(Number(y), Number(m) - 1, 1));
 }
 
-function buildPeriodOptions() {
-  const opts = [];
-  const now = new Date();
-  for (let i = -2; i <= 2; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    opts.push({ value: key, label: periodLabel(key) });
-  }
-  return opts;
-}
+const YEAR_OPTIONS = Array.from({ length: new Date().getFullYear() - 2020 + 2 }, (_, i) => {
+  const y = 2021 + i;
+  return { value: y, label: String(y) };
+});
+
+const MONTH_OPTIONS = [
+  { value: 1,  label: "Ocak" },
+  { value: 2,  label: "Şubat" },
+  { value: 3,  label: "Mart" },
+  { value: 4,  label: "Nisan" },
+  { value: 5,  label: "Mayıs" },
+  { value: 6,  label: "Haziran" },
+  { value: 7,  label: "Temmuz" },
+  { value: 8,  label: "Ağustos" },
+  { value: 9,  label: "Eylül" },
+  { value: 10, label: "Ekim" },
+  { value: 11, label: "Kasım" },
+  { value: 12, label: "Aralık" },
+];
 
 export function StoreInvoiceListPage() {
   const [invoices, setInvoices]     = React.useState([]);
@@ -52,6 +61,14 @@ export function StoreInvoiceListPage() {
   const [form]                      = Form.useForm();
   const [saving, setSaving]         = React.useState(false);
   const [nextNo, setNextNo]         = React.useState("");
+  const [periodYear,  setPeriodYear]  = React.useState(() => new Date().getFullYear());
+  const [periodMonth, setPeriodMonth] = React.useState(() => new Date().getMonth() + 1);
+
+  // Yıl + ay → YYYY-MM
+  const derivedPeriodKey = React.useMemo(
+    () => `${periodYear}-${String(periodMonth).padStart(2, "0")}`,
+    [periodYear, periodMonth],
+  );
 
   const [filters, setFilters] = React.useState({ storeId: undefined, periodFrom: undefined, periodTo: undefined });
 
@@ -111,11 +128,13 @@ export function StoreInvoiceListPage() {
     } catch { setNextNo(""); }
     setEditing(null);
     form.resetFields();
+    const now = new Date();
+    setPeriodYear(now.getFullYear());
+    setPeriodMonth(now.getMonth() + 1);
     form.setFieldsValue({
       invoiceDate: dayjs(),
       kdvRate: 20,
       quantity: 1,
-      periodKey: periodOptions[2]?.value,
     });
     setDrawerOpen(true);
   };
@@ -123,13 +142,17 @@ export function StoreInvoiceListPage() {
   const openEdit = (record) => {
     setEditing(record);
     setNextNo(record.invoiceNo);
+    if (record.periodKey) {
+      const [y, m] = record.periodKey.split("-").map(Number);
+      setPeriodYear(y);
+      setPeriodMonth(m);
+    }
     form.setFieldsValue({
       storeId:      record.storeId,
       invoiceDate:  record.invoiceDate ? dayjs(record.invoiceDate) : dayjs(),
       totalAmount:  record.totalAmount,
       kdvRate:      record.kdvRate,
       quantity:     record.quantity,
-      periodKey:    record.periodKey,
       description:  record.description,
       extInvoiceNo: record.extInvoiceNo || "",
     });
@@ -144,6 +167,7 @@ export function StoreInvoiceListPage() {
       const payload = {
         ...values,
         invoiceDate: values.invoiceDate?.format("YYYY-MM-DD"),
+        periodKey:   derivedPeriodKey,
       };
       if (editing) {
         await requestJson("PUT", `/api/store-invoices/${editing.id}`, payload);
@@ -361,8 +385,22 @@ export function StoreInvoiceListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="periodKey" label="İlgili Dönem" rules={[{ required: true, message: "Dönem seçiniz." }]} style={{ marginBottom: 16 }}>
-                <Select options={periodOptions} />
+              <Form.Item label="İlgili Dönem" required style={{ marginBottom: 16 }}>
+                <Space.Compact style={{ width: "100%" }}>
+                  <Select
+                    style={{ width: "55%" }}
+                    options={MONTH_OPTIONS}
+                    value={periodMonth}
+                    onChange={(v) => setPeriodMonth(v)}
+                  />
+                  <Select
+                    style={{ width: "45%" }}
+                    options={YEAR_OPTIONS}
+                    value={periodYear}
+                    onChange={(v) => setPeriodYear(v)}
+                  />
+                </Space.Compact>
+                <Text type="secondary" style={{ fontSize: 11 }}>{periodLabel(derivedPeriodKey)}</Text>
               </Form.Item>
             </Col>
             {/* Satır 4: Toplam Tutar + KDV + Miktar */}
