@@ -92,7 +92,6 @@ export async function handleConsolidatedSalesReport(req, res) {
           supplier_id,
           commission_rate
         FROM consignment_contracts
-        WHERE status IS DISTINCT FROM 'Pasif'
         ORDER BY supplier_id, COALESCE(start_date, '2000-01-01') DESC
       )
       SELECT
