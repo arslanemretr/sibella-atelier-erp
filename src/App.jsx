@@ -50,6 +50,7 @@ const AuditLogPage = React.lazy(() => import("./erp/pageModules/auditLogPage"));
 const ActivityReportPage = React.lazy(() => import("./erp/pageModules/activityReportPage"));
 const StoreInvoiceListPage = React.lazy(() => import("./erp/pageModules/storeInvoicePages").then((m) => ({ default: m.StoreInvoiceListPage })));
 const StoreInvoiceReportPage = React.lazy(() => import("./erp/pageModules/storeInvoiceReportPage"));
+const StoreCariPage = React.lazy(() => import("./erp/pageModules/storeCariPage"));
 
 function PageFallback() {
   return (
@@ -167,6 +168,7 @@ function ProtectedApp() {
         <Route path="/purchasing/contracts" element={withLazyPage(<ContractsPage />)} />
 
         <Route path="/stores/invoices" element={withRolePage(<StoreInvoiceListPage />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/stores/cari" element={withRolePage(<StoreCariPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/reports/store-invoices" element={withRolePage(<StoreInvoiceReportPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/stores/list" element={withRolePage(<StoreListPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/stores/new" element={withRolePage(<StoreEditorPage />, authUser, "Yonetici", "Muhasebe")} />

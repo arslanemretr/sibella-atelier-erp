@@ -98,6 +98,8 @@ import {
   handleStoreInvoicesList,
   handleStoreInvoicesNextNo,
   handleStoreInvoicesUpdate,
+  handleStoreInvoicePayment,
+  handleStoreInvoicePaymentRevert,
 } from "./storeInvoicesApi.js";
 import {
   handleEmailDeliveryLogsList,
@@ -272,6 +274,8 @@ app.get("/api/store-invoices", requireRole("Yonetici", "Muhasebe"), handleStoreI
 app.get("/api/store-invoices/:id", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicesGet);
 app.post("/api/store-invoices", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicesCreate);
 app.put("/api/store-invoices/:id", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicesUpdate);
+app.put("/api/store-invoices/:id/payment", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicePayment);
+app.put("/api/store-invoices/:id/payment-revert", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicePaymentRevert);
 app.delete("/api/store-invoices/:id", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicesDelete);
 app.get("/api/stores", requireRole("Yonetici", "Muhasebe"), handleStoresList);
 app.post("/api/stores", requireRole("Yonetici", "Muhasebe"), handleStoresCreate);

@@ -32,6 +32,11 @@ export async function ensureStoreInvoicesReady() {
     )
   `);
   await sqlExec(`ALTER TABLE store_invoices ADD COLUMN IF NOT EXISTS ext_invoice_no TEXT`);
+  await sqlExec(`ALTER TABLE store_invoices ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'Odenmedi'`);
+  await sqlExec(`ALTER TABLE store_invoices ADD COLUMN IF NOT EXISTS paid_amount NUMERIC(14,2)`);
+  await sqlExec(`ALTER TABLE store_invoices ADD COLUMN IF NOT EXISTS paid_at DATE`);
+  await sqlExec(`ALTER TABLE store_invoices ADD COLUMN IF NOT EXISTS payment_method TEXT`);
+  await sqlExec(`ALTER TABLE store_invoices ADD COLUMN IF NOT EXISTS payment_note TEXT`);
   await sqlExec(`CREATE INDEX IF NOT EXISTS idx_store_invoices_store_id ON store_invoices (store_id)`);
   await sqlExec(`CREATE INDEX IF NOT EXISTS idx_store_invoices_period ON store_invoices (period_key)`);
 }
@@ -93,9 +98,14 @@ function mapRow(row) {
     serviceAmount: Number(row.service_amount || 0),
     periodKey:     row.period_key || "",
     dueDate:       row.due_date ? (row.due_date instanceof Date ? row.due_date.toISOString().slice(0, 10) : String(row.due_date).slice(0, 10)) : null,
-    description:   row.description || "",
-    extInvoiceNo:  row.ext_invoice_no || "",
-    createdBy:     row.created_by || null,
+    description:    row.description || "",
+    extInvoiceNo:   row.ext_invoice_no || "",
+    paymentStatus:  row.payment_status || "Odenmedi",
+    paidAmount:     row.paid_amount !== null && row.paid_amount !== undefined ? Number(row.paid_amount) : null,
+    paidAt:         row.paid_at ? (row.paid_at instanceof Date ? row.paid_at.toISOString().slice(0, 10) : String(row.paid_at).slice(0, 10)) : null,
+    paymentMethod:  row.payment_method || "",
+    paymentNote:    row.payment_note || "",
+    createdBy:      row.created_by || null,
     createdAt:     row.created_at || null,
     updatedAt:     row.updated_at || null,
   };
@@ -206,6 +216,50 @@ export async function handleStoreInvoicesUpdate(req, res) {
     [req.params.id, storeId, invoiceDate, Number(totalAmount), Number(kdvRate || 0),
      Number(quantity || 1), kdvAmount, unitAmount, serviceAmount,
      periodKey, dueDate, description || "", extInvoiceNo || null, nowIso()],
+  );
+  const updated = await sqlOne(
+    `SELECT si.*, s.name AS store_name FROM store_invoices si
+     LEFT JOIN stores s ON s.id = si.store_id WHERE si.id = $1`, [req.params.id],
+  );
+  return res.json({ ok: true, item: mapRow(updated) });
+}
+
+// ── PUT /api/store-invoices/:id/payment — Ödeme kaydet ───────────────────
+export async function handleStoreInvoicePayment(req, res) {
+  const existing = await sqlOne("SELECT * FROM store_invoices WHERE id = $1", [req.params.id]);
+  if (!existing) return httpError(res, 404, "Fatura bulunamadi.");
+
+  const { paidAt, paymentMethod, paidAmount, paymentNote } = req.body || {};
+  if (!paidAt) return httpError(res, 400, "Odeme tarihi zorunludur.");
+
+  const invoiceTotal = Number(existing.total_amount || 0);
+  const paid = paidAmount !== undefined ? Number(paidAmount) : invoiceTotal;
+  const status = paid >= invoiceTotal ? "Odendi" : paid > 0 ? "Kismi" : "Odenmedi";
+
+  await sqlExec(
+    `UPDATE store_invoices
+     SET payment_status=$2, paid_amount=$3, paid_at=$4::date,
+         payment_method=$5, payment_note=$6, updated_at=$7::timestamptz
+     WHERE id=$1`,
+    [req.params.id, status, paid, paidAt, paymentMethod || "", paymentNote || "", nowIso()],
+  );
+  const updated = await sqlOne(
+    `SELECT si.*, s.name AS store_name FROM store_invoices si
+     LEFT JOIN stores s ON s.id = si.store_id WHERE si.id = $1`, [req.params.id],
+  );
+  return res.json({ ok: true, item: mapRow(updated) });
+}
+
+// ── PUT /api/store-invoices/:id/payment-revert — Ödemeyi geri al ─────────
+export async function handleStoreInvoicePaymentRevert(req, res) {
+  const existing = await sqlOne("SELECT id FROM store_invoices WHERE id = $1", [req.params.id]);
+  if (!existing) return httpError(res, 404, "Fatura bulunamadi.");
+  await sqlExec(
+    `UPDATE store_invoices
+     SET payment_status='Odenmedi', paid_amount=NULL, paid_at=NULL,
+         payment_method=NULL, payment_note=NULL, updated_at=$2::timestamptz
+     WHERE id=$1`,
+    [req.params.id, nowIso()],
   );
   const updated = await sqlOne(
     `SELECT si.*, s.name AS store_name FROM store_invoices si
