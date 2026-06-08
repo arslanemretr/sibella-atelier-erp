@@ -50,6 +50,19 @@ const MONTH_OPTIONS = [
   { value: 12, label: "Aralık" },
 ];
 
+// Filtre için tüm dönemler (2021 → bugün+1 yıl)
+const FILTER_PERIOD_OPTIONS = (() => {
+  const opts = [];
+  const maxYear = new Date().getFullYear() + 1;
+  for (let y = maxYear; y >= 2021; y--) {
+    for (let m = 12; m >= 1; m--) {
+      const key = `${y}-${String(m).padStart(2, "0")}`;
+      opts.push({ value: key, label: periodLabel(key) });
+    }
+  }
+  return opts;
+})();
+
 export function StoreInvoiceListPage() {
   const [invoices, setInvoices]     = React.useState([]);
   const [stores, setStores]         = React.useState([]);
@@ -76,8 +89,6 @@ export function StoreInvoiceListPage() {
     () => [{ value: "", label: "Tüm Mağazalar" }, ...stores.map((s) => ({ value: s.id, label: s.name }))],
     [stores],
   );
-
-  const periodOptions = React.useMemo(() => buildPeriodOptions(), []);
 
   const refresh = React.useCallback(async (f) => {
     try {
@@ -271,7 +282,7 @@ export function StoreInvoiceListPage() {
             placeholder="Başlangıç Dönemi"
             allowClear
             style={{ width: 165 }}
-            options={periodOptions}
+            options={FILTER_PERIOD_OPTIONS}
             value={filters.periodFrom}
             onChange={(v) => setFilters((p) => ({ ...p, periodFrom: v }))}
             showSearch
@@ -282,7 +293,7 @@ export function StoreInvoiceListPage() {
             placeholder="Bitiş Dönemi"
             allowClear
             style={{ width: 165 }}
-            options={periodOptions}
+            options={FILTER_PERIOD_OPTIONS}
             value={filters.periodTo}
             onChange={(v) => setFilters((p) => ({ ...p, periodTo: v }))}
             showSearch
