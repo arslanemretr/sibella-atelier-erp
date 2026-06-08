@@ -298,45 +298,76 @@ async function listStockLocationBalances(stockLocationId) {
   }));
 }
 
+// Liste için: satır görselleri olmadan sadece özet (hızlı)
 async function listStoreShipmentRows() {
-  const shipmentRows = await sqlMany("SELECT * FROM store_shipments ORDER BY created_at DESC, date DESC, shipment_no ASC");
-  const lineRows = await sqlMany("SELECT * FROM store_shipment_lines ORDER BY shipment_id ASC, sort_order ASC, id ASC");
-  const linesByShipmentId = new Map();
+  const shipmentRows = await sqlMany(`
+    SELECT ss.*,
+      COALESCE(agg.line_count, 0)    AS line_count,
+      COALESCE(agg.total_quantity, 0) AS total_quantity,
+      COALESCE(agg.total_amount, 0)   AS total_amount
+    FROM store_shipments ss
+    LEFT JOIN (
+      SELECT shipment_id,
+        COUNT(*)                                                        AS line_count,
+        SUM(COALESCE(quantity, 0))                                      AS total_quantity,
+        SUM(COALESCE(quantity, 0) * COALESCE(sale_price, 0))            AS total_amount
+      FROM store_shipment_lines
+      GROUP BY shipment_id
+    ) agg ON agg.shipment_id = ss.id
+    ORDER BY ss.created_at DESC, ss.date DESC, ss.shipment_no ASC
+  `);
 
-  lineRows.forEach((row) => {
-    const items = linesByShipmentId.get(row.shipment_id) || [];
-    items.push(mapShipmentLineRow(row));
-    linesByShipmentId.set(row.shipment_id, items);
-  });
-
-  return shipmentRows.map((row) => {
-    const lines = linesByShipmentId.get(row.id) || [];
-    const totalQuantity = lines.reduce((sum, line) => sum + Number(line.quantity || 0), 0);
-    const totalAmount = lines.reduce((sum, line) => sum + (Number(line.quantity || 0) * Number(line.salePrice || 0)), 0);
-    return {
-      id: row.id,
-      shipmentNo: row.shipment_no || "",
-      storeId: row.store_id || null,
-      storeName: row.store_name || "",
-      date: row.date || "",
-      shippingMethod: row.shipping_method || "Kargo",
-      trackingNo: row.tracking_no || "",
-      note: row.note || "",
-      status: row.status || "Taslak",
-      createdBy: row.created_by || null,
-      sentAt: row.sent_at || null,
-      lines,
-      lineCount: lines.length,
-      totalQuantity,
-      totalAmount,
-      createdAt: row.created_at || null,
-      updatedAt: row.updated_at || null,
-    };
-  });
+  return shipmentRows.map((row) => ({
+    id:             row.id,
+    shipmentNo:     row.shipment_no || "",
+    storeId:        row.store_id || null,
+    storeName:      row.store_name || "",
+    date:           row.date || "",
+    shippingMethod: row.shipping_method || "Kargo",
+    trackingNo:     row.tracking_no || "",
+    note:           row.note || "",
+    status:         row.status || "Taslak",
+    createdBy:      row.created_by || null,
+    sentAt:         row.sent_at || null,
+    lines:          [],
+    lineCount:      Number(row.line_count   || 0),
+    totalQuantity:  Number(row.total_quantity || 0),
+    totalAmount:    Number(row.total_amount  || 0),
+    createdAt:      row.created_at || null,
+    updatedAt:      row.updated_at || null,
+  }));
 }
 
+// Tek kayıt için: satırlarla birlikte çek (detay/editör için)
 async function getStoreShipmentRow(shipmentId) {
-  return (await listStoreShipmentRows()).find((item) => item.id === shipmentId) || null;
+  const row = await sqlOne("SELECT * FROM store_shipments WHERE id = $1", [shipmentId]);
+  if (!row) return null;
+  const lineRows = await sqlMany(
+    "SELECT * FROM store_shipment_lines WHERE shipment_id = $1 ORDER BY sort_order ASC, id ASC",
+    [shipmentId],
+  );
+  const lines = lineRows.map(mapShipmentLineRow);
+  const totalQuantity = lines.reduce((sum, l) => sum + Number(l.quantity || 0), 0);
+  const totalAmount   = lines.reduce((sum, l) => sum + (Number(l.quantity || 0) * Number(l.salePrice || 0)), 0);
+  return {
+    id:             row.id,
+    shipmentNo:     row.shipment_no || "",
+    storeId:        row.store_id || null,
+    storeName:      row.store_name || "",
+    date:           row.date || "",
+    shippingMethod: row.shipping_method || "Kargo",
+    trackingNo:     row.tracking_no || "",
+    note:           row.note || "",
+    status:         row.status || "Taslak",
+    createdBy:      row.created_by || null,
+    sentAt:         row.sent_at || null,
+    lines,
+    lineCount:      lines.length,
+    totalQuantity,
+    totalAmount,
+    createdAt:      row.created_at || null,
+    updatedAt:      row.updated_at || null,
+  };
 }
 
 function buildNextStoreShipmentNo(store, shipments) {
