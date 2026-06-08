@@ -236,7 +236,7 @@ export function StoreShipmentEditorPage() {
         setPageLoading(true);
         const [storeRows, productRows, categoryRows, collectionRows, supplierRows, shipmentRows] = await Promise.all([
           listStoresFresh(),
-          listProductsRawFresh(),
+          listProductsRawFresh({ productType: "kendi" }),
           listMasterDataFresh("categories"),
           listMasterDataFresh("collections"),
           listSuppliersFresh({ slim: true }),

@@ -167,8 +167,12 @@ export async function getProductByIdFresh(productId) {
 }
 
 // Sadece ham slim veri — enrichment yok. Editor/navigasyon için kullanılır.
-export async function listProductsRawFresh() {
-  return requestCollection("/api/products?slim=true", []);
+// productType: "kendi" | "konsinye" | null (tümü)
+export async function listProductsRawFresh({ productType } = {}) {
+  const url = productType
+    ? `/api/products?slim=true&productType=${encodeURIComponent(productType)}`
+    : "/api/products?slim=true";
+  return requestCollection(url, []);
 }
 
 // Kanban görünümü için id→image haritası — catalog modunda yalnızca görsel alanı kullanılır.

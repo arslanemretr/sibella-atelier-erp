@@ -392,7 +392,7 @@ async function getSupplierRow(supplierId) {
 
 // slim=true → image, features, notes hariç tutulur (liste ekranı için)
 // catalog=true → slim gibi ama image dahil, useInPos/isForSale/trackInventory dahil (POS ekranı için)
-async function listProductsRows({ slim = false, catalog = false } = {}) {
+async function listProductsRows({ slim = false, catalog = false, productType = null } = {}) {
   // catalog modu: slim + image + pos alanları (features/notes hariç)
   const selectCols = catalog
     ? `p.id, p.code, p.name, p.sale_price, p.sale_currency, p.image,
@@ -429,6 +429,7 @@ async function listProductsRows({ slim = false, catalog = false } = {}) {
       FROM pos_return_lines
       GROUP BY product_id
     ) return_totals ON return_totals.product_id = p.id
+    ${productType ? `WHERE p.product_type = '${productType.replace(/'/g, "''")}'` : ""}
     ORDER BY p.created_at DESC, p.code ASC
   `);
 
@@ -744,7 +745,8 @@ export async function handleSuppliersDelete(req, res) {
 export async function handleProductsList(req, res) {
   const slim = req.query.slim === "true";
   const catalog = req.query.catalog === "true";
-  let items = await listProductsRows({ slim, catalog });
+  const productType = req.query.productType || null;
+  let items = await listProductsRows({ slim, catalog, productType });
   // Tedarikci rolü sadece kendi ürünlerini görebilir
   if (req.authUser?.role === "Tedarikci") {
     const supplierId = req.authUser.supplierId;
