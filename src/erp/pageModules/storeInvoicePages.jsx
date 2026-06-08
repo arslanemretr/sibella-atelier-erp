@@ -53,18 +53,25 @@ export function StoreInvoiceListPage() {
   const [saving, setSaving]         = React.useState(false);
   const [nextNo, setNextNo]         = React.useState("");
 
+  const [filters, setFilters] = React.useState({ storeId: undefined, periodFrom: undefined, periodTo: undefined });
+
   const storeOptions = React.useMemo(
-    () => stores.map((s) => ({ value: s.id, label: s.name })),
+    () => [{ value: "", label: "Tüm Mağazalar" }, ...stores.map((s) => ({ value: s.id, label: s.name }))],
     [stores],
   );
 
   const periodOptions = React.useMemo(() => buildPeriodOptions(), []);
 
-  const refresh = React.useCallback(async () => {
+  const refresh = React.useCallback(async (f) => {
     try {
       setLoading(true);
+      const params = new URLSearchParams();
+      if (f?.storeId)    params.set("storeId",    f.storeId);
+      if (f?.periodFrom) params.set("periodFrom", f.periodFrom);
+      if (f?.periodTo)   params.set("periodTo",   f.periodTo);
+      const url = `/api/store-invoices${params.toString() ? `?${params.toString()}` : ""}`;
       const [data, storeList] = await Promise.all([
-        requestJson("GET", "/api/store-invoices"),
+        requestJson("GET", url),
         listStoresFresh(),
       ]);
       setInvoices(data?.items || []);
@@ -76,7 +83,7 @@ export function StoreInvoiceListPage() {
     }
   }, []);
 
-  React.useEffect(() => { void refresh(); }, [refresh]);
+  React.useEffect(() => { void refresh(filters); }, [refresh, filters]);
 
   // Hesaplama: toplam tutar + kdv oranı değişince otomatik hesapla
   const watchedTotal = Form.useWatch("totalAmount", form);
@@ -206,6 +213,48 @@ export function StoreInvoiceListPage() {
           <Button type="primary" icon={<PlusOutlined />} onClick={() => void openNew()}>Yeni Fatura</Button>
         </Space>
       </div>
+
+      <Card bordered={false} className="erp-list-toolbar-card">
+        <Space wrap size={12}>
+          <Select
+            placeholder="Tüm Mağazalar"
+            allowClear
+            style={{ width: 200 }}
+            options={storeOptions}
+            value={filters.storeId || undefined}
+            onChange={(v) => setFilters((p) => ({ ...p, storeId: v || undefined }))}
+            showSearch
+            optionFilterProp="label"
+          />
+          <Select
+            placeholder="Başlangıç Dönemi"
+            allowClear
+            style={{ width: 165 }}
+            options={periodOptions}
+            value={filters.periodFrom}
+            onChange={(v) => setFilters((p) => ({ ...p, periodFrom: v }))}
+            showSearch
+            optionFilterProp="label"
+          />
+          <Text type="secondary">—</Text>
+          <Select
+            placeholder="Bitiş Dönemi"
+            allowClear
+            style={{ width: 165 }}
+            options={periodOptions}
+            value={filters.periodTo}
+            onChange={(v) => setFilters((p) => ({ ...p, periodTo: v }))}
+            showSearch
+            optionFilterProp="label"
+          />
+          <Button
+            onClick={() => setFilters({ storeId: undefined, periodFrom: undefined, periodTo: undefined })}
+            disabled={!filters.storeId && !filters.periodFrom && !filters.periodTo}
+          >
+            Temizle
+          </Button>
+        </Space>
+      </Card>
 
       <Card bordered={false} className="erp-list-table-card erp-card-logo-divider">
         <Table
