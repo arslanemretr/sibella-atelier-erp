@@ -4,22 +4,13 @@ import {
 } from "antd";
 import { DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
 import {
-  Bar, CartesianGrid, Cell, ComposedChart,
-  Legend, Line, Pie, PieChart, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
+  Bar, CartesianGrid, ComposedChart,
+  Legend, Line, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
 } from "recharts";
 import * as XLSX from "xlsx";
 import { requestJson } from "../apiClient";
 
 const { Title, Text } = Typography;
-
-const C = {
-  sibellaPos:   "#1677ff",
-  tedarikciPos: "#adc6ff",
-  storeGross:   "#52c41a",
-  storeService: "#13c2c2",
-  storeComm:    "#fa8c16",
-  totalCiro:    "#722ed1",
-};
 
 function fmt(v) {
   return new Intl.NumberFormat("tr-TR", {
@@ -67,6 +58,16 @@ function PeriodPicker({ monthVal, yearVal, onMonth, onYear }) {
   );
 }
 
+// Özet kart alt satırı
+function CardRow({ label, value, color }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, lineHeight: 1.8 }}>
+      <Text type="secondary">{label}</Text>
+      <Text style={color ? { color } : undefined}>{fmt(value)}</Text>
+    </div>
+  );
+}
+
 export default function ConsolidatedSalesReportPage() {
   const [data,    setData]    = React.useState(null);
   const [loading, setLoading] = React.useState(false);
@@ -94,24 +95,15 @@ export default function ConsolidatedSalesReportPage() {
 
   const s = data?.summary || {};
 
-  // ── Aylık chart: Şarköy + Mağazalar bars, Toplam Ciro line ───────────────
+  // ── Aylık chart ────────────────────────────────────────────────────────────
   const monthlyChart = React.useMemo(() => {
     if (!data) return [];
     const map = {};
     (data.posMonthly || []).forEach((r) => {
-      map[r.periodKey] = {
-        key: r.periodKey,
-        label: periodLabel(r.periodKey),
-        posTotal:  r.posTotal,
-        storeGross: 0,
-        totalCiro:  0,
-      };
+      map[r.periodKey] = { key: r.periodKey, label: periodLabel(r.periodKey), posTotal: r.posTotal, storeGross: 0 };
     });
     (data.storeMonthly || []).forEach((r) => {
-      if (!map[r.periodKey]) map[r.periodKey] = {
-        key: r.periodKey, label: periodLabel(r.periodKey),
-        posTotal: 0, storeGross: 0, totalCiro: 0,
-      };
+      if (!map[r.periodKey]) map[r.periodKey] = { key: r.periodKey, label: periodLabel(r.periodKey), posTotal: 0, storeGross: 0 };
       map[r.periodKey].storeGross = r.grossStoreSales;
     });
     return Object.values(map)
@@ -119,31 +111,20 @@ export default function ConsolidatedSalesReportPage() {
       .map((r) => ({ ...r, totalCiro: r.posTotal + r.storeGross }));
   }, [data]);
 
-  // ── Pasta verileri ────────────────────────────────────────────────────────
-  const posPieData = s.posTotal > 0 ? [
-    { name: "Sibella",    value: s.sibellaPosTotal,    fill: C.sibellaPos },
-    { name: "Tedarikçi",  value: s.tedarikciPosTotal,  fill: C.tedarikciPos },
-  ].filter((d) => d.value > 0) : [];
-
-  const storePieData = s.grossStoreTotal > 0 ? [
-    { name: "Sibella Hakediş",  value: s.invoiceTotal,    fill: C.storeService },
-    { name: "Mağaza Komisyonu", value: s.storeCommission, fill: C.storeComm },
-  ].filter((d) => d.value > 0) : [];
-
-  // ── Excel export ──────────────────────────────────────────────────────────
+  // ── Excel ──────────────────────────────────────────────────────────────────
   const handleExport = () => {
     if (!data) return;
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
       ["Gösterge", "Tutar"],
-      ["Şarköy Toplam Satış",     s.posTotal],
-      ["  — Sibella Satış",       s.sibellaPosTotal],
-      ["  — Tedarikçi Satış",     s.tedarikciPosTotal],
-      ["Mağazalar Toplam Satış",  s.grossStoreTotal],
-      ["  — Sibella Hakediş",     s.invoiceTotal],
-      ["  — Mağaza Komisyonu",    s.storeCommission],
-      ["Toplam Ciro",             s.totalCiro],
-      ["Net Sibella Ciro",        s.netSibellaCiro],
+      ["Şarköy Toplam Satış",    s.posTotal],
+      ["  — Sibella Satış",      s.sibellaPosTotal],
+      ["  — Tedarikçi Satış",    s.tedarikciPosTotal],
+      ["Mağazalar Toplam Satış", s.grossStoreTotal],
+      ["  — Sibella Hakediş",    s.invoiceTotal],
+      ["  — Mağaza Komisyon",    s.storeCommission],
+      ["Toplam Ciro",            s.totalCiro],
+      ["Net Sibella Ciro",       s.netSibellaCiro],
     ]), "Özet");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
       ["Dönem", "Şarköy Toplam", "Mağazalar Toplam", "Toplam Ciro"],
@@ -151,92 +132,80 @@ export default function ConsolidatedSalesReportPage() {
     ]), "Aylık");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
       ["Mağaza", "Komisyon %", "Brüt Satış", "Sibella Hakediş", "Mağaza Komisyon"],
-      ...(data.storeBreakdown || []).map((r) => [
-        r.storeName, r.commissionRate, r.grossStoreSales, r.invoiceTotal, r.commissionAmount,
-      ]),
+      ...(data.storeBreakdown || []).map((r) => [r.storeName, r.commissionRate, r.grossStoreSales, r.invoiceTotal, r.commissionAmount]),
     ]), "Mağaza");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ["Tedarikçi", "Sibella mi?", "Adet", "POS Satış"],
+      ["Tedarikçi", "Komisyon %", "Brüt Satış", "Sibella Payı", "Tedarikçi Payı"],
       ...(data.posSupplierBreakdown || []).map((r) => [
-        r.supplierName, r.isSibella ? "Evet" : "Hayır", r.totalQuantity, r.totalAmount,
+        r.supplierName, r.isSibella ? 100 : r.commissionRate,
+        r.totalAmount,
+        r.isSibella ? r.totalAmount : r.sibellaCommission,
+        r.isSibella ? 0 : r.totalAmount - r.sibellaCommission,
       ]),
     ]), "POS Tedarikçi");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ["Kat.1", "Kat.2", "Kat.3", "Adet", "Tutar"],
-      ...(data.categoryBreakdown || []).map((r) => [
-        r.level1, r.level2, r.level3, r.totalQuantity, r.totalAmount,
-      ]),
+      ["Kategori", "Adet", "Tutar"],
+      ...(data.categoryBreakdown || []).map((r) => [r.category, r.totalQuantity, r.totalAmount]),
     ]), "Kategori");
     XLSX.writeFile(wb, `konsolide-satis-${periodFrom}-${periodTo}.xlsx`);
   };
 
-  // ── Mağaza tablosu sütunları ──────────────────────────────────────────────
-  // Sibella Hakediş = invoice_total (KDV dahil fatura = mağazanın Sibella'ya ödediği)
-  // Mağaza Komisyon = gross - invoice_total
-  // %50 komisyon → invoice_total = komisyon = gross / 2  ✓
+  // ── Mağaza tablosu ─────────────────────────────────────────────────────────
   const storeCols = [
-    {
-      title: "Mağaza",
-      dataIndex: "storeName",
-      sorter: (a, b) => a.storeName.localeCompare(b.storeName, "tr"),
-    },
-    {
-      title: "Kom.%", width: 80, dataIndex: "commissionRate", align: "center",
+    { title: "Mağaza",          dataIndex: "storeName",        key: "storeName",
+      sorter: (a, b) => a.storeName.localeCompare(b.storeName, "tr") },
+    { title: "Kom.%", width: 80, dataIndex: "commissionRate",  key: "commissionRate", align: "center",
       sorter: (a, b) => a.commissionRate - b.commissionRate,
-      render: (v) => <Tag color="orange">%{v}</Tag>,
-    },
-    {
-      title: "Brüt Satış", dataIndex: "grossStoreSales", align: "right",
+      render: (v) => <Tag color="default">%{v}</Tag> },
+    { title: "Brüt Satış",      dataIndex: "grossStoreSales",  key: "grossStoreSales", align: "right",
       sorter: (a, b) => a.grossStoreSales - b.grossStoreSales,
-      render: (v) => <Text strong>{fmt(v)}</Text>,
-    },
-    {
-      title: "Sibella Hakediş", dataIndex: "invoiceTotal", align: "right",
-      sorter: (a, b) => a.invoiceTotal - b.invoiceTotal,
-      render: (v) => <Text style={{ color: C.storeService }}>{fmt(v)}</Text>,
-    },
-    {
-      title: "Mağaza Komisyon", dataIndex: "commissionAmount", align: "right",
-      sorter: (a, b) => a.commissionAmount - b.commissionAmount,
-      render: (v) => <Text style={{ color: C.storeComm }}>{fmt(v)}</Text>,
-    },
+      render: (v) => <Text strong>{fmt(v)}</Text> },
+    { title: "Sibella Hakediş", dataIndex: "invoiceTotal",     key: "invoiceTotal", align: "right",
+      sorter: (a, b) => a.invoiceTotal - b.invoiceTotal, render: fmt },
+    { title: "Mağaza Komisyon", dataIndex: "commissionAmount", key: "commissionAmount", align: "right",
+      sorter: (a, b) => a.commissionAmount - b.commissionAmount, render: fmt },
   ];
 
+  // ── POS tedarikçi tablosu — aynı kolon sırası ─────────────────────────────
+  // Sibella Atelier için sibella payı = brüt satış (tamamı Sibella'ya ait)
   const supplierCols = [
-    {
-      title: "Tedarikçi", dataIndex: "supplierName",
-      sorter: (a, b) => String(a.supplierName).localeCompare(String(b.supplierName), "tr"),
-      render: (v, r) => r.isSibella
-        ? <Text strong style={{ color: C.sibellaPos }}>{v}</Text>
-        : v,
-    },
-    { title: "Adet", dataIndex: "totalQuantity", align: "center", width: 80,
-      sorter: (a, b) => a.totalQuantity - b.totalQuantity },
-    { title: "POS Satış", dataIndex: "totalAmount", align: "right",
-      sorter: (a, b) => a.totalAmount - b.totalAmount, render: fmt },
-    { title: "Kom.%", dataIndex: "commissionRate", align: "center", width: 80,
-      sorter: (a, b) => a.commissionRate - b.commissionRate,
-      render: (v, r) => r.isSibella ? <Text type="secondary">—</Text> : <Tag color="orange">%{v}</Tag> },
-    { title: "Sibella Payı", dataIndex: "sibellaCommission", align: "right",
-      sorter: (a, b) => a.sibellaCommission - b.sibellaCommission,
-      render: (v, r) => r.isSibella
-        ? <Text type="secondary">—</Text>
-        : <Text style={{ color: C.sibellaPos }}>{fmt(v)}</Text> },
+    { title: "Tedarikçi",      key: "supplierName",    dataIndex: "supplierName",
+      sorter: (a, b) => String(a.supplierName).localeCompare(String(b.supplierName), "tr") },
+    { title: "Kom.%", width: 80, key: "commissionRate", align: "center",
+      sorter: (a, b) => (a.isSibella ? 100 : a.commissionRate) - (b.isSibella ? 100 : b.commissionRate),
+      render: (_, r) => r.isSibella
+        ? <Tag color="blue">%100</Tag>
+        : <Tag color="default">%{r.commissionRate}</Tag> },
+    { title: "Brüt Satış",    dataIndex: "totalAmount",       key: "totalAmount", align: "right",
+      sorter: (a, b) => a.totalAmount - b.totalAmount,
+      render: (v) => <Text strong>{fmt(v)}</Text> },
+    { title: "Sibella Payı",  key: "sibellaPay", align: "right",
+      sorter: (a, b) => {
+        const aV = a.isSibella ? a.totalAmount : a.sibellaCommission;
+        const bV = b.isSibella ? b.totalAmount : b.sibellaCommission;
+        return aV - bV;
+      },
+      render: (_, r) => fmt(r.isSibella ? r.totalAmount : r.sibellaCommission) },
+    { title: "Tedarikçi Payı", key: "tedarikciPay", align: "right",
+      sorter: (a, b) => {
+        const aV = a.isSibella ? 0 : a.totalAmount - a.sibellaCommission;
+        const bV = b.isSibella ? 0 : b.totalAmount - b.sibellaCommission;
+        return aV - bV;
+      },
+      render: (_, r) => r.isSibella
+        ? <Text type="secondary">₺0</Text>
+        : fmt(r.totalAmount - r.sibellaCommission) },
   ];
 
+  // ── Kategori tablosu ───────────────────────────────────────────────────────
   const catCols = [
-    { title: "Kat. 1", dataIndex: "level1",
-      sorter: (a, b) => String(a.level1 || "").localeCompare(String(b.level1 || ""), "tr") },
-    { title: "Kat. 2", dataIndex: "level2",
-      sorter: (a, b) => String(a.level2 || "").localeCompare(String(b.level2 || ""), "tr"),
-      render: (v) => v || <Text type="secondary">-</Text> },
-    { title: "Kat. 3", dataIndex: "level3",
-      sorter: (a, b) => String(a.level3 || "").localeCompare(String(b.level3 || ""), "tr"),
-      render: (v) => v || <Text type="secondary">-</Text> },
-    { title: "Adet", dataIndex: "totalQuantity", align: "center", width: 80,
+    { title: "Kategori",  dataIndex: "category",      key: "category",
+      sorter: (a, b) => String(a.category || "").localeCompare(String(b.category || ""), "tr") },
+    { title: "Adet",      dataIndex: "totalQuantity", key: "totalQuantity", align: "center", width: 80,
       sorter: (a, b) => a.totalQuantity - b.totalQuantity },
-    { title: "POS Satış", dataIndex: "totalAmount", align: "right",
-      sorter: (a, b) => a.totalAmount - b.totalAmount, render: fmt },
+    { title: "Tutar",     dataIndex: "totalAmount",   key: "totalAmount",   align: "right",
+      sorter: (a, b) => a.totalAmount - b.totalAmount,
+      render: (v) => <Text strong>{fmt(v)}</Text> },
   ];
 
   return (
@@ -272,145 +241,76 @@ export default function ConsolidatedSalesReportPage() {
         </Space>
       </Card>
 
-      {/* ── Kartlar ── */}
+      {/* ── Özet Kartlar ── */}
       <Row gutter={[16, 16]}>
-        {/* Şarköy */}
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic
-              title="Şarköy Toplam Satış"
-              value={s.posTotal || 0}
-              formatter={fmt}
-              valueStyle={{ color: C.sibellaPos }}
-            />
-            <div style={{ marginTop: 6, fontSize: 12, lineHeight: 1.8 }}>
-              <Text type="secondary">Sibella Satış: </Text>
-              <Text strong style={{ color: C.sibellaPos }}>{fmt(s.sibellaPosTotal)}</Text>
-              <br />
-              <Text type="secondary">Tedarikçi Satış: </Text>
-              <Text>{fmt(s.tedarikciPosTotal)}</Text>
+            <Statistic title="Şarköy Toplam Satış" value={s.posTotal || 0} formatter={fmt} />
+            <div style={{ marginTop: 8, borderTop: "1px solid #f0f0f0", paddingTop: 8 }}>
+              <CardRow label="Sibella Satış:"   value={s.sibellaPosTotal} />
+              <CardRow label="Tedarikçi Satış:" value={s.tedarikciPosTotal} />
             </div>
           </Card>
         </Col>
 
-        {/* Mağazalar */}
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic
-              title="Mağazalar Toplam Satış"
-              value={s.grossStoreTotal || 0}
-              formatter={fmt}
-              valueStyle={{ color: C.storeGross }}
-            />
-            <div style={{ marginTop: 6, fontSize: 12, lineHeight: 1.8 }}>
-              <Text type="secondary">Sibella Hakediş: </Text>
-              <Text strong style={{ color: C.storeService }}>{fmt(s.invoiceTotal)}</Text>
-              <br />
-              <Text type="secondary">Mağaza Komisyon: </Text>
-              <Text style={{ color: C.storeComm }}>{fmt(s.storeCommission)}</Text>
+            <Statistic title="Mağazalar Toplam Satış" value={s.grossStoreTotal || 0} formatter={fmt} />
+            <div style={{ marginTop: 8, borderTop: "1px solid #f0f0f0", paddingTop: 8 }}>
+              <CardRow label="Sibella Hakediş:" value={s.invoiceTotal} />
+              <CardRow label="Mağaza Komisyon:" value={s.storeCommission} />
             </div>
           </Card>
         </Col>
 
-        {/* Toplam Ciro */}
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderColor: C.totalCiro }}>
+          <Card>
             <Statistic
               title="Toplam Ciro"
               value={s.totalCiro || 0}
               formatter={fmt}
-              valueStyle={{ color: C.totalCiro, fontWeight: 700 }}
+              valueStyle={{ fontWeight: 700 }}
             />
-            <div style={{ marginTop: 6, fontSize: 12, lineHeight: 1.8 }}>
-              <Text type="secondary">Şarköy Toplam: </Text>
-              <Text>{fmt(s.posTotal)}</Text>
-              <br />
-              <Text type="secondary">Mağazalar Toplam: </Text>
-              <Text>{fmt(s.grossStoreTotal)}</Text>
+            <div style={{ marginTop: 8, borderTop: "1px solid #f0f0f0", paddingTop: 8 }}>
+              <CardRow label="Şarköy Toplam:"   value={s.posTotal} />
+              <CardRow label="Mağazalar Toplam:" value={s.grossStoreTotal} />
             </div>
           </Card>
         </Col>
 
-        {/* Net Sibella */}
         <Col xs={24} sm={12} lg={6}>
           <Card>
-            <Statistic
-              title="Net Sibella Ciro"
-              value={s.netSibellaCiro || 0}
-              formatter={fmt}
-              valueStyle={{ color: "#13c2c2" }}
-            />
-            <div style={{ marginTop: 6, fontSize: 12, lineHeight: 1.8 }}>
-              <Text type="secondary">Şarköy Hakediş: </Text>
-              <Text>{fmt(s.sarkoyHakEdis)}</Text>
-              <br />
-              <Text type="secondary">Mağaza Hakediş: </Text>
-              <Text>{fmt(s.invoiceTotal)}</Text>
+            <Statistic title="Net Sibella Ciro" value={s.netSibellaCiro || 0} formatter={fmt} />
+            <div style={{ marginTop: 8, borderTop: "1px solid #f0f0f0", paddingTop: 8 }}>
+              <CardRow label="Şarköy Hakediş:" value={s.sarkoyHakEdis} />
+              <CardRow label="Mağaza Hakediş:" value={s.invoiceTotal} />
             </div>
           </Card>
         </Col>
       </Row>
 
-      {/* ── Aylık Grafik: bar + çizgi ── */}
+      {/* ── Aylık Grafik ── */}
       {monthlyChart.length > 0 && (
         <Card title="Aylık Ciro Dağılımı">
-          <ResponsiveContainer width="100%" height={320}>
-            <ComposedChart data={monthlyChart} margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={monthlyChart} margin={{ top: 8, right: 32, left: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis yAxisId="left" tickFormatter={(v) => `₺${(v / 1000).toFixed(0)}K`} tick={{ fontSize: 11 }} />
-              <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `₺${(v / 1000).toFixed(0)}K`} tick={{ fontSize: 11 }} />
+              <YAxis yAxisId="bar" tickFormatter={(v) => `₺${(v / 1000).toFixed(0)}K`} tick={{ fontSize: 11 }} />
+              <YAxis yAxisId="line" orientation="right" tickFormatter={(v) => `₺${(v / 1000).toFixed(0)}K`} tick={{ fontSize: 11 }} />
               <RTooltip formatter={(v, name) => [fmt(v), name]} />
               <Legend />
-              <Bar    yAxisId="left"  dataKey="posTotal"   name="Şarköy Toplam Satış"    fill={C.sibellaPos}  radius={[3, 3, 0, 0]} />
-              <Bar    yAxisId="left"  dataKey="storeGross" name="Mağazalar Toplam Satış"  fill={C.storeGross}  radius={[3, 3, 0, 0]} />
-              <Line   yAxisId="right" dataKey="totalCiro"  name="Toplam Ciro"
-                type="monotone" stroke={C.totalCiro} strokeWidth={2.5}
-                dot={{ r: 4, fill: C.totalCiro }} activeDot={{ r: 6 }} />
+              <Bar    yAxisId="bar"  dataKey="posTotal"   name="Şarköy Toplam Satış"   fill="#1677ff" radius={[3, 3, 0, 0]} />
+              <Bar    yAxisId="bar"  dataKey="storeGross" name="Mağazalar Toplam Satış" fill="#52c41a" radius={[3, 3, 0, 0]} />
+              <Line   yAxisId="line" dataKey="totalCiro"  name="Toplam Ciro"
+                type="monotone" stroke="#722ed1" strokeWidth={2.5}
+                dot={{ r: 4, fill: "#722ed1" }} activeDot={{ r: 6 }} />
             </ComposedChart>
           </ResponsiveContainer>
         </Card>
       )}
 
-      {/* ── Pasta Grafikler ── */}
-      {(posPieData.length > 0 || storePieData.length > 0) && (
-        <Row gutter={[16, 16]}>
-          {posPieData.length > 0 && (
-            <Col xs={24} md={12}>
-              <Card title="Şarköy POS — Ürün Dağılımı">
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={posPieData} dataKey="value" nameKey="name"
-                      cx="50%" cy="50%" outerRadius={80}
-                      label={({ name, percent }) => `${name} %${(percent * 100).toFixed(0)}`}>
-                      {posPieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                    </Pie>
-                    <RTooltip formatter={(v) => fmt(v)} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </Card>
-            </Col>
-          )}
-          {storePieData.length > 0 && (
-            <Col xs={24} md={12}>
-              <Card title="Mağaza Satışları — Gelir Dağılımı">
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={storePieData} dataKey="value" nameKey="name"
-                      cx="50%" cy="50%" outerRadius={80}
-                      label={({ name, percent }) => `${name} %${(percent * 100).toFixed(0)}`}>
-                      {storePieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                    </Pie>
-                    <RTooltip formatter={(v) => fmt(v)} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </Card>
-            </Col>
-          )}
-        </Row>
-      )}
-
-      {/* ── Mağaza Tablosu ── */}
+      {/* ── Mağaza Bazlı Özet ── */}
       {(data?.storeBreakdown?.length > 0) && (
         <Card title="Mağaza Bazlı Özet">
           <Table
@@ -422,8 +322,8 @@ export default function ConsolidatedSalesReportPage() {
             loading={loading}
             summary={(rows) => {
               const t = rows.reduce((acc, r) => ({
-                grossStoreSales: acc.grossStoreSales + r.grossStoreSales,
-                invoiceTotal:    acc.invoiceTotal + r.invoiceTotal,
+                grossStoreSales:  acc.grossStoreSales  + r.grossStoreSales,
+                invoiceTotal:     acc.invoiceTotal     + r.invoiceTotal,
                 commissionAmount: acc.commissionAmount + r.commissionAmount,
               }), { grossStoreSales: 0, invoiceTotal: 0, commissionAmount: 0 });
               return (
@@ -431,12 +331,8 @@ export default function ConsolidatedSalesReportPage() {
                   <Table.Summary.Cell>Toplam</Table.Summary.Cell>
                   <Table.Summary.Cell />
                   <Table.Summary.Cell align="right"><Text strong>{fmt(t.grossStoreSales)}</Text></Table.Summary.Cell>
-                  <Table.Summary.Cell align="right">
-                    <Text style={{ color: C.storeService }}>{fmt(t.invoiceTotal)}</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell align="right">
-                    <Text style={{ color: C.storeComm }}>{fmt(t.commissionAmount)}</Text>
-                  </Table.Summary.Cell>
+                  <Table.Summary.Cell align="right">{fmt(t.invoiceTotal)}</Table.Summary.Cell>
+                  <Table.Summary.Cell align="right">{fmt(t.commissionAmount)}</Table.Summary.Cell>
                 </Table.Summary.Row>
               );
             }}
@@ -444,7 +340,7 @@ export default function ConsolidatedSalesReportPage() {
         </Card>
       )}
 
-      {/* ── POS Tedarikçi Kırılımı ── */}
+      {/* ── Şarköy POS Tedarikçi Kırılımı ── */}
       {(data?.posSupplierBreakdown?.length > 0) && (
         <Card title="Şarköy POS — Tedarikçi Kırılımı">
           <Table
@@ -454,6 +350,22 @@ export default function ConsolidatedSalesReportPage() {
             pagination={false}
             size="small"
             loading={loading}
+            summary={(rows) => {
+              const t = rows.reduce((acc, r) => ({
+                totalAmount:   acc.totalAmount   + r.totalAmount,
+                sibellaPay:    acc.sibellaPay    + (r.isSibella ? r.totalAmount : r.sibellaCommission),
+                tedarikciPay:  acc.tedarikciPay  + (r.isSibella ? 0 : r.totalAmount - r.sibellaCommission),
+              }), { totalAmount: 0, sibellaPay: 0, tedarikciPay: 0 });
+              return (
+                <Table.Summary.Row style={{ fontWeight: 600, background: "#fafafa" }}>
+                  <Table.Summary.Cell>Toplam</Table.Summary.Cell>
+                  <Table.Summary.Cell />
+                  <Table.Summary.Cell align="right"><Text strong>{fmt(t.totalAmount)}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell align="right">{fmt(t.sibellaPay)}</Table.Summary.Cell>
+                  <Table.Summary.Cell align="right">{fmt(t.tedarikciPay)}</Table.Summary.Cell>
+                </Table.Summary.Row>
+              );
+            }}
           />
         </Card>
       )}
@@ -462,12 +374,25 @@ export default function ConsolidatedSalesReportPage() {
       {(data?.categoryBreakdown?.length > 0) && (
         <Card title="Kategori Kırılımı — Sibella Ürünleri (POS)">
           <Table
-            rowKey={(r) => `${r.level1}|${r.level2}|${r.level3}`}
+            rowKey="category"
             dataSource={data.categoryBreakdown}
             columns={catCols}
             pagination={{ pageSize: 20, showSizeChanger: false }}
             size="small"
             loading={loading}
+            summary={(rows) => {
+              const t = rows.reduce((acc, r) => ({
+                totalQuantity: acc.totalQuantity + r.totalQuantity,
+                totalAmount:   acc.totalAmount   + r.totalAmount,
+              }), { totalQuantity: 0, totalAmount: 0 });
+              return (
+                <Table.Summary.Row style={{ fontWeight: 600, background: "#fafafa" }}>
+                  <Table.Summary.Cell>Toplam</Table.Summary.Cell>
+                  <Table.Summary.Cell align="center">{t.totalQuantity}</Table.Summary.Cell>
+                  <Table.Summary.Cell align="right"><Text strong>{fmt(t.totalAmount)}</Text></Table.Summary.Cell>
+                </Table.Summary.Row>
+              );
+            }}
           />
         </Card>
       )}

@@ -174,13 +174,14 @@ export async function handleConsolidatedSalesReport(req, res) {
       [periodFrom, periodTo],
     );
 
-    // ── 5. Kategori kırılımı (POS, Sibella ürünleri) ─────────────────────────
+    // ── 5. Kategori kırılımı — sadece level3, tüm Sibella POS ürünleri ────────
     const categoryBreakdown = await sqlMany(
       `
       SELECT
-        COALESCE(c.level1, 'Tanımsız')   AS level1,
-        COALESCE(c.level2, '')           AS level2,
-        COALESCE(c.level3, '')           AS level3,
+        COALESCE(NULLIF(TRIM(c.level3), ''),
+                 NULLIF(TRIM(c.level2), ''),
+                 NULLIF(TRIM(c.level1), ''),
+                 'Kategorisiz')          AS category,
         COALESCE(SUM(psl.quantity), 0)   AS total_quantity,
         COALESCE(SUM(psl.line_total), 0) AS total_amount
       FROM pos_sales ps
@@ -190,7 +191,7 @@ export async function handleConsolidatedSalesReport(req, res) {
       WHERE ps.sold_at >= $1::timestamptz
         AND ps.sold_at <  $2::timestamptz
         AND (p.supplier_id = ANY($3::text[]) OR p.supplier_id IS NULL)
-      GROUP BY c.level1, c.level2, c.level3
+      GROUP BY 1
       ORDER BY total_amount DESC
       `,
       [dateFrom, dateTo, sibellaSupplierIds],
@@ -263,9 +264,7 @@ export async function handleConsolidatedSalesReport(req, res) {
         sibellaCommission: Number(r.sibella_commission),
       })),
       categoryBreakdown: categoryBreakdown.map((r) => ({
-        level1:        r.level1,
-        level2:        r.level2,
-        level3:        r.level3,
+        category:      r.category,
         totalQuantity: Number(r.total_quantity),
         totalAmount:   Number(r.total_amount),
       })),
