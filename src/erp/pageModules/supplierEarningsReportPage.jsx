@@ -557,14 +557,25 @@ export default function SupplierEarningsReportPage() {
             locale={{ emptyText: "Secili tedarikci ve donem icin satis bulunamadi." }}
             scroll={{ x: 'max-content' }}
             columns={[
-              { title: "Urun Kodu", dataIndex: "productCode", key: "productCode", width: 120 },
-              { title: "Urun Adi", dataIndex: "productName", key: "productName", width: 220 },
-              { title: "Satis Adet", dataIndex: "salesQuantity", key: "salesQuantity", width: 110, align: "right" },
-              { title: "Iade", dataIndex: "returnQuantity", key: "returnQuantity", width: 90, align: "right" },
-              { title: "Net Adet", dataIndex: "netQuantity", key: "netQuantity", width: 100, align: "right" },
-              { title: "Satis Tutari", dataIndex: "salesAmount", key: "salesAmount", width: 140, align: "right", render: (value) => formatSupplierReportMoney(value) },
-              { title: "Komisyon", dataIndex: "commissionAmount", key: "commissionAmount", width: 140, align: "right", render: (value) => formatSupplierReportMoney(value) },
-              { title: "Hakedis", dataIndex: "netAmount", key: "netAmount", width: 140, align: "right", render: (value) => <Text strong>{formatSupplierReportMoney(value)}</Text> },
+              { title: "Urun Kodu", dataIndex: "productCode", key: "productCode", width: 120,
+                sorter: (a, b) => String(a.productCode || "").localeCompare(String(b.productCode || ""), "tr") },
+              { title: "Urun Adi", dataIndex: "productName", key: "productName", width: 220,
+                sorter: (a, b) => String(a.productName || "").localeCompare(String(b.productName || ""), "tr") },
+              { title: "Satis Adet", dataIndex: "salesQuantity", key: "salesQuantity", width: 110, align: "right",
+                sorter: (a, b) => Number(a.salesQuantity || 0) - Number(b.salesQuantity || 0) },
+              { title: "Iade", dataIndex: "returnQuantity", key: "returnQuantity", width: 90, align: "right",
+                sorter: (a, b) => Number(a.returnQuantity || 0) - Number(b.returnQuantity || 0) },
+              { title: "Net Adet", dataIndex: "netQuantity", key: "netQuantity", width: 100, align: "right",
+                sorter: (a, b) => Number(a.netQuantity || 0) - Number(b.netQuantity || 0) },
+              { title: "Satis Tutari", dataIndex: "salesAmount", key: "salesAmount", width: 140, align: "right",
+                sorter: (a, b) => Number(a.salesAmount || 0) - Number(b.salesAmount || 0),
+                render: (value) => formatSupplierReportMoney(value) },
+              { title: "Komisyon", dataIndex: "commissionAmount", key: "commissionAmount", width: 140, align: "right",
+                sorter: (a, b) => Number(a.commissionAmount || 0) - Number(b.commissionAmount || 0),
+                render: (value) => formatSupplierReportMoney(value) },
+              { title: "Hakedis", dataIndex: "netAmount", key: "netAmount", width: 140, align: "right",
+                sorter: (a, b) => Number(a.netAmount || 0) - Number(b.netAmount || 0),
+                render: (value) => <Text strong>{formatSupplierReportMoney(value)}</Text> },
             ]}
           />
         </Card>

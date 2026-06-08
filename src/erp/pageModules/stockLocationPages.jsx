@@ -46,6 +46,7 @@ export function StockLocationListPage() {
       dataIndex: "name",
       key: "name",
       width: 180,
+      sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr"),
       render: (value) => <Text strong>{value}</Text>,
     },
     {
@@ -53,6 +54,7 @@ export function StockLocationListPage() {
       dataIndex: "storeName",
       key: "storeName",
       width: 160,
+      sorter: (a, b) => String(a.storeName || "").localeCompare(String(b.storeName || ""), "tr"),
       render: (value) => value || "-",
     },
     {
@@ -60,6 +62,7 @@ export function StockLocationListPage() {
       dataIndex: "isDefaultMain",
       key: "isDefaultMain",
       width: 90,
+      sorter: (a, b) => String(a.isDefaultMain || "").localeCompare(String(b.isDefaultMain || ""), "tr"),
       render: (value) => <Tag color={value ? "blue" : "default"}>{value ? "Evet" : "Hayir"}</Tag>,
     },
     {
@@ -67,12 +70,14 @@ export function StockLocationListPage() {
       dataIndex: "productVariety",
       key: "productVariety",
       width: 110,
+      sorter: (a, b) => Number(a.productVariety || 0) - Number(b.productVariety || 0),
     },
     {
       title: "Toplam Adet",
       dataIndex: "totalQuantity",
       key: "totalQuantity",
       width: 110,
+      sorter: (a, b) => Number(a.totalQuantity || 0) - Number(b.totalQuantity || 0),
     },
   ];
 
@@ -126,9 +131,12 @@ export function StockLocationListPage() {
               dataSource={balances}
               locale={{ emptyText: "Pozitif bakiye yok." }}
               columns={[
-                { title: "Urun Kodu", dataIndex: "productCode", key: "productCode", width: 120 },
-                { title: "Urun Adi", dataIndex: "productName", key: "productName", width: 200 },
-                { title: "Adet", dataIndex: "quantity", key: "quantity", width: 100 },
+                { title: "Urun Kodu", dataIndex: "productCode", key: "productCode", width: 120,
+                  sorter: (a, b) => String(a.productCode || "").localeCompare(String(b.productCode || ""), "tr") },
+                { title: "Urun Adi", dataIndex: "productName", key: "productName", width: 200,
+                  sorter: (a, b) => String(a.productName || "").localeCompare(String(b.productName || ""), "tr") },
+                { title: "Adet", dataIndex: "quantity", key: "quantity", width: 100,
+                  sorter: (a, b) => Number(a.quantity || 0) - Number(b.quantity || 0) },
               ]}
             />
           </Space>

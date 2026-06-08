@@ -62,6 +62,7 @@ export function StoreListPage() {
               dataIndex: "code",
               key: "code",
               width: 120,
+              sorter: (a, b) => String(a.code || "").localeCompare(String(b.code || ""), "tr"),
               render: (value, record) => (
                 <button
                   type="button"
@@ -75,13 +76,16 @@ export function StoreListPage() {
                 </button>
               ),
             },
-            { title: "Magaza Adi", dataIndex: "name", key: "name", width: 180 },
-            { title: "VKN", dataIndex: "taxNumber", key: "taxNumber", width: 130 },
+            { title: "Magaza Adi", dataIndex: "name", key: "name", width: 180,
+              sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr") },
+            { title: "VKN", dataIndex: "taxNumber", key: "taxNumber", width: 130,
+              sorter: (a, b) => String(a.taxNumber || "").localeCompare(String(b.taxNumber || ""), "tr") },
             {
               title: "Komisyon",
               dataIndex: "commissionRate",
               key: "commissionRate",
               width: 100,
+              sorter: (a, b) => Number(a.commissionRate || 0) - Number(b.commissionRate || 0),
               render: (value) => `%${Number(value || 0).toFixed(2)}`,
             },
             {
@@ -89,9 +93,11 @@ export function StoreListPage() {
               dataIndex: "paymentDueDays",
               key: "paymentDueDays",
               width: 110,
+              sorter: (a, b) => Number(a.paymentDueDays || 0) - Number(b.paymentDueDays || 0),
               render: (value) => value !== null && value !== undefined ? `${value} gün` : <Text type="secondary">-</Text>,
             },
-            { title: "Stok Yeri", dataIndex: "stockLocationName", key: "stockLocationName", width: 160 },
+            { title: "Stok Yeri", dataIndex: "stockLocationName", key: "stockLocationName", width: 160,
+              sorter: (a, b) => String(a.stockLocationName || "").localeCompare(String(b.stockLocationName || ""), "tr") },
             {
               title: "Islemler",
               key: "actions",

@@ -488,13 +488,23 @@ export default function ConsolidatedEarningsReportPage() {
             locale={{ emptyText: "Secili donem icin raporlanacak hakedis satiri bulunamadi." }}
             scroll={{ x: 'max-content' }}
             columns={[
-              { title: "Tedarikci", dataIndex: "supplierName", key: "supplierName", width: 220 },
-              { title: "Donem", dataIndex: "periodLabel", key: "periodLabel", width: 150 },
-              { title: "Toplam Satis", dataIndex: "grossTotal", key: "grossTotal", width: 150, render: (value) => formatMoney(value) },
-              { title: "Iade", dataIndex: "returnTotal", key: "returnTotal", width: 140, render: (value) => (value ? <span style={{ color: "#cf1322" }}>-{formatMoney(value)}</span> : "-") },
-              { title: "Net Satis", dataIndex: "netTotal", key: "netTotal", width: 150, render: (value) => formatMoney(value) },
+              { title: "Tedarikci", dataIndex: "supplierName", key: "supplierName", width: 220,
+                sorter: (a, b) => String(a.supplierName || "").localeCompare(String(b.supplierName || ""), "tr") },
+              { title: "Donem", dataIndex: "periodLabel", key: "periodLabel", width: 150,
+                sorter: (a, b) => String(a.periodKey || "").localeCompare(String(b.periodKey || "")) },
+              { title: "Toplam Satis", dataIndex: "grossTotal", key: "grossTotal", width: 150,
+                sorter: (a, b) => Number(a.grossTotal || 0) - Number(b.grossTotal || 0),
+                render: (value) => formatMoney(value) },
+              { title: "Iade", dataIndex: "returnTotal", key: "returnTotal", width: 140,
+                sorter: (a, b) => Number(a.returnTotal || 0) - Number(b.returnTotal || 0),
+                render: (value) => (value ? <span style={{ color: "#cf1322" }}>-{formatMoney(value)}</span> : "-") },
+              { title: "Net Satis", dataIndex: "netTotal", key: "netTotal", width: 150,
+                sorter: (a, b) => Number(a.netTotal || 0) - Number(b.netTotal || 0),
+                render: (value) => formatMoney(value) },
               { title: "Komisyon", key: "commissionAmount", width: 150, render: (_, row) => formatMoney(Number(row.netTotal || 0) - Number(row.earningsTotal || 0)) },
-              { title: "Hakedis", dataIndex: "earningsTotal", key: "earningsTotal", width: 150, render: (value) => formatMoney(value) },
+              { title: "Hakedis", dataIndex: "earningsTotal", key: "earningsTotal", width: 150,
+                sorter: (a, b) => Number(a.earningsTotal || 0) - Number(b.earningsTotal || 0),
+                render: (value) => formatMoney(value) },
               {
                 title: "Odeme Son Tarihi",
                 key: "paymentDeadline",
@@ -506,6 +516,7 @@ export default function ConsolidatedEarningsReportPage() {
                 dataIndex: "status",
                 key: "status",
                 width: 150,
+                sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
                 render: (value) => {
                   const meta = EARNINGS_STATUS_META[value] || { color: "default" };
                   return <Tag color={meta.color}>{value}</Tag>;

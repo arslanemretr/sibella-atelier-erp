@@ -186,10 +186,16 @@ export function SalesReportPage() {
           pagination={false}
           locale={{ emptyText: "Veri bulunamadi." }}
           columns={[
-            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 200 },
-            { title: "Satılan Adet", dataIndex: "qty", key: "qty", align: "right", width: 120 },
-            { title: "Toplam Tutar", dataIndex: "total", key: "total", align: "right", width: 150, render: (v) => money(v) },
-            { title: "% Pay", dataIndex: "share", key: "share", align: "right", width: 80, render: (v) => `%${v}` },
+            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 200,
+              sorter: (a, b) => String(a.supplierName || "").localeCompare(String(b.supplierName || ""), "tr") },
+            { title: "Satılan Adet", dataIndex: "qty", key: "qty", align: "right", width: 120,
+              sorter: (a, b) => Number(a.qty || 0) - Number(b.qty || 0) },
+            { title: "Toplam Tutar", dataIndex: "total", key: "total", align: "right", width: 150,
+              sorter: (a, b) => Number(a.total || 0) - Number(b.total || 0),
+              render: (v) => money(v) },
+            { title: "% Pay", dataIndex: "share", key: "share", align: "right", width: 80,
+              sorter: (a, b) => Number(a.share || 0) - Number(b.share || 0),
+              render: (v) => `%${v}` },
           ]}
           summary={(data) => {
             const totalQty = data.reduce((s, r) => s + r.qty, 0);
@@ -215,11 +221,17 @@ export function SalesReportPage() {
           pagination={{ pageSize: 20, showSizeChanger: false }}
           locale={{ emptyText: "Veri bulunamadi." }}
           columns={[
-            { title: "Kod", dataIndex: "code", key: "code", width: 110 },
-            { title: "Ürün Adı", dataIndex: "name", key: "name", width: 200 },
-            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 180 },
-            { title: "Satılan Adet", dataIndex: "qty", key: "qty", align: "right", width: 110 },
-            { title: "Toplam Tutar", dataIndex: "total", key: "total", align: "right", width: 140, render: (v) => money(v) },
+            { title: "Kod", dataIndex: "code", key: "code", width: 110,
+              sorter: (a, b) => String(a.code || "").localeCompare(String(b.code || ""), "tr") },
+            { title: "Ürün Adı", dataIndex: "name", key: "name", width: 200,
+              sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr") },
+            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 180,
+              sorter: (a, b) => String(a.supplierName || "").localeCompare(String(b.supplierName || ""), "tr") },
+            { title: "Satılan Adet", dataIndex: "qty", key: "qty", align: "right", width: 110,
+              sorter: (a, b) => Number(a.qty || 0) - Number(b.qty || 0) },
+            { title: "Toplam Tutar", dataIndex: "total", key: "total", align: "right", width: 140,
+              sorter: (a, b) => Number(a.total || 0) - Number(b.total || 0),
+              render: (v) => money(v) },
           ]}
         />
       </Card>
@@ -233,9 +245,13 @@ export function SalesReportPage() {
           pagination={false}
           locale={{ emptyText: "Veri bulunamadi." }}
           columns={[
-            { title: "Ödeme Yöntemi", dataIndex: "method", key: "method", width: 160 },
-            { title: "İşlem Sayısı", dataIndex: "count", key: "count", align: "right", width: 120 },
-            { title: "Toplam Tutar", dataIndex: "total", key: "total", align: "right", width: 150, render: (v) => money(v) },
+            { title: "Ödeme Yöntemi", dataIndex: "method", key: "method", width: 160,
+              sorter: (a, b) => String(a.method || "").localeCompare(String(b.method || ""), "tr") },
+            { title: "İşlem Sayısı", dataIndex: "count", key: "count", align: "right", width: 120,
+              sorter: (a, b) => Number(a.count || 0) - Number(b.count || 0) },
+            { title: "Toplam Tutar", dataIndex: "total", key: "total", align: "right", width: 150,
+              sorter: (a, b) => Number(a.total || 0) - Number(b.total || 0),
+              render: (v) => money(v) },
           ]}
         />
       </Card>
@@ -372,15 +388,19 @@ export function StockReportPage() {
           pagination={{ pageSize: 50, showSizeChanger: false }}
           locale={{ emptyText: "Filtrelere uygun urun bulunamadi." }}
           columns={[
-            { title: "Kod", dataIndex: "code", key: "code", width: 110 },
-            { title: "Ürün Adı", dataIndex: "name", key: "name", width: 200 },
-            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 180 },
+            { title: "Kod", dataIndex: "code", key: "code", width: 110,
+              sorter: (a, b) => String(a.code || "").localeCompare(String(b.code || ""), "tr") },
+            { title: "Ürün Adı", dataIndex: "name", key: "name", width: 200,
+              sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr") },
+            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 180,
+              sorter: (a, b) => String(a.supplierName || "").localeCompare(String(b.supplierName || ""), "tr") },
             {
               title: "Mevcut Stok",
               dataIndex: "stock",
               key: "stock",
               align: "right",
               width: 120,
+              sorter: (a, b) => Number(a.stock || 0) - Number(b.stock || 0),
               render: (v) => Number(v || 0),
             },
             {
@@ -389,6 +409,7 @@ export function StockReportPage() {
               key: "cost",
               align: "right",
               width: 130,
+              sorter: (a, b) => Number(a.cost || 0) - Number(b.cost || 0),
               render: (v) => money(v),
             },
             {
@@ -397,6 +418,7 @@ export function StockReportPage() {
               key: "stockValue",
               align: "right",
               width: 140,
+              sorter: (a, b) => Number(a.stockValue || 0) - Number(b.stockValue || 0),
               render: (v) => money(v),
             },
             {
@@ -405,6 +427,7 @@ export function StockReportPage() {
               key: "status",
               align: "center",
               width: 110,
+              sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
               render: (v) => stockStatusTag(v),
             },
           ]}

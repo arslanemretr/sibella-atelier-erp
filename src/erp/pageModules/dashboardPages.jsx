@@ -198,11 +198,15 @@ export function DashboardPage() {
           dataSource={lowStockProducts}
           locale={{ emptyText: "Düşük stok uyarısı yok." }}
           columns={[
-            { title: "Kod", dataIndex: "code", key: "code", width: 100 },
-            { title: "Ürün Adı", dataIndex: "name", key: "name", width: 180 },
+            { title: "Kod", dataIndex: "code", key: "code", width: 100,
+              sorter: (a, b) => String(a.code || "").localeCompare(String(b.code || ""), "tr") },
+            { title: "Ürün Adı", dataIndex: "name", key: "name", width: 180,
+              sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr") },
             { title: "Stok", dataIndex: "stock", key: "stock", width: 70, align: "right",
+              sorter: (a, b) => Number(a.stock || 0) - Number(b.stock || 0),
               render: (v) => <span style={{ color: v <= 0 ? "#cf1322" : "#d46b08", fontWeight: 600 }}>{v}</span> },
-            { title: "Min.", dataIndex: "minStock", key: "minStock", width: 60, align: "right" },
+            { title: "Min.", dataIndex: "minStock", key: "minStock", width: 60, align: "right",
+              sorter: (a, b) => Number(a.minStock || 0) - Number(b.minStock || 0) },
           ]}
         />
       ),
@@ -247,10 +251,16 @@ export function DashboardPage() {
           dataSource={topProducts}
           locale={{ emptyText: "Bu dönemde satış yok." }}
           columns={[
-            { title: "Kod", dataIndex: "code", key: "code", width: 90 },
-            { title: "Ürün Adı", dataIndex: "name", key: "name", width: 180 },
-            { title: "Adet", dataIndex: "totalQty", key: "totalQty", width: 70, align: "right", render: (v) => <b>{v}</b> },
-            { title: "Tutar", dataIndex: "totalAmount", key: "totalAmount", width: 110, align: "right", render: (v) => formatMoney(v) },
+            { title: "Kod", dataIndex: "code", key: "code", width: 90,
+              sorter: (a, b) => String(a.code || "").localeCompare(String(b.code || ""), "tr") },
+            { title: "Ürün Adı", dataIndex: "name", key: "name", width: 180,
+              sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr") },
+            { title: "Adet", dataIndex: "totalQty", key: "totalQty", width: 70, align: "right",
+              sorter: (a, b) => Number(a.totalQty || 0) - Number(b.totalQty || 0),
+              render: (v) => <b>{v}</b> },
+            { title: "Tutar", dataIndex: "totalAmount", key: "totalAmount", width: 110, align: "right",
+              sorter: (a, b) => Number(a.totalAmount || 0) - Number(b.totalAmount || 0),
+              render: (v) => formatMoney(v) },
           ]}
         />
       ),
@@ -265,10 +275,15 @@ export function DashboardPage() {
           dataSource={recentPurchases}
           locale={{ emptyText: "Bu dönemde satın alma yok." }}
           columns={[
-            { title: "Belge No", dataIndex: "documentNo", key: "documentNo", width: 140 },
-            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 160 },
-            { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 60, align: "right" },
-            { title: "Tutar", dataIndex: "totalAmount", key: "totalAmount", width: 110, align: "right", render: (v) => formatMoney(v) },
+            { title: "Belge No", dataIndex: "documentNo", key: "documentNo", width: 140,
+              sorter: (a, b) => String(a.documentNo || "").localeCompare(String(b.documentNo || ""), "tr") },
+            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 160,
+              sorter: (a, b) => String(a.supplierName || "").localeCompare(String(b.supplierName || ""), "tr") },
+            { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 60, align: "right",
+              sorter: (a, b) => Number(a.lineCount || 0) - Number(b.lineCount || 0) },
+            { title: "Tutar", dataIndex: "totalAmount", key: "totalAmount", width: 110, align: "right",
+              sorter: (a, b) => Number(a.totalAmount || 0) - Number(b.totalAmount || 0),
+              render: (v) => formatMoney(v) },
           ]}
         />
       ),
@@ -541,13 +556,18 @@ export function DashboardPage() {
               locale={{ emptyText: "Bu dönemde satış kaydı yok." }}
               onRow={(r) => ({ onClick: () => navigate("/pos/orders"), style: { cursor: "pointer" } })}
               columns={[
-                { title: "Fiş No", dataIndex: "receiptNo", key: "receiptNo", width: 90 },
-                { title: "Müşteri", dataIndex: "customerName", key: "customerName", width: 150, ellipsis: true },
+                { title: "Fiş No", dataIndex: "receiptNo", key: "receiptNo", width: 90,
+                  sorter: (a, b) => String(a.receiptNo || "").localeCompare(String(b.receiptNo || ""), "tr") },
+                { title: "Müşteri", dataIndex: "customerName", key: "customerName", width: 150, ellipsis: true,
+                  sorter: (a, b) => String(a.customerName || "").localeCompare(String(b.customerName || ""), "tr") },
                 { title: "Ödeme", dataIndex: "paymentMethod", key: "paymentMethod", width: 90,
+                  sorter: (a, b) => String(a.paymentMethod || "").localeCompare(String(b.paymentMethod || ""), "tr"),
                   render: (v) => <Tag>{v}</Tag> },
                 { title: "Tutar", dataIndex: "grandTotal", key: "grandTotal", width: 110, align: "right",
+                  sorter: (a, b) => Number(a.grandTotal || 0) - Number(b.grandTotal || 0),
                   render: (v) => <Text strong style={{ color: "#1f9d66" }}>{formatMoney(v)}</Text> },
                 { title: "Tarih", dataIndex: "soldAt", key: "soldAt", width: 120,
+                  sorter: (a, b) => String(a.soldAt || "").localeCompare(String(b.soldAt || "")),
                   render: (v) => <Text type="secondary" style={{ fontSize: 12 }}>{formatDateTime(v)}</Text> },
               ]}
             />
@@ -586,9 +606,13 @@ export function DashboardPage() {
                 locale={{ emptyText: "Düşük stok yok." }}
                 onRow={(r) => ({ onClick: () => navigate(`/products/${r.id}`), style: { cursor: "pointer" } })}
                 columns={[
-                  { title: "Kod", dataIndex: "code", key: "code", width: 90, render: (v) => <Text code style={{ fontSize: 12 }}>{v}</Text> },
-                  { title: "Ürün", dataIndex: "name", key: "name", width: 160, ellipsis: true },
+                  { title: "Kod", dataIndex: "code", key: "code", width: 90,
+                    sorter: (a, b) => String(a.code || "").localeCompare(String(b.code || ""), "tr"),
+                    render: (v) => <Text code style={{ fontSize: 12 }}>{v}</Text> },
+                  { title: "Ürün", dataIndex: "name", key: "name", width: 160, ellipsis: true,
+                    sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr") },
                   { title: "Stok / Min", key: "stockMin", width: 90, align: "right",
+                    sorter: (a, b) => Number(a.stock || 0) - Number(b.stock || 0),
                     render: (_, r) => (
                       <span style={{ color: r.stock <= 0 ? "#cf1322" : "#d46b08", fontWeight: 600, fontSize: 13 }}>
                         {r.stock} / {r.minStock}
@@ -784,10 +808,16 @@ export function SupplierDashboardPage() {
               dataSource={deliveries.slice(0, 5)}
               locale={{ emptyText: "Henüz teslimat kaydınız bulunmuyor." }}
               columns={[
-                { title: "Teslimat No", dataIndex: "deliveryNo", key: "deliveryNo", width: 140 },
-                { title: "Sevk Tarihi", dataIndex: "date", key: "date", width: 120, render: (v) => formatDisplayDate(v) },
-                { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 70 },
-                { title: "Durum", dataIndex: "status", key: "status", width: 130, render: (v) => <Tag color={deliveryStatusColorMap[v] || "default"}>{v || "Taslak"}</Tag> },
+                { title: "Teslimat No", dataIndex: "deliveryNo", key: "deliveryNo", width: 140,
+                  sorter: (a, b) => String(a.deliveryNo || "").localeCompare(String(b.deliveryNo || ""), "tr") },
+                { title: "Sevk Tarihi", dataIndex: "date", key: "date", width: 120,
+                  sorter: (a, b) => String(a.date || "").localeCompare(String(b.date || "")),
+                  render: (v) => formatDisplayDate(v) },
+                { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 70,
+                  sorter: (a, b) => Number(a.lineCount || 0) - Number(b.lineCount || 0) },
+                { title: "Durum", dataIndex: "status", key: "status", width: 130,
+                  sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
+                  render: (v) => <Tag color={deliveryStatusColorMap[v] || "default"}>{v || "Taslak"}</Tag> },
               ]}
             />
           </Card>
@@ -801,9 +831,14 @@ export function SupplierDashboardPage() {
               dataSource={earningsSummaries}
               locale={{ emptyText: "Henüz hakedişe konu satış bulunmuyor." }}
               columns={[
-                { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130 },
-                { title: "Toplam Hakediş", dataIndex: "earningsTotal", key: "earningsTotal", width: 140, align: "right", render: (v) => formatEarningsMoney(v) },
-                { title: "Durum", dataIndex: "status", key: "status", width: 150, render: (v) => <Tag color={EARNINGS_STATUS_META[v]?.color || "default"}>{v}</Tag> },
+                { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130,
+                  sorter: (a, b) => String(a.periodKey || "").localeCompare(String(b.periodKey || "")) },
+                { title: "Toplam Hakediş", dataIndex: "earningsTotal", key: "earningsTotal", width: 140, align: "right",
+                  sorter: (a, b) => Number(a.earningsTotal || 0) - Number(b.earningsTotal || 0),
+                  render: (v) => formatEarningsMoney(v) },
+                { title: "Durum", dataIndex: "status", key: "status", width: 150,
+                  sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
+                  render: (v) => <Tag color={EARNINGS_STATUS_META[v]?.color || "default"}>{v}</Tag> },
               ]}
             />
           </Card>

@@ -265,6 +265,7 @@ export function StockListPage() {
       dataIndex: "movementTypeLabel",
       key: "movementTypeLabel",
       width: 140,
+      sorter: (a, b) => String(a.movementTypeLabel || a.movementType || "").localeCompare(String(b.movementTypeLabel || b.movementType || ""), "tr"),
       render: (_, record) => (
         <Tag color={record.affectsStock ? (record.direction === "OUT" ? "volcano" : "green") : "gold"}>
           {record.movementTypeLabel || record.movementType}
@@ -276,6 +277,7 @@ export function StockListPage() {
       dataIndex: "documentNo",
       key: "documentNo",
       width: 150,
+      sorter: (a, b) => String(a.documentNo || "").localeCompare(String(b.documentNo || ""), "tr"),
       render: (value, record) => (
         <button
           type="button"
@@ -294,6 +296,7 @@ export function StockListPage() {
       dataIndex: "stockLocationName",
       key: "stockLocationName",
       width: 160,
+      sorter: (a, b) => String(a.stockLocationName || "").localeCompare(String(b.stockLocationName || ""), "tr"),
       render: (value, record) => (
         <Space size={6}>
           <span>{value || "-"}</span>
@@ -306,6 +309,7 @@ export function StockListPage() {
       dataIndex: "productName",
       key: "productName",
       width: 200,
+      sorter: (a, b) => String(a.productName || "").localeCompare(String(b.productName || ""), "tr"),
       render: (_, record) => `${record.productCode} - ${record.productName}`,
     },
     {
@@ -314,6 +318,7 @@ export function StockListPage() {
       key: "quantitySignedDisplay",
       width: 90,
       align: "right",
+      sorter: (a, b) => Number(a.stockDelta || a.quantity || 0) - Number(b.stockDelta || b.quantity || 0),
       render: (_, record) => (
         <Tag color={!record.affectsStock ? "default" : record.direction === "OUT" ? "volcano" : "blue"}>
           {record.affectsStock ? record.quantitySignedDisplay : String(Number(record.quantity || 0))}
@@ -325,6 +330,7 @@ export function StockListPage() {
       dataIndex: "affectsStock",
       key: "affectsStock",
       width: 110,
+      sorter: (a, b) => Number(b.affectsStock || 0) - Number(a.affectsStock || 0),
       render: (value) => <Tag color={value ? "green" : "default"}>{value ? "Stok Etkiler" : "Bilgi"}</Tag>,
     },
     {
@@ -332,6 +338,7 @@ export function StockListPage() {
       dataIndex: "partyName",
       key: "partyName",
       width: 150,
+      sorter: (a, b) => String(a.partyName || a.sourceModule || "").localeCompare(String(b.partyName || b.sourceModule || ""), "tr"),
       render: (value, record) => value || record.sourceModule || "-",
     },
     {
@@ -340,6 +347,7 @@ export function StockListPage() {
       key: "totalAmountDisplay",
       width: 130,
       align: "right",
+      sorter: (a, b) => Number(a.totalAmount || 0) - Number(b.totalAmount || 0),
     },
     {
       title: "Islemler",

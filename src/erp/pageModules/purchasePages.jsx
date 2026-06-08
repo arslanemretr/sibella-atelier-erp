@@ -273,10 +273,14 @@ export function PurchaseListPage() {
                 rowKey="id"
                 pagination={false}
                 columns={[
-                  { title: "Urun", dataIndex: "productName", key: "productName", width: 200 },
-                  { title: "Miktar", dataIndex: "quantity", key: "quantity", width: 80 },
-                  { title: "Birim Fiyat", dataIndex: "unitPriceDisplay", key: "unitPriceDisplay", width: 120 },
-                  { title: "Not", dataIndex: "note", key: "note", width: 160 },
+                  { title: "Urun", dataIndex: "productName", key: "productName", width: 200,
+                    sorter: (a, b) => String(a.productName || "").localeCompare(String(b.productName || ""), "tr") },
+                  { title: "Miktar", dataIndex: "quantity", key: "quantity", width: 80,
+                    sorter: (a, b) => Number(a.quantity || 0) - Number(b.quantity || 0) },
+                  { title: "Birim Fiyat", dataIndex: "unitPriceDisplay", key: "unitPriceDisplay", width: 120,
+                    sorter: (a, b) => Number(a.unitPrice || 0) - Number(b.unitPrice || 0) },
+                  { title: "Not", dataIndex: "note", key: "note", width: 160,
+                    sorter: (a, b) => String(a.note || "").localeCompare(String(b.note || ""), "tr") },
                 ]}
                 dataSource={selectedPurchase.lines}
                 size="small"

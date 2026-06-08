@@ -261,14 +261,22 @@ function UserManagementPage() {
   const userColumns = [
     {
       title: "Ad Soyad", dataIndex: "fullName", key: "fullName",
+      sorter: (a, b) => String(a.fullName || "").localeCompare(String(b.fullName || ""), "tr"),
       render: (v, record) => (
         <button type="button" className="erp-link-button" onClick={() => openEditUser(record)}>{v}</button>
       ),
     },
-    { title: "E-posta", dataIndex: "email", key: "email" },
-    { title: "Rol", dataIndex: "role", key: "role" },
+    { title: "E-posta", dataIndex: "email", key: "email",
+      sorter: (a, b) => String(a.email || "").localeCompare(String(b.email || ""), "tr") },
+    { title: "Rol", dataIndex: "role", key: "role",
+      sorter: (a, b) => String(a.role || "").localeCompare(String(b.role || ""), "tr") },
     {
       title: "Tedarikçi", dataIndex: "supplierId", key: "supplierId",
+      sorter: (a, b) => {
+        const la = supplierOptions.find((s) => s.value === a.supplierId)?.label || "";
+        const lb = supplierOptions.find((s) => s.value === b.supplierId)?.label || "";
+        return la.localeCompare(lb, "tr");
+      },
       render: (v) => {
         if (!v) return <Text type="secondary">-</Text>;
         const opt = supplierOptions.find((s) => s.value === v);
@@ -277,10 +285,12 @@ function UserManagementPage() {
     },
     {
       title: "Durum", dataIndex: "status", key: "status",
+      sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
       render: (v) => <Tag color={v === "Aktif" ? "green" : "default"}>{v}</Tag>,
     },
     {
       title: "Son Giriş", dataIndex: "lastLoginAt", key: "lastLoginAt",
+      sorter: (a, b) => String(a.lastLoginAt || "").localeCompare(String(b.lastLoginAt || "")),
       render: (v) => (v ? new Date(v).toLocaleString("tr-TR") : "-"),
     },
     {
@@ -301,10 +311,14 @@ function UserManagementPage() {
   ];
 
   const roleColumns = [
-    { title: "Rol Adı", dataIndex: "name", key: "name" },
-    { title: "Açıklama", dataIndex: "description", key: "description", render: (v) => v || "-" },
+    { title: "Rol Adı", dataIndex: "name", key: "name",
+      sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr") },
+    { title: "Açıklama", dataIndex: "description", key: "description",
+      sorter: (a, b) => String(a.description || "").localeCompare(String(b.description || ""), "tr"),
+      render: (v) => v || "-" },
     {
       title: "Tür", dataIndex: "isSystem", key: "isSystem",
+      sorter: (a, b) => Number(b.isSystem || 0) - Number(a.isSystem || 0),
       render: (v) => v ? <Tag color="blue">Sistem</Tag> : <Tag color="default">Özel</Tag>,
     },
     {

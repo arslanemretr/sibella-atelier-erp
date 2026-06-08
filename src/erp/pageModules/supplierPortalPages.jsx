@@ -553,15 +553,19 @@ export function SupplierPortalEarningsPage() {
           locale={{ emptyText: "Bu dönemde satış bulunmamaktadır." }}
           scroll={{ x: 'max-content' }}
           columns={[
-            { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 120, ellipsis: true },
-            { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 180, ellipsis: true },
-            { title: "Satış Adet", dataIndex: "salesQuantity", key: "salesQuantity", width: 95, align: "right" },
+            { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 120, ellipsis: true,
+              sorter: (a, b) => String(a.productCode || "").localeCompare(String(b.productCode || ""), "tr") },
+            { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 180, ellipsis: true,
+              sorter: (a, b) => String(a.productName || "").localeCompare(String(b.productName || ""), "tr") },
+            { title: "Satış Adet", dataIndex: "salesQuantity", key: "salesQuantity", width: 95, align: "right",
+              sorter: (a, b) => Number(a.salesQuantity || 0) - Number(b.salesQuantity || 0) },
             {
               title: "İade Adet",
               dataIndex: "returnQuantity",
               key: "returnQuantity",
               width: 90,
               align: "right",
+              sorter: (a, b) => Number(a.returnQuantity || 0) - Number(b.returnQuantity || 0),
               render: (v) => v > 0 ? <Text style={{ color: "#cf1322" }}>{v}</Text> : <Text type="secondary">-</Text>,
             },
             {
@@ -570,19 +574,27 @@ export function SupplierPortalEarningsPage() {
               key: "netQuantity",
               width: 115,
               align: "right",
+              sorter: (a, b) => Number(a.netQuantity || 0) - Number(b.netQuantity || 0),
               render: (v) => <Text strong>{v}</Text>,
             },
-            { title: "Birim Fiyat", dataIndex: "unitPrice", key: "unitPrice", width: 120, align: "right", render: (value) => formatDisplayMoney(value) },
+            { title: "Birim Fiyat", dataIndex: "unitPrice", key: "unitPrice", width: 120, align: "right",
+              sorter: (a, b) => Number(a.unitPrice || 0) - Number(b.unitPrice || 0),
+              render: (value) => formatDisplayMoney(value) },
             {
               title: "Satış Fiyatı",
               dataIndex: "salesAmount",
               key: "salesAmount",
               width: 120,
               align: "right",
+              sorter: (a, b) => Number(a.salesAmount || 0) - Number(b.salesAmount || 0),
               render: (value) => formatDisplayMoney(value),
             },
-            { title: "Komisyon %", dataIndex: "commissionRate", key: "commissionRate", width: 105, align: "right", render: (value) => `%${Number(value || 0).toFixed(2)}` },
-            { title: "Hakediş Tutar", dataIndex: "netAmount", key: "netAmount", width: 130, align: "right", render: (value) => <Text strong>{formatDisplayMoney(value)}</Text> },
+            { title: "Komisyon %", dataIndex: "commissionRate", key: "commissionRate", width: 105, align: "right",
+              sorter: (a, b) => Number(a.commissionRate || 0) - Number(b.commissionRate || 0),
+              render: (value) => `%${Number(value || 0).toFixed(2)}` },
+            { title: "Hakediş Tutar", dataIndex: "netAmount", key: "netAmount", width: 130, align: "right",
+              sorter: (a, b) => Number(a.netAmount || 0) - Number(b.netAmount || 0),
+              render: (value) => <Text strong>{formatDisplayMoney(value)}</Text> },
           ]}
           summary={() => (
             <Table
@@ -621,27 +633,44 @@ export function SupplierPortalEarningsPage() {
           rowClassName={(record) => (record.periodKey === currentSummary.periodKey ? "erp-clickable-row ant-table-row-selected" : "erp-clickable-row")}
           scroll={{ x: 'max-content' }}
           columns={[
-            { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130 },
-            { title: "Brüt Satış", dataIndex: "grossTotal", key: "grossTotal", width: 140, align: "right", render: (v) => formatDisplayMoney(v) },
+            { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130,
+              sorter: (a, b) => String(a.periodKey || "").localeCompare(String(b.periodKey || "")) },
+            { title: "Brüt Satış", dataIndex: "grossTotal", key: "grossTotal", width: 140, align: "right",
+              sorter: (a, b) => Number(a.grossTotal || 0) - Number(b.grossTotal || 0),
+              render: (v) => formatDisplayMoney(v) },
             {
               title: "İade Tutar",
               dataIndex: "returnTotal",
               key: "returnTotal",
               width: 120,
               align: "right",
+              sorter: (a, b) => Number(a.returnTotal || 0) - Number(b.returnTotal || 0),
               render: (v) => v > 0 ? <Text style={{ color: "#cf1322" }}>-{formatDisplayMoney(v)}</Text> : <Text type="secondary">-</Text>,
             },
-            { title: "Net Satış", dataIndex: "netSalesTotal", key: "netSalesTotal", width: 140, align: "right", render: (v) => <Text strong>{formatDisplayMoney(v)}</Text> },
-            { title: "Komisyon Oranı", dataIndex: "commissionRate", key: "commissionRate", width: 120, align: "right", render: (value) => `%${Number(value || 0).toFixed(2)}` },
-            { title: "Toplam Hakediş", dataIndex: "earningsTotal", key: "earningsTotal", width: 150, align: "right", render: (value) => <Text strong>{formatDisplayMoney(value)}</Text> },
-            { title: "KDV Oranı", dataIndex: "kdvRate", key: "kdvRate", width: 100, align: "right", render: (value) => `%${Number(value || 20).toFixed(0)}` },
-            { title: "Hizmet Tutarı", dataIndex: "hizmetTutari", key: "hizmetTutari", width: 140, align: "right", render: (value) => formatDisplayMoney(value) },
-            { title: "KDV Tutarı", dataIndex: "kdvAmount", key: "kdvAmount", width: 120, align: "right", render: (value) => formatDisplayMoney(value) },
+            { title: "Net Satış", dataIndex: "netSalesTotal", key: "netSalesTotal", width: 140, align: "right",
+              sorter: (a, b) => Number(a.netSalesTotal || 0) - Number(b.netSalesTotal || 0),
+              render: (v) => <Text strong>{formatDisplayMoney(v)}</Text> },
+            { title: "Komisyon Oranı", dataIndex: "commissionRate", key: "commissionRate", width: 120, align: "right",
+              sorter: (a, b) => Number(a.commissionRate || 0) - Number(b.commissionRate || 0),
+              render: (value) => `%${Number(value || 0).toFixed(2)}` },
+            { title: "Toplam Hakediş", dataIndex: "earningsTotal", key: "earningsTotal", width: 150, align: "right",
+              sorter: (a, b) => Number(a.earningsTotal || 0) - Number(b.earningsTotal || 0),
+              render: (value) => <Text strong>{formatDisplayMoney(value)}</Text> },
+            { title: "KDV Oranı", dataIndex: "kdvRate", key: "kdvRate", width: 100, align: "right",
+              sorter: (a, b) => Number(a.kdvRate || 0) - Number(b.kdvRate || 0),
+              render: (value) => `%${Number(value || 20).toFixed(0)}` },
+            { title: "Hizmet Tutarı", dataIndex: "hizmetTutari", key: "hizmetTutari", width: 140, align: "right",
+              sorter: (a, b) => Number(a.hizmetTutari || 0) - Number(b.hizmetTutari || 0),
+              render: (value) => formatDisplayMoney(value) },
+            { title: "KDV Tutarı", dataIndex: "kdvAmount", key: "kdvAmount", width: 120, align: "right",
+              sorter: (a, b) => Number(a.kdvAmount || 0) - Number(b.kdvAmount || 0),
+              render: (value) => formatDisplayMoney(value) },
             {
               title: "Ödeme Durumu",
               dataIndex: "status",
               key: "status",
               width: 150,
+              sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
               render: (value) => {
                 const meta = earningsStatusMetaMap[value] || earningsStatusMetaMap["Satış Yok"];
                 return <Tag color={meta.color}>{value}</Tag>;
@@ -1387,6 +1416,7 @@ export function SupplierDeliveryListsPage() {
       dataIndex: "status",
       key: "status",
       width: 150,
+      sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
       render: (value) => {
         const colorMap = { Taslak: "default", "Onay Bekleniyor": "gold", Onaylandi: "green", Tamamlandi: "blue", "Revizyon Istendi": "red" };
         return <Tag color={colorMap[value || "Taslak"] || "blue"}>{value || "Taslak"}</Tag>;
@@ -1727,6 +1757,7 @@ export function SupplierPortalDeliveryListPage() {
       dataIndex: "status",
       key: "status",
       width: 160,
+      sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
       render: (value) => {
         const colorMap = {
           Taslak: "default",
@@ -2607,12 +2638,14 @@ export function SupplierPortalDeliveryEditorPage() {
                 width: 90,
                 render: (value) => <img src={value || "/products/baroque-necklace.svg"} alt="Urun" className="erp-delivery-line-image" />,
               },
-              { title: "Urun Kodu", dataIndex: "code", key: "code", width: 140 },
+              { title: "Urun Kodu", dataIndex: "code", key: "code", width: 140,
+                sorter: (a, b) => String(a.code || "").localeCompare(String(b.code || ""), "tr") },
               {
                 title: "Urun Adi",
                 dataIndex: "name",
                 key: "name",
                 width: 220,
+                sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr"),
                 render: (_, record) => <Text strong>{record.name}</Text>,
               },
               {
@@ -2620,14 +2653,17 @@ export function SupplierPortalDeliveryEditorPage() {
                 dataIndex: "salePrice",
                 key: "salePrice",
                 width: 140,
+                sorter: (a, b) => Number(a.salePrice || 0) - Number(b.salePrice || 0),
                 render: (value) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(Number(value || 0)),
               },
-              { title: "Teslim Adet", dataIndex: "quantity", key: "quantity", width: 110 },
+              { title: "Teslim Adet", dataIndex: "quantity", key: "quantity", width: 110,
+                sorter: (a, b) => Number(a.quantity || 0) - Number(b.quantity || 0) },
               {
                 title: "Toplam Tutar",
                 dataIndex: "totalAmount",
                 key: "totalAmount",
                 width: 150,
+                sorter: (a, b) => Number(a.totalAmount || 0) - Number(b.totalAmount || 0),
                 render: (value) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(Number(value || 0)),
               },
               {

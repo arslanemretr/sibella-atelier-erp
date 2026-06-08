@@ -140,11 +140,12 @@ export function PosSessionsPage() {
       dataIndex: "stockLocationId",
       key: "stockLocationId",
       width: 140,
+      sorter: (a, b) => String(stockLocationMap.get(a.stockLocationId) || "").localeCompare(String(stockLocationMap.get(b.stockLocationId) || ""), "tr"),
       render: (value) => stockLocationMap.get(value) || "-",
     },
     { title: "Kasiyer", dataIndex: "cashierName", key: "cashierName", width: 140, sorter: (a, b) => (a.cashierName || "").localeCompare(b.cashierName || "", "tr") },
     { title: "Açılış Tarihi", dataIndex: "openedAt", key: "openedAt", width: 155, sorter: (a, b) => (a.openedAt || "").localeCompare(b.openedAt || "", "tr"), render: (value) => value ? new Date(value).toLocaleString("tr-TR") : "-" },
-    { title: "Kapanış Tarihi", dataIndex: "closedAt", key: "closedAt", width: 155, render: (value) => value ? new Date(value).toLocaleString("tr-TR") : "-" },
+    { title: "Kapanış Tarihi", dataIndex: "closedAt", key: "closedAt", width: 155, sorter: (a, b) => String(a.closedAt || "").localeCompare(String(b.closedAt || "")), render: (value) => value ? new Date(value).toLocaleString("tr-TR") : "-" },
     { title: "Açılış Bakiye", dataIndex: "openingBalanceDisplay", key: "openingBalanceDisplay", width: 130, sorter: (a, b) => a.openingBalance - b.openingBalance },
     { title: "Satış", dataIndex: "totalSalesDisplay", key: "totalSalesDisplay", width: 110, sorter: (a, b) => a.totalSales - b.totalSales },
     { title: "Fiş", dataIndex: "salesCount", key: "salesCount", width: 70, sorter: (a, b) => a.salesCount - b.salesCount },
@@ -231,9 +232,13 @@ export function PosSessionsPage() {
                 loading={salesLoading}
                 dataSource={sales}
                 columns={[
-                  { title: "Fiş", dataIndex: "receiptNo", key: "receiptNo", width: 120 },
-                  { title: "Müşteri", dataIndex: "customerName", key: "customerName", width: 150 },
-                  { title: "Tarih", dataIndex: "soldAt", key: "soldAt", width: 150, render: (value) => new Date(value).toLocaleString("tr-TR") },
+                  { title: "Fiş", dataIndex: "receiptNo", key: "receiptNo", width: 120,
+                    sorter: (a, b) => String(a.receiptNo || "").localeCompare(String(b.receiptNo || ""), "tr") },
+                  { title: "Müşteri", dataIndex: "customerName", key: "customerName", width: 150,
+                    sorter: (a, b) => String(a.customerName || "").localeCompare(String(b.customerName || ""), "tr") },
+                  { title: "Tarih", dataIndex: "soldAt", key: "soldAt", width: 150,
+                    sorter: (a, b) => String(a.soldAt || "").localeCompare(String(b.soldAt || "")),
+                    render: (value) => new Date(value).toLocaleString("tr-TR") },
                   { title: "Toplam", dataIndex: "grandTotalDisplay", key: "grandTotalDisplay", width: 120 },
                 ]}
               />
@@ -1440,17 +1445,21 @@ export function PosScreenPage() {
               dataSource={[...openDraftOrders, ...paidDraftOrders, ...closedDraftOrders]}
               locale={{ emptyText: "Oturuma ait siparis bulunmuyor." }}
               columns={[
-                { title: "Siparis", dataIndex: "title", key: "title", width: 130 },
+                { title: "Siparis", dataIndex: "title", key: "title", width: 130,
+                  sorter: (a, b) => String(a.title || "").localeCompare(String(b.title || ""), "tr") },
                 {
                   title: "Durum",
                   key: "status",
                   width: 110,
+                  sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
                   render: (_, record) =>
                     record.status === "open" ? "Devam Ediyor"
                       : record.status === "paid" ? <Tag color="success">Ödendi</Tag>
                         : "Kapali",
                 },
-                { title: "Musteri", dataIndex: "customerName", key: "customerName", width: 150, render: (value) => value || "-" },
+                { title: "Musteri", dataIndex: "customerName", key: "customerName", width: 150,
+                  sorter: (a, b) => String(a.customerName || "").localeCompare(String(b.customerName || ""), "tr"),
+                  render: (value) => value || "-" },
                 { title: "Indirim", key: "discount", width: 120, render: (_, record) => formatMovementMoney(calculateOrderTotals(record).discountAmount) },
                 {
                   title: "Islemler",
@@ -1487,9 +1496,13 @@ export function PosScreenPage() {
               loading={ordersLoading}
               dataSource={sessionOrders}
               columns={[
-                { title: "Sipariş No", dataIndex: "receiptNo", key: "receiptNo", width: 130 },
-                { title: "Musteri", dataIndex: "customerName", key: "customerName", width: 150 },
-                { title: "Tarih", dataIndex: "soldAt", key: "soldAt", width: 150, render: (value) => new Date(value).toLocaleString("tr-TR") },
+                { title: "Sipariş No", dataIndex: "receiptNo", key: "receiptNo", width: 130,
+                  sorter: (a, b) => String(a.receiptNo || "").localeCompare(String(b.receiptNo || ""), "tr") },
+                { title: "Musteri", dataIndex: "customerName", key: "customerName", width: 150,
+                  sorter: (a, b) => String(a.customerName || "").localeCompare(String(b.customerName || ""), "tr") },
+                { title: "Tarih", dataIndex: "soldAt", key: "soldAt", width: 150,
+                  sorter: (a, b) => String(a.soldAt || "").localeCompare(String(b.soldAt || "")),
+                  render: (value) => new Date(value).toLocaleString("tr-TR") },
                 { title: "Indirim", dataIndex: "discountAmountDisplay", key: "discountAmountDisplay", width: 120 },
                 { title: "Toplam", dataIndex: "grandTotalDisplay", key: "grandTotalDisplay", width: 120 },
               ]}
@@ -1651,6 +1664,7 @@ export function PosOrdersPage() {
       dataIndex: "paymentMethod",
       key: "paymentMethod",
       width: 110,
+      sorter: (a, b) => String(a.paymentMethod || "").localeCompare(String(b.paymentMethod || ""), "tr"),
       render: (v) => v ? <Tag>{v}</Tag> : "-",
     },
     {
@@ -1658,6 +1672,7 @@ export function PosOrdersPage() {
       dataIndex: "productCode",
       key: "productCode",
       width: 120,
+      sorter: (a, b) => String(a.productCode || "").localeCompare(String(b.productCode || ""), "tr"),
     },
     {
       title: "Ürün Adı",
@@ -1665,6 +1680,7 @@ export function PosOrdersPage() {
       key: "productName",
       width: 180,
       ellipsis: true,
+      sorter: (a, b) => String(a.productName || "").localeCompare(String(b.productName || ""), "tr"),
     },
     {
       title: "Satış Adet",
@@ -1680,6 +1696,7 @@ export function PosOrdersPage() {
       key: "unitPriceDisplay",
       width: 120,
       align: "right",
+      sorter: (a, b) => Number(a.unitPrice || 0) - Number(b.unitPrice || 0),
     },
     {
       title: "Toplam Fiyat",
@@ -1687,6 +1704,7 @@ export function PosOrdersPage() {
       key: "lineTotalDisplay",
       width: 120,
       align: "right",
+      sorter: (a, b) => Number(a.lineTotal || 0) - Number(b.lineTotal || 0),
       render: (v) => <Text strong>{v}</Text>,
     },
     {
@@ -1785,9 +1803,12 @@ export function PosOrdersPage() {
               pagination={false}
               dataSource={(detailSale.lines || []).map((l) => ({ key: l.id, ...l }))}
               columns={[
-                { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 110 },
-                { title: "Ürün Adı", dataIndex: "productName", key: "productName", ellipsis: true },
-                { title: "Adet", dataIndex: "quantity", key: "quantity", width: 60, align: "right" },
+                { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 110,
+                  sorter: (a, b) => String(a.productCode || "").localeCompare(String(b.productCode || ""), "tr") },
+                { title: "Ürün Adı", dataIndex: "productName", key: "productName", ellipsis: true,
+                  sorter: (a, b) => String(a.productName || "").localeCompare(String(b.productName || ""), "tr") },
+                { title: "Adet", dataIndex: "quantity", key: "quantity", width: 60, align: "right",
+                  sorter: (a, b) => Number(a.quantity || 0) - Number(b.quantity || 0) },
                 { title: "Toplam", dataIndex: "lineTotalDisplay", key: "lineTotalDisplay", width: 100, align: "right" },
               ]}
             />
@@ -1983,10 +2004,14 @@ export function PosReturnEditorPage() {
   if (!sale) return <div style={{ padding: 32 }}>Satış bulunamadı.</div>;
 
   const columns = [
-    { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 120 },
-    { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 180 },
-    { title: "Satış Adedi", dataIndex: "quantity", key: "quantity", width: 90 },
-    { title: "Birim Fiyat", dataIndex: "unitPriceDisplay", key: "unitPriceDisplay", width: 120 },
+    { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 120,
+      sorter: (a, b) => String(a.productCode || "").localeCompare(String(b.productCode || ""), "tr") },
+    { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 180,
+      sorter: (a, b) => String(a.productName || "").localeCompare(String(b.productName || ""), "tr") },
+    { title: "Satış Adedi", dataIndex: "quantity", key: "quantity", width: 90,
+      sorter: (a, b) => Number(a.quantity || 0) - Number(b.quantity || 0) },
+    { title: "Birim Fiyat", dataIndex: "unitPriceDisplay", key: "unitPriceDisplay", width: 120,
+      sorter: (a, b) => Number(a.unitPrice || 0) - Number(b.unitPrice || 0) },
     {
       title: "Daha Önce İade",
       key: "alreadyReturned",
@@ -2195,6 +2220,7 @@ export function PosReturnListPage() {
       dataIndex: "productCode",
       key: "productCode",
       width: 120,
+      sorter: (a, b) => String(a.productCode || "").localeCompare(String(b.productCode || ""), "tr"),
     },
     {
       title: "Ürün Adı",
@@ -2202,6 +2228,7 @@ export function PosReturnListPage() {
       key: "productName",
       width: 180,
       ellipsis: true,
+      sorter: (a, b) => String(a.productName || "").localeCompare(String(b.productName || ""), "tr"),
     },
     {
       title: "İade Adet",

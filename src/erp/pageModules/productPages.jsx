@@ -51,12 +51,14 @@ function StockBreakdownDrawer({ open, onClose, product, items, loading }) {
             dataSource={items}
             locale={{ emptyText: "Pozitif bakiye bulunan stok yeri yok." }}
             columns={[
-              { title: "Stok Yeri", dataIndex: "stockLocationName", key: "stockLocationName", width: 160 },
+              { title: "Stok Yeri", dataIndex: "stockLocationName", key: "stockLocationName", width: 160,
+                sorter: (a, b) => String(a.stockLocationName || "").localeCompare(String(b.stockLocationName || ""), "tr") },
               {
                 title: "Bagli Magaza",
                 dataIndex: "storeName",
                 key: "storeName",
                 width: 150,
+                sorter: (a, b) => String(a.storeName || "").localeCompare(String(b.storeName || ""), "tr"),
                 render: (value, record) => value || (record.isDefaultMain ? "Merkez" : "-"),
               },
               {
@@ -64,9 +66,11 @@ function StockBreakdownDrawer({ open, onClose, product, items, loading }) {
                 dataIndex: "isDefaultMain",
                 key: "isDefaultMain",
                 width: 100,
+                sorter: (a, b) => Number(b.isDefaultMain || 0) - Number(a.isDefaultMain || 0),
                 render: (value) => <Tag color={value ? "blue" : "default"}>{value ? "Evet" : "Hayir"}</Tag>,
               },
-              { title: "Adet", dataIndex: "quantity", key: "quantity", width: 100 },
+              { title: "Adet", dataIndex: "quantity", key: "quantity", width: 100,
+                sorter: (a, b) => Number(a.quantity || 0) - Number(b.quantity || 0) },
             ]}
           />
         </Space>

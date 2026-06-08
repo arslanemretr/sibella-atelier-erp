@@ -597,6 +597,7 @@ export function SupplierEditorPage() {
                       dataIndex: "code",
                       key: "code",
                       width: 120,
+                      sorter: (a, b) => String(a.code || "").localeCompare(String(b.code || ""), "tr"),
                       render: (value, record) => (
                         <button
                           type="button"
@@ -612,6 +613,7 @@ export function SupplierEditorPage() {
                       dataIndex: "name",
                       key: "name",
                       width: 180,
+                      sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr"),
                     },
                   ]}
                 />
@@ -1078,13 +1080,23 @@ export function SupplierEarningsManagementPage() {
           rowClassName={() => "erp-clickable-row"}
           scroll={{ x: 'max-content' }}
           columns={[
-            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 180 },
-            { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130 },
-            { title: "Toplam Satış", dataIndex: "grossTotal", key: "grossTotal", width: 150, render: (v) => formatMoneyAdmin(v) },
-            { title: "İade", dataIndex: "returnTotal", key: "returnTotal", width: 120, render: (v) => v ? <span style={{ color: "#cf1322" }}>-{formatMoneyAdmin(v)}</span> : "-" },
-            { title: "Net Satış", dataIndex: "netTotal", key: "netTotal", width: 140, render: (v) => formatMoneyAdmin(v) },
+            { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 180,
+              sorter: (a, b) => String(a.supplierName || "").localeCompare(String(b.supplierName || ""), "tr") },
+            { title: "Dönem", dataIndex: "periodLabel", key: "periodLabel", width: 130,
+              sorter: (a, b) => String(a.periodKey || "").localeCompare(String(b.periodKey || "")) },
+            { title: "Toplam Satış", dataIndex: "grossTotal", key: "grossTotal", width: 150,
+              sorter: (a, b) => Number(a.grossTotal || 0) - Number(b.grossTotal || 0),
+              render: (v) => formatMoneyAdmin(v) },
+            { title: "İade", dataIndex: "returnTotal", key: "returnTotal", width: 120,
+              sorter: (a, b) => Number(a.returnTotal || 0) - Number(b.returnTotal || 0),
+              render: (v) => v ? <span style={{ color: "#cf1322" }}>-{formatMoneyAdmin(v)}</span> : "-" },
+            { title: "Net Satış", dataIndex: "netTotal", key: "netTotal", width: 140,
+              sorter: (a, b) => Number(a.netTotal || 0) - Number(b.netTotal || 0),
+              render: (v) => formatMoneyAdmin(v) },
             { title: "Komisyon", key: "commissionAmount", width: 140, render: (_, r) => formatMoneyAdmin(Number(r.netTotal || 0) - Number(r.earningsTotal || 0)) },
-            { title: "Hakediş Tutarı", dataIndex: "earningsTotal", key: "earningsTotal", width: 150, render: (v) => formatMoneyAdmin(v) },
+            { title: "Hakediş Tutarı", dataIndex: "earningsTotal", key: "earningsTotal", width: 150,
+              sorter: (a, b) => Number(a.earningsTotal || 0) - Number(b.earningsTotal || 0),
+              render: (v) => formatMoneyAdmin(v) },
             {
               title: "Son Ödeme Tarihi (Otomatik)",
               key: "paymentDeadline",
@@ -1099,6 +1111,7 @@ export function SupplierEarningsManagementPage() {
               dataIndex: "status",
               key: "status",
               width: 160,
+              sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
               render: (value) => {
                 const meta = EARNINGS_STATUS_META[value] || { color: "default" };
                 return <Tag color={meta.color}>{value}</Tag>;
@@ -1190,15 +1203,19 @@ export function SupplierEarningsManagementPage() {
                   );
                 }}
                 columns={[
-                  { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 100, ellipsis: true },
-                  { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 140, ellipsis: true },
-                  { title: "Satış Adet", dataIndex: "salesQty", key: "salesQty", width: 85, align: "right" },
+                  { title: "Ürün Kodu", dataIndex: "productCode", key: "productCode", width: 100, ellipsis: true,
+                    sorter: (a, b) => String(a.productCode || "").localeCompare(String(b.productCode || ""), "tr") },
+                  { title: "Ürün Adı", dataIndex: "productName", key: "productName", width: 140, ellipsis: true,
+                    sorter: (a, b) => String(a.productName || "").localeCompare(String(b.productName || ""), "tr") },
+                  { title: "Satış Adet", dataIndex: "salesQty", key: "salesQty", width: 85, align: "right",
+                    sorter: (a, b) => Number(a.salesQty || 0) - Number(b.salesQty || 0) },
                   {
                     title: "İade Adet",
                     dataIndex: "returnQty",
                     key: "returnQty",
                     width: 80,
                     align: "right",
+                    sorter: (a, b) => Number(a.returnQty || 0) - Number(b.returnQty || 0),
                     render: (v) => v > 0 ? <span style={{ color: "#cf1322" }}>{v}</span> : <Text type="secondary">-</Text>,
                   },
                   {
@@ -1207,6 +1224,7 @@ export function SupplierEarningsManagementPage() {
                     key: "netQty",
                     width: 80,
                     align: "right",
+                    sorter: (a, b) => Number(a.netQty || 0) - Number(b.netQty || 0),
                     render: (v) => <strong>{v}</strong>,
                   },
                   {
@@ -1215,6 +1233,7 @@ export function SupplierEarningsManagementPage() {
                     key: "unitPrice",
                     width: 105,
                     align: "right",
+                    sorter: (a, b) => Number(a.unitPrice || 0) - Number(b.unitPrice || 0),
                     render: (v) => formatMoneyAdmin(v),
                   },
                   {
@@ -1223,6 +1242,7 @@ export function SupplierEarningsManagementPage() {
                     key: "netAmount",
                     width: 110,
                     align: "right",
+                    sorter: (a, b) => Number(a.netAmount || 0) - Number(b.netAmount || 0),
                     render: (v) => formatMoneyAdmin(v),
                   },
                   {
@@ -1231,6 +1251,7 @@ export function SupplierEarningsManagementPage() {
                     key: "commissionRate",
                     width: 65,
                     align: "right",
+                    sorter: (a, b) => Number(a.commissionRate || 0) - Number(b.commissionRate || 0),
                     render: (v) => `%${Number(v).toFixed(0)}`,
                   },
                   {
@@ -1239,6 +1260,7 @@ export function SupplierEarningsManagementPage() {
                     key: "earningsAmount",
                     width: 110,
                     align: "right",
+                    sorter: (a, b) => Number(a.earningsAmount || 0) - Number(b.earningsAmount || 0),
                     render: (v) => <strong style={{ color: "#389e0d" }}>{formatMoneyAdmin(v)}</strong>,
                   },
                 ]}

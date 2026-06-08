@@ -159,24 +159,39 @@ export default function StoreCariPage() {
 
   const columns = [
     { title: "Fatura No",   dataIndex: "invoiceNo",   key: "invoiceNo",  width: 140,
+      sorter: (a, b) => String(a.invoiceNo || "").localeCompare(String(b.invoiceNo || ""), "tr"),
       render: (v) => <Text strong style={{ fontSize: 12 }}>{v}</Text> },
-    { title: "GİB No",      dataIndex: "extInvoiceNo",key: "extInvoiceNo",width: 150, render: (v) => v || <Text type="secondary">-</Text> },
-    { title: "Firma",       dataIndex: "storeName",   key: "storeName",  width: 160 },
-    { title: "Dönem",       dataIndex: "periodKey",   key: "periodKey",  width: 120, render: periodLabel },
-    { title: "Vade",        dataIndex: "dueDate",     key: "dueDate",    width: 110, render: (v, r) => {
+    { title: "GİB No",      dataIndex: "extInvoiceNo",key: "extInvoiceNo",width: 150,
+      sorter: (a, b) => String(a.extInvoiceNo || "").localeCompare(String(b.extInvoiceNo || ""), "tr"),
+      render: (v) => v || <Text type="secondary">-</Text> },
+    { title: "Firma",       dataIndex: "storeName",   key: "storeName",  width: 160,
+      sorter: (a, b) => String(a.storeName || "").localeCompare(String(b.storeName || ""), "tr") },
+    { title: "Dönem",       dataIndex: "periodKey",   key: "periodKey",  width: 120,
+      sorter: (a, b) => String(a.periodKey || "").localeCompare(String(b.periodKey || "")),
+      render: periodLabel },
+    { title: "Vade",        dataIndex: "dueDate",     key: "dueDate",    width: 110,
+      sorter: (a, b) => String(a.dueDate || "").localeCompare(String(b.dueDate || "")),
+      render: (v, r) => {
       const isOverdue = resolveStatus(r) === "VadesiGecti";
       return <span style={{ color: isOverdue ? "#cf1322" : undefined, fontWeight: isOverdue ? 600 : 400 }}>{fmtDate(v)}</span>;
     }},
-    { title: "Tutar",       dataIndex: "totalAmount", key: "totalAmount",width: 130, align: "right", render: fmt },
+    { title: "Tutar",       dataIndex: "totalAmount", key: "totalAmount",width: 130, align: "right",
+      sorter: (a, b) => Number(a.totalAmount || 0) - Number(b.totalAmount || 0),
+      render: fmt },
     { title: "Durum",       key: "status",            width: 130,
+      sorter: (a, b) => String(resolveStatus(a) || "").localeCompare(String(resolveStatus(b) || ""), "tr"),
       render: (_, r) => {
         const s = resolveStatus(r);
         const meta = STATUS_META[s];
         return <Tag color={meta.color}>{meta.icon} {meta.label}</Tag>;
       },
     },
-    { title: "Ödeme Tarihi",dataIndex: "paidAt",      key: "paidAt",     width: 120, render: fmtDate },
-    { title: "Yöntem",      dataIndex: "paymentMethod",key: "paymentMethod",width: 110, render: (v) => v || "-" },
+    { title: "Ödeme Tarihi",dataIndex: "paidAt",      key: "paidAt",     width: 120,
+      sorter: (a, b) => String(a.paidAt || "").localeCompare(String(b.paidAt || "")),
+      render: fmtDate },
+    { title: "Yöntem",      dataIndex: "paymentMethod",key: "paymentMethod",width: 110,
+      sorter: (a, b) => String(a.paymentMethod || "").localeCompare(String(b.paymentMethod || ""), "tr"),
+      render: (v) => v || "-" },
     { title: "İşlemler",    key: "actions",            width: 130,
       render: (_, r) => {
         const s = resolveStatus(r);
@@ -282,12 +297,19 @@ export default function StoreCariPage() {
           <Table size="small" rowKey="store" pagination={false}
             dataSource={storeSummary}
             columns={[
-              { title: "Mağaza",          dataIndex: "store",   key: "store",   width: 180 },
-              { title: "Toplam Fatura",   dataIndex: "total",   key: "total",   width: 150, align: "right", render: fmt },
-              { title: "Ödenen",          dataIndex: "paid",    key: "paid",    width: 150, align: "right", render: (v) => <Text style={{ color: "#52c41a" }}>{fmt(v)}</Text> },
+              { title: "Mağaza",          dataIndex: "store",   key: "store",   width: 180,
+                sorter: (a, b) => String(a.store || "").localeCompare(String(b.store || ""), "tr") },
+              { title: "Toplam Fatura",   dataIndex: "total",   key: "total",   width: 150, align: "right",
+                sorter: (a, b) => Number(a.total || 0) - Number(b.total || 0),
+                render: fmt },
+              { title: "Ödenen",          dataIndex: "paid",    key: "paid",    width: 150, align: "right",
+                sorter: (a, b) => Number(a.paid || 0) - Number(b.paid || 0),
+                render: (v) => <Text style={{ color: "#52c41a" }}>{fmt(v)}</Text> },
               { title: "Bekleyen",        key: "pending",       width: 150,     align: "right",
+                sorter: (a, b) => (Number(a.total || 0) - Number(a.paid || 0)) - (Number(b.total || 0) - Number(b.paid || 0)),
                 render: (_, r) => <Text style={{ color: "#fa8c16" }}>{fmt(r.total - r.paid)}</Text> },
               { title: "Vadesi Geçmiş",   dataIndex: "overdue", key: "overdue", width: 150, align: "right",
+                sorter: (a, b) => Number(a.overdue || 0) - Number(b.overdue || 0),
                 render: (v) => v > 0 ? <Text style={{ color: "#cf1322", fontWeight: 700 }}>{fmt(v)}</Text> : <Text type="secondary">-</Text> },
             ]}
           />

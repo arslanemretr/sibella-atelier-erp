@@ -100,6 +100,7 @@ export function StoreShipmentListPage() {
               dataIndex: "shipmentNo",
               key: "shipmentNo",
               width: 140,
+              sorter: (a, b) => String(a.shipmentNo || "").localeCompare(String(b.shipmentNo || ""), "tr"),
               render: (value, record) => (
                 <button
                   type="button"
@@ -113,22 +114,28 @@ export function StoreShipmentListPage() {
                 </button>
               ),
             },
-            { title: "Magaza", dataIndex: "storeName", key: "storeName", width: 160 },
+            { title: "Magaza", dataIndex: "storeName", key: "storeName", width: 160,
+              sorter: (a, b) => String(a.storeName || "").localeCompare(String(b.storeName || ""), "tr") },
             {
               title: "Tarih",
               dataIndex: "date",
               key: "date",
               width: 130,
+              sorter: (a, b) => String(a.date || "").localeCompare(String(b.date || "")),
               render: (value) => formatDisplayDate(value),
             },
-            { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 80 },
-            { title: "Toplam Adet", dataIndex: "totalQuantity", key: "totalQuantity", width: 110 },
-            { title: "Toplam Tutar", dataIndex: "totalAmountDisplay", key: "totalAmountDisplay", width: 130 },
+            { title: "Kalem", dataIndex: "lineCount", key: "lineCount", width: 80,
+              sorter: (a, b) => Number(a.lineCount || 0) - Number(b.lineCount || 0) },
+            { title: "Toplam Adet", dataIndex: "totalQuantity", key: "totalQuantity", width: 110,
+              sorter: (a, b) => Number(a.totalQuantity || 0) - Number(b.totalQuantity || 0) },
+            { title: "Toplam Tutar", dataIndex: "totalAmountDisplay", key: "totalAmountDisplay", width: 130,
+              sorter: (a, b) => Number(a.totalAmount || 0) - Number(b.totalAmount || 0) },
             {
               title: "Durum",
               dataIndex: "status",
               key: "status",
               width: 110,
+              sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
               render: (value) => (
                 <Tag color={value === "Gonderildi" ? "green" : value === "Hazirlandi" ? "gold" : "default"}>{value}</Tag>
               ),
@@ -176,10 +183,15 @@ export function StoreShipmentListPage() {
                     />
                   ),
                 },
-                { title: "Urun Kodu", dataIndex: "code", key: "code", width: 120 },
-                { title: "Urun Adi", dataIndex: "name", key: "name", width: 180 },
-                { title: "Adet", dataIndex: "quantity", key: "quantity", width: 70 },
-                { title: "Fiyat", dataIndex: "salePrice", key: "salePrice", width: 120, render: (value, record) => formatMoney(value, record.saleCurrency) },
+                { title: "Urun Kodu", dataIndex: "code", key: "code", width: 120,
+                  sorter: (a, b) => String(a.code || "").localeCompare(String(b.code || ""), "tr") },
+                { title: "Urun Adi", dataIndex: "name", key: "name", width: 180,
+                  sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr") },
+                { title: "Adet", dataIndex: "quantity", key: "quantity", width: 70,
+                  sorter: (a, b) => Number(a.quantity || 0) - Number(b.quantity || 0) },
+                { title: "Fiyat", dataIndex: "salePrice", key: "salePrice", width: 120,
+                  sorter: (a, b) => Number(a.salePrice || 0) - Number(b.salePrice || 0),
+                  render: (value, record) => formatMoney(value, record.saleCurrency) },
               ]}
             />
           </Space>
@@ -690,14 +702,18 @@ export function StoreShipmentEditorPage() {
                   />
                 ),
               },
-              { title: "Urun Kodu", dataIndex: "code", key: "code", width: 130 },
-              { title: "Urun Adi", dataIndex: "name", key: "name", width: 200 },
-              { title: "Adet", dataIndex: "quantity", key: "quantity", width: 80 },
+              { title: "Urun Kodu", dataIndex: "code", key: "code", width: 130,
+                sorter: (a, b) => String(a.code || "").localeCompare(String(b.code || ""), "tr") },
+              { title: "Urun Adi", dataIndex: "name", key: "name", width: 200,
+                sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr") },
+              { title: "Adet", dataIndex: "quantity", key: "quantity", width: 80,
+                sorter: (a, b) => Number(a.quantity || 0) - Number(b.quantity || 0) },
               {
                 title: "Birim Fiyat",
                 dataIndex: "salePrice",
                 key: "salePrice",
                 width: 120,
+                sorter: (a, b) => Number(a.salePrice || 0) - Number(b.salePrice || 0),
                 render: (value, record) => formatMoney(value, record.saleCurrency),
               },
               {

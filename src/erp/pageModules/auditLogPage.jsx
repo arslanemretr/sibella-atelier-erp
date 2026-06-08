@@ -134,6 +134,7 @@ export default function AuditLogPage() {
       dataIndex: "created_at",
       key: "created_at",
       width: 160,
+      sorter: (a, b) => String(a.created_at || "").localeCompare(String(b.created_at || "")),
       render: (v) => <Text style={{ fontSize: 12 }}>{formatDate(v)}</Text>,
     },
     {
@@ -141,6 +142,7 @@ export default function AuditLogPage() {
       dataIndex: "user_name",
       key: "user_name",
       width: 150,
+      sorter: (a, b) => String(a.user_name || "").localeCompare(String(b.user_name || ""), "tr"),
       render: (v, r) => (
         <div>
           <Text strong style={{ fontSize: 13 }}>{v || "-"}</Text>
@@ -153,6 +155,7 @@ export default function AuditLogPage() {
       dataIndex: "action_type",
       key: "action_type",
       width: 110,
+      sorter: (a, b) => String(a.action_type || "").localeCompare(String(b.action_type || ""), "tr"),
       render: (v) => {
         const meta = ACTION_META[v] || { color: "default", label: v };
         return <Tag color={meta.color}>{meta.label}</Tag>;
@@ -163,6 +166,7 @@ export default function AuditLogPage() {
       dataIndex: "resource",
       key: "resource",
       width: 160,
+      sorter: (a, b) => String(a.resource || "").localeCompare(String(b.resource || ""), "tr"),
       render: (v) => v || "-",
     },
     {
@@ -182,6 +186,7 @@ export default function AuditLogPage() {
       dataIndex: "ip_address",
       key: "ip_address",
       width: 130,
+      sorter: (a, b) => String(a.ip_address || "").localeCompare(String(b.ip_address || ""), "tr"),
       render: (v) => <Text style={{ fontSize: 12 }}>{v || "-"}</Text>,
     },
     {
@@ -189,6 +194,7 @@ export default function AuditLogPage() {
       dataIndex: "user_agent",
       key: "user_agent",
       width: 110,
+      sorter: (a, b) => String(a.user_agent || "").localeCompare(String(b.user_agent || ""), "tr"),
       render: (v) => <Text style={{ fontSize: 12 }}>{formatUserAgent(v)}</Text>,
     },
     {
@@ -197,6 +203,7 @@ export default function AuditLogPage() {
       key: "status_code",
       width: 80,
       align: "center",
+      sorter: (a, b) => Number(a.status_code || 0) - Number(b.status_code || 0),
       render: (v) => {
         if (!v) return "-";
         const color = v < 300 ? "green" : v < 400 ? "blue" : v < 500 ? "orange" : "red";
