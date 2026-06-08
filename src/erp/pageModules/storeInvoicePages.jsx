@@ -188,7 +188,7 @@ export function StoreInvoiceListPage() {
         message.success("Fatura kaydedildi.");
       }
       setDrawerOpen(false);
-      void refresh();
+      void refresh(filters);
     } catch (error) {
       if (!error?.errorFields) message.error(error?.message || "Fatura kaydedilemedi.");
     } finally {
@@ -201,7 +201,7 @@ export function StoreInvoiceListPage() {
       await requestJson("DELETE", `/api/store-invoices/${id}`);
       message.success("Fatura silindi.");
       setDetailOpen(false);
-      void refresh();
+      void refresh(filters);
     } catch (error) {
       message.error(error?.message || "Fatura silinemedi.");
     }

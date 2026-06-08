@@ -72,6 +72,7 @@ export const mainMenuItems = [
       { key: "/reports/supplier-earnings", label: "Tedarikci Hakedis Raporu", permissionKey: "reports_supplier" },
       { key: "/reports/activity", label: "Aktivite Raporu", permissionKey: "settings_audit_log" },
       { key: "/reports/store-invoices", label: "Mağaza Satış Raporu", permissionKey: "stores_invoices" },
+      { key: "/reports/consolidated-sales", label: "Konsolide Satış Raporu", permissionKey: "stores_invoices" },
     ],
   },
   {
@@ -170,6 +171,7 @@ export const sidebarGroups = [
           { key: "/reports/supplier-earnings", label: "Tedarikci Hakedis Raporu", permissionKey: "reports_supplier" },
           { key: "/reports/activity", label: "Aktivite Raporu", permissionKey: "settings_audit_log" },
           { key: "/reports/store-invoices", label: "Mağaza Satış Raporu", permissionKey: "stores_invoices" },
+          { key: "/reports/consolidated-sales", label: "Konsolide Satış Raporu", permissionKey: "stores_invoices" },
         ],
       },
       {
