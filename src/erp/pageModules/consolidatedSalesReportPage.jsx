@@ -266,47 +266,72 @@ export default function ConsolidatedSalesReportPage() {
         ))}
       </Row>
 
-      {/* ── Grafikler ── */}
-      <Row gutter={[16, 16]}>
-        {/* Aylık trend */}
-        <Col xs={24} xl={14}>
-          <Card title="Aylık Ciro Dağılımı" bordered={false} className="erp-card-logo-divider" loading={loading}>
-            <ResponsiveContainer width="100%" height={260}>
-              <ComposedChart data={monthlyChart} margin={{ top: 8, right: 32, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="gradPos" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#1677ff" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#1677ff" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="gradStore" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#d86d5b" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#d86d5b" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tickFormatter={(v) => `₺${(v/1000).toFixed(0)}K`} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v, n) => [fmt(v), n]} />
-                <Legend />
-                <Area type="monotone" dataKey="pos"   name="Şarköy"      stroke="#1677ff" fill="url(#gradPos)"   strokeWidth={2} dot={false} />
-                <Area type="monotone" dataKey="store" name="Mağazalar"   stroke="#d86d5b" fill="url(#gradStore)" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="total" name="Toplam Ciro"
-                  stroke="#722ed1" strokeWidth={2.5} dot={{ r: 4, fill: "#722ed1" }} activeDot={{ r: 6 }} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </Card>
-        </Col>
+      {/* ── Aylık Ciro Grafiği ── */}
+      <Card title="Aylık Ciro Dağılımı" bordered={false} className="erp-card-logo-divider" loading={loading}>
+        <ResponsiveContainer width="100%" height={260}>
+          <ComposedChart data={monthlyChart} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="gradPos" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor="#1677ff" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#1677ff" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gradStore" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor="#d86d5b" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#d86d5b" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+            <YAxis tickFormatter={(v) => `₺${(v/1000).toFixed(0)}K`} tick={{ fontSize: 11 }} />
+            <Tooltip formatter={(v, n) => [fmt(v), n]} />
+            <Legend />
+            <Area type="monotone" dataKey="pos"   name="Şarköy"     stroke="#1677ff" fill="url(#gradPos)"   strokeWidth={2} dot={false} />
+            <Area type="monotone" dataKey="store" name="Mağazalar"  stroke="#d86d5b" fill="url(#gradStore)" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="total" name="Toplam Ciro"
+              stroke="#722ed1" strokeWidth={2.5} dot={{ r: 4, fill: "#722ed1" }} activeDot={{ r: 6 }} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </Card>
 
-        {/* Mağaza bar chart */}
-        {storeBarData.length > 0 && (
+      {/* ── Mağaza Bazlı Özet + Grafik ── */}
+      {(data?.storeBreakdown?.length > 0) && (
+        <Row gutter={[16, 16]} align="stretch">
+          <Col xs={24} xl={14}>
+            <Card title="Mağaza Bazlı Özet" bordered={false} className="erp-list-table-card erp-card-logo-divider" style={{ height: "100%" }}>
+              <Table
+                rowKey="storeId"
+                dataSource={data.storeBreakdown}
+                columns={storeCols}
+                pagination={false}
+                size="small"
+                loading={loading}
+                summary={(rows) => {
+                  const t = rows.reduce((acc, r) => ({
+                    grossStoreSales:  acc.grossStoreSales  + r.grossStoreSales,
+                    invoiceTotal:     acc.invoiceTotal     + r.invoiceTotal,
+                    commissionAmount: acc.commissionAmount + r.commissionAmount,
+                  }), { grossStoreSales: 0, invoiceTotal: 0, commissionAmount: 0 });
+                  return (
+                    <Table.Summary.Row style={SUMMARY_STYLE}>
+                      <Table.Summary.Cell><Text style={SUMMARY_BOLD}>Toplam</Text></Table.Summary.Cell>
+                      <Table.Summary.Cell />
+                      <Table.Summary.Cell align="right"><Text style={SUMMARY_BOLD}>{fmt(t.grossStoreSales)}</Text></Table.Summary.Cell>
+                      <Table.Summary.Cell align="right"><Text style={SUMMARY_TEXT}>{fmt(t.invoiceTotal)}</Text></Table.Summary.Cell>
+                      <Table.Summary.Cell align="right"><Text style={SUMMARY_TEXT}>{fmt(t.commissionAmount)}</Text></Table.Summary.Cell>
+                    </Table.Summary.Row>
+                  );
+                }}
+              />
+            </Card>
+          </Col>
           <Col xs={24} xl={10}>
-            <Card title="Mağaza Bazlı Brüt Satış" bordered={false} className="erp-card-logo-divider" loading={loading}>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={storeBarData} layout="vertical" margin={{ top: 4, right: 20, left: 0, bottom: 0 }}>
+            <Card title="Mağaza Bazlı Brüt Satış" bordered={false} className="erp-card-logo-divider" loading={loading} style={{ height: "100%" }}>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={storeBarData} layout="vertical" margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `₺${(v/1000).toFixed(0)}K`} />
                   <YAxis type="category" dataKey="store" tick={{ fontSize: 11 }} width={120} />
-                  <Tooltip formatter={(v) => [fmt(v), ""]} />
+                  <Tooltip formatter={(v) => [fmt(v), "Brüt Satış"]} />
                   <Bar dataKey="brut" name="Brüt Satış" radius={[0, 4, 4, 0]}>
                     {storeBarData.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
                   </Bar>
@@ -314,67 +339,60 @@ export default function ConsolidatedSalesReportPage() {
               </ResponsiveContainer>
             </Card>
           </Col>
-        )}
-      </Row>
-
-      {/* ── Mağaza Bazlı Özet ── */}
-      {(data?.storeBreakdown?.length > 0) && (
-        <Card title="Mağaza Bazlı Özet" bordered={false} className="erp-list-table-card erp-card-logo-divider">
-          <Table
-            rowKey="storeId"
-            dataSource={data.storeBreakdown}
-            columns={storeCols}
-            pagination={false}
-            size="small"
-            loading={loading}
-            summary={(rows) => {
-              const t = rows.reduce((acc, r) => ({
-                grossStoreSales:  acc.grossStoreSales  + r.grossStoreSales,
-                invoiceTotal:     acc.invoiceTotal     + r.invoiceTotal,
-                commissionAmount: acc.commissionAmount + r.commissionAmount,
-              }), { grossStoreSales: 0, invoiceTotal: 0, commissionAmount: 0 });
-              return (
-                <Table.Summary.Row style={SUMMARY_STYLE}>
-                  <Table.Summary.Cell><Text style={SUMMARY_BOLD}>Toplam</Text></Table.Summary.Cell>
-                  <Table.Summary.Cell />
-                  <Table.Summary.Cell align="right"><Text style={SUMMARY_BOLD}>{fmt(t.grossStoreSales)}</Text></Table.Summary.Cell>
-                  <Table.Summary.Cell align="right"><Text style={SUMMARY_TEXT}>{fmt(t.invoiceTotal)}</Text></Table.Summary.Cell>
-                  <Table.Summary.Cell align="right"><Text style={SUMMARY_TEXT}>{fmt(t.commissionAmount)}</Text></Table.Summary.Cell>
-                </Table.Summary.Row>
-              );
-            }}
-          />
-        </Card>
+        </Row>
       )}
 
-      {/* ── POS Tedarikçi Kırılımı ── */}
+      {/* ── POS Tedarikçi Kırılımı + Grafik ── */}
       {(data?.posSupplierBreakdown?.length > 0) && (
-        <Card title="Şarköy POS — Tedarikçi Kırılımı" bordered={false} className="erp-list-table-card erp-card-logo-divider">
-          <Table
-            rowKey={(r) => r.supplierId || r.supplierName}
-            dataSource={data.posSupplierBreakdown}
-            columns={supplierCols}
-            pagination={false}
-            size="small"
-            loading={loading}
-            summary={(rows) => {
-              const t = rows.reduce((acc, r) => ({
-                totalAmount:  acc.totalAmount  + r.totalAmount,
-                sibellaPay:   acc.sibellaPay   + (r.isSibella ? r.totalAmount : r.sibellaCommission),
-                tedarikciPay: acc.tedarikciPay + (r.isSibella ? 0 : r.totalAmount - r.sibellaCommission),
-              }), { totalAmount: 0, sibellaPay: 0, tedarikciPay: 0 });
-              return (
-                <Table.Summary.Row style={SUMMARY_STYLE}>
-                  <Table.Summary.Cell><Text style={SUMMARY_BOLD}>Toplam</Text></Table.Summary.Cell>
-                  <Table.Summary.Cell />
-                  <Table.Summary.Cell align="right"><Text style={SUMMARY_BOLD}>{fmt(t.totalAmount)}</Text></Table.Summary.Cell>
-                  <Table.Summary.Cell align="right"><Text style={SUMMARY_TEXT}>{fmt(t.sibellaPay)}</Text></Table.Summary.Cell>
-                  <Table.Summary.Cell align="right"><Text style={SUMMARY_TEXT}>{fmt(t.tedarikciPay)}</Text></Table.Summary.Cell>
-                </Table.Summary.Row>
-              );
-            }}
-          />
-        </Card>
+        <Row gutter={[16, 16]} align="stretch">
+          <Col xs={24} xl={14}>
+            <Card title="Şarköy POS — Tedarikçi Kırılımı" bordered={false} className="erp-list-table-card erp-card-logo-divider" style={{ height: "100%" }}>
+              <Table
+                rowKey={(r) => r.supplierId || r.supplierName}
+                dataSource={data.posSupplierBreakdown}
+                columns={supplierCols}
+                pagination={false}
+                size="small"
+                loading={loading}
+                summary={(rows) => {
+                  const t = rows.reduce((acc, r) => ({
+                    totalAmount:  acc.totalAmount  + r.totalAmount,
+                    sibellaPay:   acc.sibellaPay   + (r.isSibella ? r.totalAmount : r.sibellaCommission),
+                    tedarikciPay: acc.tedarikciPay + (r.isSibella ? 0 : r.totalAmount - r.sibellaCommission),
+                  }), { totalAmount: 0, sibellaPay: 0, tedarikciPay: 0 });
+                  return (
+                    <Table.Summary.Row style={SUMMARY_STYLE}>
+                      <Table.Summary.Cell><Text style={SUMMARY_BOLD}>Toplam</Text></Table.Summary.Cell>
+                      <Table.Summary.Cell />
+                      <Table.Summary.Cell align="right"><Text style={SUMMARY_BOLD}>{fmt(t.totalAmount)}</Text></Table.Summary.Cell>
+                      <Table.Summary.Cell align="right"><Text style={SUMMARY_TEXT}>{fmt(t.sibellaPay)}</Text></Table.Summary.Cell>
+                      <Table.Summary.Cell align="right"><Text style={SUMMARY_TEXT}>{fmt(t.tedarikciPay)}</Text></Table.Summary.Cell>
+                    </Table.Summary.Row>
+                  );
+                }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} xl={10}>
+            <Card title="Tedarikçi Brüt Satış" bordered={false} className="erp-card-logo-divider" loading={loading} style={{ height: "100%" }}>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart
+                  data={(data.posSupplierBreakdown || []).map((r) => ({ name: r.supplierName, brut: r.totalAmount }))}
+                  layout="vertical"
+                  margin={{ top: 4, right: 16, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `₺${(v/1000).toFixed(0)}K`} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={120} />
+                  <Tooltip formatter={(v) => [fmt(v), "Brüt Satış"]} />
+                  <Bar dataKey="brut" name="Brüt Satış" radius={[0, 4, 4, 0]}>
+                    {(data.posSupplierBreakdown || []).map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+          </Col>
+        </Row>
       )}
 
       {/* ── Kategori Kırılımı ── */}
