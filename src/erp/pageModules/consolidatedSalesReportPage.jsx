@@ -285,13 +285,12 @@ export default function ConsolidatedSalesReportPage() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis yAxisId="l" tickFormatter={(v) => `₺${(v/1000).toFixed(0)}K`} tick={{ fontSize: 11 }} />
-                <YAxis yAxisId="r" orientation="right" tickFormatter={(v) => `₺${(v/1000).toFixed(0)}K`} tick={{ fontSize: 11 }} />
+                <YAxis tickFormatter={(v) => `₺${(v/1000).toFixed(0)}K`} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v, n) => [fmt(v), n]} />
                 <Legend />
-                <Area yAxisId="l" type="monotone" dataKey="pos"   name="Şarköy"    stroke="#1677ff" fill="url(#gradPos)"   strokeWidth={2} dot={false} />
-                <Area yAxisId="l" type="monotone" dataKey="store" name="Mağazalar" stroke="#d86d5b" fill="url(#gradStore)" strokeWidth={2} dot={false} />
-                <Line yAxisId="r" type="monotone" dataKey="total" name="Toplam Ciro"
+                <Area type="monotone" dataKey="pos"   name="Şarköy"      stroke="#1677ff" fill="url(#gradPos)"   strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="store" name="Mağazalar"   stroke="#d86d5b" fill="url(#gradStore)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="total" name="Toplam Ciro"
                   stroke="#722ed1" strokeWidth={2.5} dot={{ r: 4, fill: "#722ed1" }} activeDot={{ r: 6 }} />
               </ComposedChart>
             </ResponsiveContainer>
