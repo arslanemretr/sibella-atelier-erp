@@ -190,11 +190,10 @@ export async function handleConsolidatedSalesReport(req, res) {
       LEFT JOIN categories c  ON c.id = p.category_id
       WHERE ps.sold_at >= $1::timestamptz
         AND ps.sold_at <  $2::timestamptz
-        AND (p.supplier_id = ANY($3::text[]) OR p.supplier_id IS NULL)
       GROUP BY 1
       ORDER BY total_amount DESC
       `,
-      [dateFrom, dateTo, sibellaSupplierIds],
+      [dateFrom, dateTo],
     );
 
     // ── Scalar summary ────────────────────────────────────────────────────────

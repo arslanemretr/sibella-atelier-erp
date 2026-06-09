@@ -397,7 +397,7 @@ export default function ConsolidatedSalesReportPage() {
 
       {/* ── Kategori Kırılımı ── */}
       {(data?.categoryBreakdown?.length > 0) && (
-        <Card title="Kategori Kırılımı — Sibella Ürünleri (POS)" bordered={false} className="erp-list-table-card erp-card-logo-divider">
+        <Card title="Kategori Kırılımı (POS)" bordered={false} className="erp-list-table-card erp-card-logo-divider">
           <Table
             rowKey="category"
             dataSource={data.categoryBreakdown}
