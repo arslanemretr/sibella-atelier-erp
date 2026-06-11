@@ -93,7 +93,7 @@ function resolveAttachments(attachments) {
     .filter(Boolean);
 }
 
-async function sendManagedEmail({ eventKey, context }) {
+export async function sendManagedEmail({ eventKey, context }) {
   const settings = await getSmtpSettings();
   if (!settings) {
     return { sent: false, reason: "SMTP_NOT_CONFIGURED" };
