@@ -78,7 +78,12 @@ function validateEmailList(list) {
 }
 
 function normalizeEventKey(value) {
-  const supported = new Set(["password_reset_requested", "smtp_test_requested"]);
+  const supported = new Set([
+    "password_reset_requested",
+    "smtp_test_requested",
+    "supplier_login",
+    "delivery_created",
+  ]);
   const normalized = String(value || "").trim();
   return supported.has(normalized) ? normalized : null;
 }
@@ -166,6 +171,61 @@ export const mailEventDefinitions = [
       {
         key: "currentDateTime",
         label: "Tetiklenme Zamani",
+        operators: ["equals", "contains", "starts_with", "ends_with", "not_equals", "is_empty", "is_not_empty"],
+      },
+    ],
+  },
+  {
+    key: "supplier_login",
+    label: "Tedarikci Sistem Girisi",
+    variables: ["appName", "supplierName", "supplierEmail", "ipAddress", "loginAt"],
+    sampleContext: {
+      appName: APP_NAME,
+      supplierName: "Ornek Tedarikci A.S.",
+      supplierEmail: "tedarikci@ornek.com",
+      ipAddress: "192.168.1.1",
+      loginAt: "22.04.2026 14:30",
+    },
+    conditionFields: [
+      {
+        key: "supplierName",
+        label: "Tedarikci Adi",
+        operators: ["equals", "contains", "starts_with", "ends_with", "not_equals", "is_empty", "is_not_empty"],
+      },
+      {
+        key: "supplierEmail",
+        label: "Tedarikci E-postasi",
+        operators: ["equals", "contains", "starts_with", "ends_with", "not_equals", "is_empty", "is_not_empty"],
+      },
+    ],
+  },
+  {
+    key: "delivery_created",
+    label: "Tedarikci Teslimat Listesi Olusturuldu",
+    variables: ["appName", "supplierName", "supplierEmail", "deliveryNo", "deliveryDate", "lineCount", "createdAt"],
+    sampleContext: {
+      appName: APP_NAME,
+      supplierName: "Ornek Tedarikci A.S.",
+      supplierEmail: "tedarikci@ornek.com",
+      deliveryNo: "TES-123456",
+      deliveryDate: "22.04.2026",
+      lineCount: "5",
+      createdAt: "22.04.2026 14:30",
+    },
+    conditionFields: [
+      {
+        key: "supplierName",
+        label: "Tedarikci Adi",
+        operators: ["equals", "contains", "starts_with", "ends_with", "not_equals", "is_empty", "is_not_empty"],
+      },
+      {
+        key: "supplierEmail",
+        label: "Tedarikci E-postasi",
+        operators: ["equals", "contains", "starts_with", "ends_with", "not_equals", "is_empty", "is_not_empty"],
+      },
+      {
+        key: "deliveryNo",
+        label: "Teslimat No",
         operators: ["equals", "contains", "starts_with", "ends_with", "not_equals", "is_empty", "is_not_empty"],
       },
     ],
