@@ -1,5 +1,6 @@
 /* global process */
 import { sqlExec, sqlMany } from "./db.js";
+import { sendManagedEmail } from "./mailer.js";
 
 const RESOURCE_LABELS = {
   "products": "Ürünler",
@@ -91,6 +92,25 @@ export function writeAuditLog(entry) {
     [id, userId, userName, userRole, actionType, resource, resourceId,
      description, ipAddress, userAgent, statusCode, createdAt],
   ).catch(() => {});
+
+  // PAGE_VIEW, LIST, GET gibi sık/önemsiz aksiyonlar için mail tetikleme
+  const NOTIFY_ACTIONS = new Set(["LOGIN", "CREATE", "UPDATE", "DELETE", "LOGOUT"]);
+  if (NOTIFY_ACTIONS.has(actionType)) {
+    const actionAt = new Date(createdAt).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" });
+    void sendManagedEmail({
+      eventKey: "audit_log_action",
+      context: {
+        actionType:  actionType  || "-",
+        resource:    resource    || "-",
+        resourceId:  resourceId  || "-",
+        userName:    userName    || "-",
+        userRole:    userRole    || "-",
+        description: description || "-",
+        ipAddress:   ipAddress   || "-",
+        actionAt,
+      },
+    }).catch(() => {});
+  }
 }
 
 export async function ensureAuditLogTable() {

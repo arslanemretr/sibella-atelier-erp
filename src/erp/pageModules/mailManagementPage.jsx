@@ -916,7 +916,14 @@ function MailManagementPage() {
               {(fields, { add, remove }) => (
                 <Space vertical size={12} style={{ width: "100%" }}>
                   {fields.map((field) => {
-                    const currentOperator = scenarioForm.getFieldValue(["conditions", field.name, "operator"]);
+                    const currentFieldKey  = scenarioForm.getFieldValue(["conditions", field.name, "field"]);
+                    const currentOperator  = scenarioForm.getFieldValue(["conditions", field.name, "operator"]);
+                    const condFieldDef     = availableConditionFields.find((f) => f.key === currentFieldKey);
+                    const fieldOptions     = condFieldDef?.options || null;
+                    const allowedOperators = condFieldDef?.operators || null;
+                    const filteredOperatorOptions = allowedOperators
+                      ? conditionOperatorOptions.filter((o) => allowedOperators.includes(o.value))
+                      : conditionOperatorOptions;
                     const hideValue = currentOperator === "is_empty" || currentOperator === "is_not_empty";
                     return (
                       <Card
@@ -931,7 +938,10 @@ function MailManagementPage() {
                               label="Alan"
                               rules={[{ required: true, message: "Alan seciniz." }]}
                             >
-                              <Select options={availableConditionFields.map((item) => ({ value: item.key, label: item.label }))} />
+                              <Select
+                                options={availableConditionFields.map((item) => ({ value: item.key, label: item.label }))}
+                                onChange={() => scenarioForm.setFieldValue(["conditions", field.name, "value"], "")}
+                              />
                             </Form.Item>
                           </Col>
                           <Col xs={24} md={8}>
@@ -940,7 +950,7 @@ function MailManagementPage() {
                               label="Operator"
                               rules={[{ required: true, message: "Operator seciniz." }]}
                             >
-                              <Select options={conditionOperatorOptions} />
+                              <Select options={filteredOperatorOptions} />
                             </Form.Item>
                           </Col>
                           <Col xs={24} md={8}>
@@ -949,7 +959,11 @@ function MailManagementPage() {
                               label="Deger"
                               rules={hideValue ? [] : [{ required: true, message: "Deger giriniz." }]}
                             >
-                              <Input disabled={hideValue} placeholder={hideValue ? "Bu operator icin gerekmez" : "Kosul degeri"} />
+                              {fieldOptions && !hideValue ? (
+                                <Select options={fieldOptions} placeholder="Deger secin" />
+                              ) : (
+                                <Input disabled={hideValue} placeholder={hideValue ? "Bu operator icin gerekmez" : "Kosul degeri"} />
+                              )}
                             </Form.Item>
                           </Col>
                         </Row>
