@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { sqlExec, sqlMany, sqlOne } from "./db.js";
 import { writeAuditLog } from "./auditLog.js";
 import { isSmtpConfigured, sendPasswordResetEmail } from "./mailer.js";
+import { sendSupplierLoginNotification } from "./notificationMailer.js";
 import { hashPassword, isPasswordHash, verifyPassword } from "./passwords.js";
 
 export const AUTH_COOKIE_NAME = "sibella_erp_session";
@@ -499,6 +500,14 @@ export async function handleLogin(req, res) {
   });
 
   await recordLoginAttempt({ email, success: true, userId: user.id, ipAddress });
+
+  if (user.role === "Tedarikci") {
+    void sendSupplierLoginNotification({
+      supplierName: user.fullName || user.email,
+      supplierEmail: user.email,
+      ipAddress,
+    });
+  }
 
   writeAuditLog({
     userId: user.id,

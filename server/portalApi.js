@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { sqlExec, sqlMany, sqlOne } from "./db.js";
+import { sendDeliveryCreatedNotification } from "./notificationMailer.js";
 import {
   assertStockLocationStockAvailable,
   getMainStockLocation,
@@ -762,6 +763,13 @@ export async function handleDeliveryListsCreate(req, res) {
       VALUES ($1,$2,$3,$4,$5,$6,$7::date,$8,$9,$10,$11,$12,$13::timestamptz,$14::timestamptz)
     `, [item.id, item.deliveryNo, item.supplierId, item.supplierName, item.contactName, item.supplierEmail, item.date || null, item.shippingMethod, item.trackingNo, item.note, item.status, item.createdBy, item.createdAt, item.updatedAt]);
     await replaceDeliveryLines(item);
+    void sendDeliveryCreatedNotification({
+      deliveryNo:    item.deliveryNo,
+      supplierName:  item.supplierName,
+      supplierEmail: item.supplierEmail,
+      date:          item.date,
+      lineCount:     (item.lines || []).length,
+    });
     return res.status(201).json({ ok: true, item: await getDeliveryRowDirect(item.id) });
   } catch (error) {
     console.error("handleDeliveryListsCreate hatasi:", error?.message, error?.stack);
