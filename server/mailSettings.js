@@ -84,6 +84,8 @@ function normalizeEventKey(value) {
     "supplier_login",
     "delivery_created",
     "audit_log_action",
+    "earnings_payment_reminder",
+    "earnings_payment_due",
   ]);
   const normalized = String(value || "").trim();
   return supported.has(normalized) ? normalized : null;
@@ -298,6 +300,64 @@ export const mailEventDefinitions = [
       {
         key: "userName",
         label: "Kullanici Adi",
+        operators: ["equals", "contains", "starts_with", "ends_with", "not_equals", "is_empty", "is_not_empty"],
+      },
+    ],
+  },
+  {
+    key: "earnings_payment_reminder",
+    label: "Hakediş Ödeme Hatırlatması (1 Gün Önce)",
+    variables: ["appName", "supplierName", "contact", "supplierEmail", "iban", "periodKey", "paymentDueDate", "amount", "invoiceNo", "notifiedAt"],
+    sampleContext: {
+      appName: APP_NAME,
+      supplierName: "Ornek Tedarikci A.S.",
+      contact: "Ahmet Yilmaz",
+      supplierEmail: "tedarikci@ornek.com",
+      iban: "TR00 0000 0000 0000 0000 0000 00",
+      periodKey: "2026-05",
+      paymentDueDate: "13.06.2026",
+      amount: "12.500,00 TL",
+      invoiceNo: "FAT-2026-001",
+      notifiedAt: "12.06.2026 09:00",
+    },
+    conditionFields: [
+      {
+        key: "supplierName",
+        label: "Tedarikci Adi",
+        operators: ["equals", "contains", "starts_with", "ends_with", "not_equals", "is_empty", "is_not_empty"],
+      },
+      {
+        key: "periodKey",
+        label: "Donem",
+        operators: ["equals", "contains", "starts_with", "ends_with", "not_equals", "is_empty", "is_not_empty"],
+      },
+    ],
+  },
+  {
+    key: "earnings_payment_due",
+    label: "Hakediş Ödeme Günü Bildirimi",
+    variables: ["appName", "supplierName", "contact", "supplierEmail", "iban", "periodKey", "paymentDueDate", "amount", "invoiceNo", "notifiedAt"],
+    sampleContext: {
+      appName: APP_NAME,
+      supplierName: "Ornek Tedarikci A.S.",
+      contact: "Ahmet Yilmaz",
+      supplierEmail: "tedarikci@ornek.com",
+      iban: "TR00 0000 0000 0000 0000 0000 00",
+      periodKey: "2026-05",
+      paymentDueDate: "13.06.2026",
+      amount: "12.500,00 TL",
+      invoiceNo: "FAT-2026-001",
+      notifiedAt: "13.06.2026 10:00",
+    },
+    conditionFields: [
+      {
+        key: "supplierName",
+        label: "Tedarikci Adi",
+        operators: ["equals", "contains", "starts_with", "ends_with", "not_equals", "is_empty", "is_not_empty"],
+      },
+      {
+        key: "periodKey",
+        label: "Donem",
         operators: ["equals", "contains", "starts_with", "ends_with", "not_equals", "is_empty", "is_not_empty"],
       },
     ],

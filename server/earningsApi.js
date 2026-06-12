@@ -15,6 +15,26 @@ function addDays(isoString, days) {
   return d.toISOString();
 }
 
+function secondFridayOfNextMonth(periodKey) {
+  const parts = String(periodKey || "").split("-");
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  if (!year || !month) return null;
+  let nextYear = year;
+  let nextMonth = month + 1;
+  if (nextMonth > 12) { nextMonth = 1; nextYear++; }
+  const d = new Date(Date.UTC(nextYear, nextMonth - 1, 1));
+  let fridayCount = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    if (d.getUTCDay() === 5) {
+      fridayCount++;
+      if (fridayCount === 2) return d.toISOString();
+    }
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+}
+
 function httpError(res, status, message) {
   return res.status(status).json({ ok: false, message });
 }
@@ -93,7 +113,15 @@ export async function handleEarningsRecordsUpsert(req, res) {
 
     const now = nowIso();
     const normalizedInvoiceDate = invoiceDate || null;
-    const paymentDueDate = normalizedInvoiceDate ? addDays(normalizedInvoiceDate, 15) : null;
+
+    const supplierTermRow = await sqlOne(
+      `SELECT pt.days FROM suppliers s LEFT JOIN payment_terms pt ON pt.id = s.payment_term_id WHERE s.id = $1`,
+      [supplierId],
+    );
+    const paymentTermDays = Number(supplierTermRow?.days || 15);
+    const paymentDueDate = normalizedInvoiceDate
+      ? (paymentTermDays === 15 ? secondFridayOfNextMonth(periodKey) : addDays(normalizedInvoiceDate, paymentTermDays))
+      : null;
 
     let record;
     if (existing) {

@@ -77,6 +77,7 @@ import {
   ensurePosSalesIndexes,
 } from "./portalApi.js";
 import { ensureEarningsReady, handleEarningsRecordsList, handleEarningsRecordsUpsert } from "./earningsApi.js";
+import { startEarningsCron } from "./earningsCron.js";
 import { handleStockMovementsList } from "./stockMovementsApi.js";
 import {
   handleStockLocationBalancesList,
@@ -175,6 +176,7 @@ void ensureDatabaseReady()
   .then(() => ensureBrandingReady())
   .then(() => migrateLegacyPasswords())
   .then(() => ensureStoreInvoicesReady())
+  .then(() => { startEarningsCron(); })
   .catch((error) => {
     console.error("Database init / auth migration hatasi:", error?.message || error);
   });
