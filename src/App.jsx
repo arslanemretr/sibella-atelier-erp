@@ -32,6 +32,7 @@ const StoreListPage = React.lazy(() => import("./erp/pageModules/storePages").th
 const StoreEditorPage = React.lazy(() => import("./erp/pageModules/storePages").then((module) => ({ default: module.StoreEditorPage })));
 const StoreShipmentListPage = React.lazy(() => import("./erp/pageModules/storeShipmentPages").then((module) => ({ default: module.StoreShipmentListPage })));
 const StoreShipmentEditorPage = React.lazy(() => import("./erp/pageModules/storeShipmentPages").then((module) => ({ default: module.StoreShipmentEditorPage })));
+const StoreShipmentMobileEditorPage = React.lazy(() => import("./erp/pageModules/storeShipmentMobilePage").then((module) => ({ default: module.StoreShipmentMobileEditorPage })));
 const PurchaseListPage = React.lazy(() => import("./erp/pageModules/purchasePages").then((module) => ({ default: module.PurchaseListPage })));
 const PurchaseEditorPage = React.lazy(() => import("./erp/pageModules/purchasePages").then((module) => ({ default: module.PurchaseEditorPage })));
 const PosSessionsPage = React.lazy(() => import("./erp/pageModules/posPages").then((module) => ({ default: module.PosSessionsPage })));
@@ -177,6 +178,7 @@ function ProtectedApp() {
         <Route path="/stores/:storeId" element={withRolePage(<StoreEditorPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/stores/shipments" element={withRolePage(<StoreShipmentListPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/stores/shipments/new" element={withRolePage(<StoreShipmentEditorPage />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/stores/shipments/new-mobil" element={withRolePage(<StoreShipmentMobileEditorPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/stores/shipments/:shipmentId" element={withRolePage(<StoreShipmentEditorPage />, authUser, "Yonetici", "Muhasebe")} />
 
         <Route path="/stock/entry" element={withLazyPage(<StockEntryListPage />)} />

@@ -83,6 +83,7 @@ export function StoreShipmentListPage() {
           <Title level={3} style={{ marginBottom: 6 }}>Gonderi Listesi</Title>
           <Text type="secondary">Magazalara acilan konsinye gonderiler durum bazli izlenir.</Text>
         </div>
+        <Button onClick={() => navigate("/stores/shipments/new-mobil")}>Mobil</Button>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/stores/shipments/new")}>Gonderi Olustur</Button>
       </div>
 
