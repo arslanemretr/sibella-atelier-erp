@@ -1,12 +1,12 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AutoComplete, Button, Card, Drawer, Form, Input, InputNumber, Select, Space, Tag, Typography, Upload, message } from "antd";
-import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, MinusOutlined, PlusOutlined, SaveOutlined, SendOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, FilePdfOutlined, MinusOutlined, PlusOutlined, SaveOutlined, SendOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
 import { getNextProductCodeFresh, listProductsCatalogFresh } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
-import { getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh } from "../storeShipmentsData";
+import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
 
 const { Text } = Typography;
@@ -48,6 +48,7 @@ export function StoreShipmentMobileEditorPage() {
   const [nextSeq, setNextSeq] = React.useState(null); // SBSE sonraki sira no (onizleme)
   const [pageLoading, setPageLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const [pdfLoading, setPdfLoading] = React.useState(false);
 
   const [lines, setLines] = React.useState([]);
   const [addOpen, setAddOpen] = React.useState(false);
@@ -292,6 +293,29 @@ export function StoreShipmentMobileEditorPage() {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    try {
+      setPdfLoading(true);
+      const values = form.getFieldsValue();
+      const pdfTotal = lines.reduce((sum, l) => sum + Number(l.quantity || 0) * Number(l.salePrice || 0), 0);
+      await createStoreShipmentPdf({
+        ...values,
+        id: shipmentId || "preview",
+        shipmentNo: values.shipmentNo || "TASLAK",
+        storeName: stores.find((s) => s.id === values.storeId)?.name || "-",
+        lines,
+        lineCount: lines.length,
+        totalQuantity: lines.reduce((sum, l) => sum + Number(l.quantity || 0), 0),
+        totalAmount: pdfTotal,
+        totalAmountDisplay: formatMoney(pdfTotal),
+      });
+    } catch (error) {
+      message.error(error?.message || "PDF olusturulamadi.");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   const totalQty = lines.reduce((sum, l) => sum + Number(l.quantity || 0), 0);
   const totalAmount = lines.reduce((sum, l) => sum + Number(l.quantity || 0) * Number(l.salePrice || 0), 0);
 
@@ -313,6 +337,16 @@ export function StoreShipmentMobileEditorPage() {
       >
         <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate("/stores/shipments")} />
         <Text strong style={{ fontSize: 16, flex: 1 }}>{isEditMode ? "Gonderi Detayi" : "Gonderi Olustur"}</Text>
+        {isEditMode && lines.length > 0 ? (
+          <Button
+            type="text"
+            icon={<FilePdfOutlined />}
+            loading={pdfLoading}
+            onClick={() => { void handleDownloadPdf(); }}
+          >
+            PDF
+          </Button>
+        ) : null}
         {isEditMode ? (
           <Tag color={isLocked ? "green" : watchedStatus === "Hazirlandi" ? "gold" : "default"} style={{ marginInlineEnd: 0 }}>
             {watchedStatus}
