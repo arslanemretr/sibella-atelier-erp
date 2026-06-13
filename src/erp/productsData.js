@@ -183,8 +183,12 @@ export async function listProductImagesFresh() {
 }
 
 // Catalog modu: slim + image dahil (teslimat editörü gibi görsel gerektiren yerler için).
-export async function listProductsCatalogFresh() {
-  return requestCollection("/api/products?catalog=true", []);
+// productType: "kendi" | "konsinye" | null (tümü)
+export async function listProductsCatalogFresh({ productType } = {}) {
+  const url = productType
+    ? `/api/products?catalog=true&productType=${encodeURIComponent(productType)}`
+    : "/api/products?catalog=true";
+  return requestCollection(url, []);
 }
 
 export function generateProductCodeForSupplier(supplierId, currentProductId) {

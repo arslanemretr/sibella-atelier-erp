@@ -4,7 +4,7 @@ import { AutoComplete, Button, Card, Drawer, Form, Input, InputNumber, Select, S
 import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, MinusOutlined, PlusOutlined, SaveOutlined, SendOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
-import { getNextProductCodeFresh, listProductsRawFresh } from "../productsData";
+import { getNextProductCodeFresh, listProductsCatalogFresh } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
@@ -65,7 +65,7 @@ export function StoreShipmentMobileEditorPage() {
         setPageLoading(true);
         const [storeRows, productRows, supplierRows, nextCode, existing] = await Promise.all([
           listStoresFresh(),
-          listProductsRawFresh({ productType: "kendi" }),
+          listProductsCatalogFresh({ productType: "kendi" }),
           listSuppliersFresh({ slim: true }),
           getNextProductCodeFresh(),
           isEditMode ? getStoreShipmentFresh(shipmentId) : Promise.resolve(null),
