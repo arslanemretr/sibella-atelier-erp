@@ -382,7 +382,9 @@ function buildNextStoreShipmentNo(store, shipments) {
 
 function normalizeShipmentLine(line, index, shipmentId) {
   return {
-    id: line.id || `${shipmentId}-line-${index + 1}`,
+    // Satir id'si her zaman shipmentId'den uretilir; istemcinin gonderdigi id'ye
+    // guvenilmez (mobil her gonderide line-1, line-2 gonderince PK cakismasi olur)
+    id: `${shipmentId}-line-${index + 1}`,
     productId: line.productId || null,
     isManualProduct: Boolean(line.isManualProduct),
     image: line.image || "",

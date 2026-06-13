@@ -516,7 +516,7 @@ export function StoreShipmentMobileEditorPage() {
                 onClick={() => { void handleSend(); }}
                 style={{ flex: 1.4, height: 48, fontSize: 14, borderRadius: 10 }}
               >
-                Gonderildi Olarak Isle
+                Gonderildi
               </Button>
             </div>
           </div>
