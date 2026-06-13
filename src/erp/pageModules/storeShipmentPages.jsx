@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AutoComplete, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Row, Select, Space, Table, Tag, Tooltip, Typography, Upload, message } from "antd";
+import { AutoComplete, Button, Card, Col, Descriptions, Drawer, Form, Grid, Input, InputNumber, Row, Select, Space, Table, Tag, Tooltip, Typography, Upload, message } from "antd";
 import { CheckOutlined, DeleteOutlined, EditOutlined, FilePdfOutlined, PlusCircleOutlined, PlusOutlined, SendOutlined, UploadOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
@@ -54,8 +54,14 @@ async function sendStoreShipmentPayload(shipmentId) {
   return response?.item || response;
 }
 
+function statusColor(value) {
+  return value === "Gonderildi" ? "green" : value === "Hazirlandi" ? "gold" : "default";
+}
+
 export function StoreShipmentListPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [shipments, setShipments] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [detailOpen, setDetailOpen] = React.useState(false);
@@ -87,6 +93,44 @@ export function StoreShipmentListPage() {
         <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/stores/shipments/new")}>Gonderi Olustur</Button>
       </div>
 
+      {isMobile ? (
+        <Card title="Tum Gonderiler" className="erp-list-table-card" loading={loading} styles={{ body: { padding: 12 } }}>
+          {shipments.length === 0 ? (
+            <Text type="secondary">Gonderi bulunmuyor.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {shipments.map((record) => (
+                <div
+                  key={record.id}
+                  onClick={() => navigate(`/stores/shipments/${record.id}`)}
+                  style={{
+                    padding: 14,
+                    borderRadius: 12,
+                    border: "1px solid #f0f0f0",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <Text strong style={{ fontSize: 15 }}>{record.shipmentNo}</Text>
+                    <Tag color={statusColor(record.status)} style={{ marginInlineEnd: 0 }}>{record.status}</Tag>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <Text>{record.storeName}</Text>
+                    <Text type="secondary" style={{ fontSize: 13 }}>{formatDisplayDate(record.date)}</Text>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>
+                      {record.lineCount} kalem &bull; {record.totalQuantity} adet
+                    </Text>
+                    <Text strong style={{ color: "#1677ff" }}>{record.totalAmountDisplay}</Text>
+                  </div>
+                </div>
+              ))}
+            </Space>
+          )}
+        </Card>
+      ) : (
       <Card title="Tum Gonderiler" className="erp-list-table-card" style={{ paddingBottom: 24 }}>
         <Table
           size="small"
@@ -151,6 +195,7 @@ export function StoreShipmentListPage() {
           rowClassName={() => "erp-clickable-row"}
         />
       </Card>
+      )}
 
       <Drawer title="Gonderi Detayi" placement="right" styles={{ wrapper: { width: 520 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedShipment ? (

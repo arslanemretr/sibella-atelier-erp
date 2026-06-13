@@ -442,6 +442,7 @@ CREATE TABLE IF NOT EXISTS pos_return_lines (
 CREATE TABLE IF NOT EXISTS system_parameters (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   product_code_control_enabled BOOLEAN,
+  sbse_last_seq INTEGER,
   updated_at TIMESTAMPTZ
 );
 

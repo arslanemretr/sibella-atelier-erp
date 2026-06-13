@@ -554,6 +554,73 @@ async function getProductRow(productId) {
   };
 }
 
+const SBSE_PREFIX = "SBSE";
+const SBSE_MAX_SEQ = 3000; // son 4 hane bu degerin altinda olmali
+
+function formatSbseCode(seq) {
+  return `${SBSE_PREFIX}${String(seq).padStart(4, "0")}`;
+}
+
+// SBSE ile baslayan kodlarin son 4 hanesi <3000 olanlarin en buyugu (bir kerelik seed icin)
+async function computeSbseSeedSeq() {
+  const row = await sqlOne(
+    `
+      SELECT COALESCE(MAX(seq), 0) AS max_seq FROM (
+        SELECT CAST(substring(code from 5) AS INTEGER) AS seq
+        FROM products
+        WHERE code ~ '^SBSE[0-9]+$'
+      ) t
+      WHERE seq < $1
+    `,
+    [SBSE_MAX_SEQ],
+  );
+  return Number(row?.max_seq || 0);
+}
+
+// system_parameters satirini ve sbse_last_seq degerini garanti eder (NULL ise bir kez seed eder)
+async function ensureSbseCounterSeeded() {
+  const row = await sqlOne("SELECT sbse_last_seq FROM system_parameters WHERE id = 1");
+  if (!row) {
+    const seed = await computeSbseSeedSeq();
+    await sqlExec(
+      `
+        INSERT INTO system_parameters (id, product_code_control_enabled, sbse_last_seq, updated_at)
+        VALUES (1, TRUE, $1, $2::timestamptz)
+        ON CONFLICT (id) DO UPDATE SET sbse_last_seq = COALESCE(system_parameters.sbse_last_seq, EXCLUDED.sbse_last_seq)
+      `,
+      [seed, nowIso()],
+    );
+    return seed;
+  }
+  if (row.sbse_last_seq === null || row.sbse_last_seq === undefined) {
+    const seed = await computeSbseSeedSeq();
+    await sqlExec("UPDATE system_parameters SET sbse_last_seq = $1 WHERE id = 1", [seed]);
+    return seed;
+  }
+  return Number(row.sbse_last_seq);
+}
+
+// Sonraki kodu hesaplar (artirmaz) — ekranda onizleme icin
+async function peekNextSbseCode() {
+  const seq = await ensureSbseCounterSeeded();
+  const next = seq + 1;
+  return { seq, next, code: formatSbseCode(next), exhausted: next >= SBSE_MAX_SEQ };
+}
+
+// Sonraki kodu atomik olarak rezerve eder (sayaci artirir)
+async function reserveNextSbseCode() {
+  await ensureSbseCounterSeeded();
+  const row = await sqlOne(
+    `UPDATE system_parameters SET sbse_last_seq = sbse_last_seq + 1, updated_at = $1::timestamptz WHERE id = 1 RETURNING sbse_last_seq`,
+    [nowIso()],
+  );
+  const seq = Number(row?.sbse_last_seq || 0);
+  if (seq >= SBSE_MAX_SEQ) {
+    throw new Error(`SBSE kod havuzu doldu (son 4 hane ${SBSE_MAX_SEQ} sinirina ulasildi).`);
+  }
+  return formatSbseCode(seq);
+}
+
 function normalizeProduct(values, existingRecord) {
   const recordId = existingRecord?.id || createId("prd");
   return {
@@ -769,6 +836,15 @@ export async function handleProductsGet(req, res) {
   return res.json({ ok: true, item });
 }
 
+export async function handleNextProductCode(_req, res) {
+  try {
+    const result = await peekNextSbseCode();
+    return res.json({ ok: true, ...result });
+  } catch (error) {
+    return httpError(res, 500, error?.message || "Sonraki urun kodu hesaplanamadi.");
+  }
+}
+
 export async function handleProductsCreate(req, res) {
   try {
     const item = normalizeProduct(req.body || {});
@@ -777,6 +853,10 @@ export async function handleProductsCreate(req, res) {
       const authSupplierId = req.authUser.supplierId;
       if (!authSupplierId) return httpError(res, 403, "Tedarikci eslesmesi bulunamadi.");
       item.supplierId = authSupplierId;
+    }
+    // autoCode: kod boş ise SBSE sayacindan atomik olarak sonraki kod atanir
+    if (req.body?.autoCode && !item.code) {
+      item.code = await reserveNextSbseCode();
     }
     await sqlExec(`
       INSERT INTO products (

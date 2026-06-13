@@ -198,6 +198,16 @@ export function generateProductCodeForSupplier(supplierId, currentProductId) {
   return `${shortCode}${String(supplierProductCount + 1).padStart(4, "0")}`;
 }
 
+// SBSE sayacindan sonraki urun kodunu getirir (artirmaz — sadece onizleme)
+export async function getNextProductCodeFresh() {
+  try {
+    const payload = await requestJson("GET", "/api/products/next-code");
+    return payload || null;
+  } catch {
+    return null;
+  }
+}
+
 export function createProduct(values) {
   return enrichProduct(mutateResourceSync("POST", "/api/products", values));
 }

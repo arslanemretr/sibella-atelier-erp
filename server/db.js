@@ -207,6 +207,11 @@ async function ensureStoresSchema() {
   await sqlExec(`CREATE INDEX IF NOT EXISTS idx_store_shipment_lines_shipment_id ON store_shipment_lines (shipment_id)`);
 }
 
+async function ensureSystemParametersSchema() {
+  // SBSE ürün kodu sayacı — tüm ürünleri taramak yerine sayaç tutulur
+  await sqlExec(`ALTER TABLE system_parameters ADD COLUMN IF NOT EXISTS sbse_last_seq INTEGER`);
+}
+
 async function ensurePerformanceIndexes() {
   // Status kolonları — dashboard COUNT(*) sorgularında full scan önlenir
   await sqlExec(`CREATE INDEX IF NOT EXISTS idx_products_status ON products (status)`);
@@ -226,6 +231,7 @@ async function ensureInitialized() {
       await ensureApplicationSchema();
       await ensureDefaultStockLocationAndBalances();
       await ensureStoresSchema();
+      await ensureSystemParametersSchema();
       await ensurePerformanceIndexes();
     })().catch((error) => {
       initPromise = null;

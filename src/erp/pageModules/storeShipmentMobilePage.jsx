@@ -1,10 +1,11 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { AutoComplete, Button, Drawer, Form, Input, InputNumber, Select, Space, Typography, Upload, message, Dropdown } from "antd";
-import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, EllipsisOutlined, MinusOutlined, PlusOutlined, SendOutlined } from "@ant-design/icons";
+import { AutoComplete, Button, Card, Drawer, Form, Input, InputNumber, Select, Space, Tag, Typography, Upload, message } from "antd";
+import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, MinusOutlined, PlusOutlined, SaveOutlined, SendOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
-import { listProductsRawFresh } from "../productsData";
+import { getNextProductCodeFresh, listProductsRawFresh } from "../productsData";
+import { listSuppliersFresh } from "../suppliersData";
 import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
 
@@ -30,6 +31,10 @@ function formatMoney(value) {
   }).format(Number(value || 0));
 }
 
+function formatSbse(seq) {
+  return `SBSE${String(seq).padStart(4, "0")}`;
+}
+
 export function StoreShipmentMobileEditorPage() {
   const navigate = useNavigate();
   const authUser = getAuthUser();
@@ -37,12 +42,15 @@ export function StoreShipmentMobileEditorPage() {
 
   const [stores, setStores] = React.useState([]);
   const [products, setProducts] = React.useState([]);
+  const [sbseSupplierId, setSbseSupplierId] = React.useState(null);
+  const [nextSeq, setNextSeq] = React.useState(null); // SBSE sonraki sira no (onizleme)
   const [pageLoading, setPageLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
 
   const [lines, setLines] = React.useState([]);
   const [addOpen, setAddOpen] = React.useState(false);
   const [draft, setDraft] = React.useState(EMPTY_DRAFT);
+  const lineSeqRef = React.useRef(0);
 
   const watchedStoreId = Form.useWatch("storeId", form);
 
@@ -51,18 +59,22 @@ export function StoreShipmentMobileEditorPage() {
     (async () => {
       try {
         setPageLoading(true);
-        const [storeRows, productRows] = await Promise.all([
+        const [storeRows, productRows, supplierRows, nextCode] = await Promise.all([
           listStoresFresh(),
           listProductsRawFresh({ productType: "kendi" }),
+          listSuppliersFresh({ slim: true }),
+          getNextProductCodeFresh(),
         ]);
         if (cancelled) return;
         setStores(storeRows);
         setProducts(productRows);
+        const sbse = supplierRows.find((s) => String(s.shortCode || "").toUpperCase() === "SBSE");
+        setSbseSupplierId(sbse?.id || null);
+        setNextSeq(nextCode?.next ?? null);
         form.setFieldsValue({
           storeId: undefined,
           date: new Date().toISOString().slice(0, 10),
           shippingMethod: "Kargo",
-          trackingNo: "",
           note: "",
           status: "Taslak",
           shipmentNo: "",
@@ -92,6 +104,14 @@ export function StoreShipmentMobileEditorPage() {
     [products],
   );
 
+  // Eklenmis manuel satir sayisi — sonraki manuel kodun onizlemesi icin
+  const manualCount = React.useMemo(
+    () => lines.filter((l) => l.isManualProduct).length,
+    [lines],
+  );
+
+  const previewSbseCode = nextSeq !== null ? formatSbse(nextSeq + manualCount) : "";
+
   const handleProductSelect = (productId) => {
     const p = products.find((item) => item.id === productId);
     if (!p) return;
@@ -107,13 +127,32 @@ export function StoreShipmentMobileEditorPage() {
     });
   };
 
+  const handleManualNameChange = (value) => {
+    setDraft((prev) => ({
+      ...prev,
+      productId: undefined,
+      isManualProduct: Boolean(value),
+      name: value,
+      image: "",
+      // Manuel urun icin SBSE kodu otomatik onizlenir
+      code: value ? previewSbseCode : "",
+    }));
+  };
+
   const handleAddLine = () => {
     if (!draft.name) { message.warning("Urun adi zorunludur."); return; }
     if (!draft.salePrice || Number(draft.salePrice) <= 0) { message.warning("Satis fiyati giriniz."); return; }
     if (!draft.productId && !draft.image) { message.warning("Manuel urunler icin gorsel zorunludur."); return; }
+    lineSeqRef.current += 1;
     setLines((prev) => [
       ...prev,
-      { ...draft, id: `line-${Date.now()}`, isManualProduct: !draft.productId },
+      {
+        ...draft,
+        id: `line-${lineSeqRef.current}`,
+        isManualProduct: !draft.productId,
+        // Manuel satirin kodu onizleme kodu olarak sabitlenir (gercek kod gonderimde rezerve edilir)
+        code: draft.productId ? draft.code : previewSbseCode,
+      },
     ]);
     setDraft(EMPTY_DRAFT);
     setAddOpen(false);
@@ -131,38 +170,59 @@ export function StoreShipmentMobileEditorPage() {
     setLines((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const buildPayload = async (status) => {
-    const values = await form.validateFields();
-    if (!lines.length) throw new Error("En az bir satir eklenmelidir.");
-    return { ...values, status, lines, createdBy: authUser?.id || null };
+  // Manuel satir icin SBSE kodlu urun karti olusturur, satira baglar
+  const createProductForManualLine = async (line) => {
+    const response = await requestJson("POST", "/api/products", {
+      autoCode: true,
+      code: "",
+      supplierId: sbseSupplierId || null,
+      name: line.name,
+      salePrice: Number(line.salePrice || 0),
+      saleCurrency: line.saleCurrency || "TRY",
+      cost: 0,
+      costCurrency: "TRY",
+      categoryId: null,
+      collectionId: null,
+      posCategoryId: null,
+      barcode: "",
+      supplierCode: "",
+      minStock: 0,
+      supplierLeadTime: 0,
+      stock: 0,
+      productType: "kendi",
+      salesTax: "%20",
+      image: line.image || "/products/baroque-necklace.svg",
+      isForSale: true,
+      isForPurchase: true,
+      useInPos: true,
+      trackInventory: true,
+      status: "Aktif",
+      workflowStatus: "Taslak",
+      createdBy: authUser?.id || null,
+      notes: "",
+      features: [],
+    });
+    const saved = response?.item || response;
+    if (!saved?.id) throw new Error("Urun karti olusturulamadi.");
+    return saved;
   };
 
-  const handleSave = async (status) => {
+  const handleSaveDraft = async () => {
     try {
       setSaving(true);
-      const payload = await buildPayload(status || "Taslak");
-      const response = await requestJson("POST", "/api/store-shipments", payload);
-      const saved = response?.item || response;
-      message.success("Gonderi kaydedildi.");
-      navigate(`/stores/shipments/${saved.id}`);
+      await form.validateFields();
+      if (!lines.length) throw new Error("En az bir satir eklenmelidir.");
+      const values = form.getFieldsValue();
+      await requestJson("POST", "/api/store-shipments", {
+        ...values,
+        status: "Taslak",
+        lines,
+        createdBy: authUser?.id || null,
+      });
+      message.success("Taslak kaydedildi.");
+      navigate("/stores/shipments");
     } catch (error) {
-      if (!error?.errorFields) message.error(error?.message || "Gonderi kaydedilemedi.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handlePrepare = async () => {
-    try {
-      setSaving(true);
-      const payload = await buildPayload("Hazirlandi");
-      const response = await requestJson("POST", "/api/store-shipments", payload);
-      const saved = response?.item || response;
-      await createStoreShipmentPdf(saved);
-      message.success("Gonderi hazirlandi, PDF olusturuldu.");
-      navigate(`/stores/shipments/${saved.id}`);
-    } catch (error) {
-      if (!error?.errorFields) message.error(error?.message || "Hazirlanamadi.");
+      if (!error?.errorFields) message.error(error?.message || "Taslak kaydedilemedi.");
     } finally {
       setSaving(false);
     }
@@ -171,15 +231,39 @@ export function StoreShipmentMobileEditorPage() {
   const handleSend = async () => {
     try {
       setSaving(true);
-      const payload = await buildPayload("Hazirlandi");
-      const createRes = await requestJson("POST", "/api/store-shipments", payload);
+      await form.validateFields();
+      if (!lines.length) throw new Error("En az bir satir eklenmelidir.");
+
+      // Manuel satirlar icin urun karti olustur, productId bagla
+      const preparedLines = [];
+      for (const line of lines) {
+        if (line.productId) {
+          preparedLines.push(line);
+          continue;
+        }
+        const created = await createProductForManualLine(line);
+        preparedLines.push({
+          ...line,
+          productId: created.id,
+          code: created.code || line.code,
+          isManualProduct: false,
+        });
+      }
+
+      const values = form.getFieldsValue();
+      const createRes = await requestJson("POST", "/api/store-shipments", {
+        ...values,
+        status: "Hazirlandi",
+        lines: preparedLines,
+        createdBy: authUser?.id || null,
+      });
       const created = createRes?.item || createRes;
-      const sendRes = await requestJson("POST", `/api/store-shipments/${encodeURIComponent(created.id)}/send`, {});
-      const sent = sendRes?.item || sendRes;
+      await requestJson("POST", `/api/store-shipments/${encodeURIComponent(created.id)}/send`, {});
+      try { await createStoreShipmentPdf(created); } catch { /* PDF opsiyonel */ }
       message.success("Gonderi magazaya aktarildi.");
-      navigate(`/stores/shipments/${sent.id}`);
+      navigate("/stores/shipments");
     } catch (error) {
-      if (!error?.errorFields) message.error(error?.message || "Gonderilemedi.");
+      if (!error?.errorFields) message.error(error?.message || "Gonderi gonderilemedi.");
     } finally {
       setSaving(false);
     }
@@ -188,27 +272,14 @@ export function StoreShipmentMobileEditorPage() {
   const totalQty = lines.reduce((sum, l) => sum + Number(l.quantity || 0), 0);
   const totalAmount = lines.reduce((sum, l) => sum + Number(l.quantity || 0) * Number(l.salePrice || 0), 0);
 
-  const overflowItems = [
-    {
-      key: "draft",
-      label: "Taslak Kaydet",
-      onClick: () => { void handleSave("Taslak"); },
-    },
-    {
-      key: "prepare",
-      label: "Hazirla + PDF",
-      onClick: () => { void handlePrepare(); },
-    },
-  ];
-
   return (
-    <div style={{ maxWidth: 520, margin: "0 auto", paddingBottom: lines.length > 0 ? 110 : 24 }}>
+    <div style={{ maxWidth: 520, margin: "0 auto", paddingBottom: lines.length > 0 ? 132 : 24 }}>
       {/* Sticky header */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          gap: 8,
           padding: "10px 16px",
           borderBottom: "1px solid #f0f0f0",
           background: "#fff",
@@ -219,153 +290,130 @@ export function StoreShipmentMobileEditorPage() {
       >
         <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate("/stores/shipments")} />
         <Text strong style={{ fontSize: 16 }}>Gonderi Olustur</Text>
-        <Dropdown menu={{ items: overflowItems }} placement="bottomRight" trigger={["click"]}>
-          <Button type="text" icon={<EllipsisOutlined style={{ fontSize: 20 }} />} />
-        </Dropdown>
       </div>
 
-      {/* Form fields */}
-      <div style={{ padding: "16px 16px 0" }}>
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="storeId"
-            label="Magaza"
-            rules={[{ required: true, message: "Magaza seciniz." }]}
-          >
-            <Select
-              loading={pageLoading}
-              size="large"
-              placeholder="Magaza secin"
-              options={stores.map((s) => ({ value: s.id, label: s.name }))}
-            />
-          </Form.Item>
+      <div style={{ padding: 16 }}>
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          {/* Panel 1 — Genel Bilgiler */}
+          <Card size="small" title="Genel Bilgiler" loading={pageLoading} styles={{ body: { paddingBottom: 4 } }}>
+            <Form form={form} layout="vertical">
+              <Form.Item
+                name="storeId"
+                label="Magaza"
+                rules={[{ required: true, message: "Magaza seciniz." }]}
+              >
+                <Select
+                  size="large"
+                  placeholder="Magaza secin"
+                  options={stores.map((s) => ({ value: s.id, label: s.name }))}
+                />
+              </Form.Item>
 
-          <div style={{ display: "flex", gap: 12 }}>
-            <Form.Item
-              name="date"
-              label="Tarih"
-              rules={[{ required: true, message: "Tarih zorunludur." }]}
-              style={{ flex: 1 }}
-            >
-              <Input type="date" size="large" />
-            </Form.Item>
-            <Form.Item name="shippingMethod" label="Gonderim" style={{ flex: 1 }}>
-              <Select
-                size="large"
-                options={["Kargo", "Elden Teslim"].map((v) => ({ value: v, label: v }))}
-              />
-            </Form.Item>
-          </div>
+              <div style={{ display: "flex", gap: 12 }}>
+                <Form.Item
+                  name="date"
+                  label="Tarih"
+                  rules={[{ required: true, message: "Tarih zorunludur." }]}
+                  style={{ flex: 1 }}
+                >
+                  <Input type="date" size="large" />
+                </Form.Item>
+                <Form.Item name="shippingMethod" label="Gonderim" style={{ flex: 1 }}>
+                  <Select
+                    size="large"
+                    options={["Kargo", "Elden Teslim"].map((v) => ({ value: v, label: v }))}
+                  />
+                </Form.Item>
+              </div>
 
-          <Form.Item name="trackingNo" label="Takip No">
-            <Input size="large" placeholder="Opsiyonel" />
-          </Form.Item>
+              <Form.Item name="note" label="Not" style={{ marginBottom: 8 }}>
+                <Input.TextArea rows={2} placeholder="Takip no vb. ek bilgiler buraya yazilabilir" />
+              </Form.Item>
 
-          <Form.Item name="note" label="Not">
-            <Input.TextArea rows={2} placeholder="Opsiyonel" />
-          </Form.Item>
+              <Form.Item name="shipmentNo" hidden><Input /></Form.Item>
+              <Form.Item name="status" hidden><Input /></Form.Item>
+            </Form>
+          </Card>
 
-          <Form.Item name="shipmentNo" hidden><Input /></Form.Item>
-          <Form.Item name="status" hidden><Input /></Form.Item>
-        </Form>
-      </div>
-
-      {/* Lines section */}
-      <div style={{ padding: "0 16px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 12,
-          }}
-        >
-          <Text strong>Urunler ({lines.length})</Text>
-          {lines.length > 0 && (
-            <Text type="secondary" style={{ fontSize: 13 }}>
-              {totalQty} adet &bull; {formatMoney(totalAmount)}
-            </Text>
-          )}
-        </div>
-
-        {lines.map((line, index) => (
-          <div
-            key={line.id}
-            style={{
-              display: "flex",
-              gap: 12,
-              padding: 12,
-              marginBottom: 10,
-              background: "#fff",
-              borderRadius: 12,
-              border: "1px solid #f0f0f0",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-            }}
-          >
-            <img
-              src={line.image || "/products/baroque-necklace.svg"}
-              alt=""
-              style={{
-                width: 60,
-                height: 60,
-                objectFit: "cover",
-                borderRadius: 8,
-                flexShrink: 0,
-              }}
-            />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <Text strong style={{ display: "block", fontSize: 14, lineHeight: "20px" }}>{line.name}</Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>{line.code || "—"}</Text>
+          {/* Panel 2 — Urunler */}
+          <Card size="small" title={`Urunler (${lines.length})`}>
+            {lines.map((line, index) => (
               <div
+                key={line.id}
                 style={{
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginTop: 10,
+                  gap: 12,
+                  padding: 12,
+                  marginBottom: 10,
+                  background: "#fff",
+                  borderRadius: 12,
+                  border: "1px solid #f0f0f0",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Button
-                    size="small"
-                    icon={<MinusOutlined />}
-                    onClick={() => updateLineQty(index, -1)}
-                    style={{ width: 30, height: 30, padding: 0 }}
-                  />
-                  <Text strong style={{ minWidth: 20, textAlign: "center" }}>{line.quantity}</Text>
-                  <Button
-                    size="small"
-                    icon={<PlusOutlined />}
-                    onClick={() => updateLineQty(index, 1)}
-                    style={{ width: 30, height: 30, padding: 0 }}
-                  />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Text strong style={{ color: "#1677ff", fontSize: 14 }}>
-                    {formatMoney(line.salePrice * line.quantity)}
-                  </Text>
-                  <Button
-                    size="small"
-                    danger
-                    type="text"
-                    icon={<DeleteOutlined />}
-                    onClick={() => removeLine(index)}
-                  />
+                <img
+                  src={line.image || "/products/baroque-necklace.svg"}
+                  alt=""
+                  style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, flexShrink: 0 }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Text strong style={{ display: "block", fontSize: 14, lineHeight: "20px" }}>{line.name}</Text>
+                  <Space size={6} style={{ marginTop: 2 }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{line.code || "—"}</Text>
+                    {line.isManualProduct ? <Tag color="gold" style={{ marginInlineEnd: 0, lineHeight: "16px" }}>Yeni</Tag> : null}
+                  </Space>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginTop: 10,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <Button
+                        size="small"
+                        icon={<MinusOutlined />}
+                        onClick={() => updateLineQty(index, -1)}
+                        style={{ width: 30, height: 30, padding: 0 }}
+                      />
+                      <Text strong style={{ minWidth: 20, textAlign: "center" }}>{line.quantity}</Text>
+                      <Button
+                        size="small"
+                        icon={<PlusOutlined />}
+                        onClick={() => updateLineQty(index, 1)}
+                        style={{ width: 30, height: 30, padding: 0 }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Text strong style={{ color: "#1677ff", fontSize: 14 }}>
+                        {formatMoney(line.salePrice * line.quantity)}
+                      </Text>
+                      <Button
+                        size="small"
+                        danger
+                        type="text"
+                        icon={<DeleteOutlined />}
+                        onClick={() => removeLine(index)}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        ))}
+            ))}
 
-        <Button
-          type="dashed"
-          icon={<PlusOutlined />}
-          size="large"
-          block
-          onClick={() => { setDraft(EMPTY_DRAFT); setAddOpen(true); }}
-          style={{ marginTop: 4, height: 52, borderRadius: 12, fontSize: 15 }}
-        >
-          Urun Ekle
-        </Button>
+            <Button
+              type="dashed"
+              icon={<PlusOutlined />}
+              size="large"
+              block
+              onClick={() => { setDraft(EMPTY_DRAFT); setAddOpen(true); }}
+              style={{ height: 52, borderRadius: 12, fontSize: 15, marginTop: lines.length ? 4 : 0 }}
+            >
+              Urun Ekle
+            </Button>
+          </Card>
+        </Space>
       </div>
 
       {/* Sticky bottom action bar */}
@@ -376,7 +424,7 @@ export function StoreShipmentMobileEditorPage() {
             bottom: 0,
             left: 0,
             right: 0,
-            padding: "12px 16px",
+            padding: "10px 16px",
             background: "#fff",
             borderTop: "1px solid #f0f0f0",
             boxShadow: "0 -2px 10px rgba(0,0,0,0.07)",
@@ -388,7 +436,7 @@ export function StoreShipmentMobileEditorPage() {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: 10,
+                marginBottom: 8,
               }}
             >
               <Text type="secondary" style={{ fontSize: 13 }}>
@@ -396,17 +444,27 @@ export function StoreShipmentMobileEditorPage() {
               </Text>
               <Text strong style={{ fontSize: 15 }}>{formatMoney(totalAmount)}</Text>
             </div>
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              size="large"
-              block
-              loading={saving}
-              onClick={() => { void handleSend(); }}
-              style={{ height: 48, fontSize: 15, borderRadius: 10 }}
-            >
-              Gonderildi Olarak Isle
-            </Button>
+            <div style={{ display: "flex", gap: 10 }}>
+              <Button
+                icon={<SaveOutlined />}
+                size="large"
+                loading={saving}
+                onClick={() => { void handleSaveDraft(); }}
+                style={{ flex: 1, height: 48, fontSize: 14, borderRadius: 10 }}
+              >
+                Taslak Kaydet
+              </Button>
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                size="large"
+                loading={saving}
+                onClick={() => { void handleSend(); }}
+                style={{ flex: 1.4, height: 48, fontSize: 14, borderRadius: 10 }}
+              >
+                Gonderildi Olarak Isle
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -418,7 +476,7 @@ export function StoreShipmentMobileEditorPage() {
         height="82%"
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        styles={{ body: { padding: "16px", overflowY: "auto" } }}
+        styles={{ body: { padding: 16, overflowY: "auto" } }}
       >
         <Space direction="vertical" size={16} style={{ width: "100%" }}>
           <div>
@@ -435,19 +493,11 @@ export function StoreShipmentMobileEditorPage() {
               onSelect={(_, option) => {
                 if (option?.productId) handleProductSelect(option.productId);
               }}
-              onChange={(value) =>
-                setDraft((prev) => ({
-                  ...prev,
-                  productId: undefined,
-                  isManualProduct: true,
-                  name: value,
-                  image: "",
-                }))
-              }
+              onChange={handleManualNameChange}
             />
           </div>
 
-          {draft.productId && (
+          {draft.productId ? (
             <div
               style={{
                 display: "flex",
@@ -471,18 +521,21 @@ export function StoreShipmentMobileEditorPage() {
                 <Text type="secondary" style={{ fontSize: 12 }}>{draft.code}</Text>
               </div>
             </div>
-          )}
-
-          {!draft.productId && (
+          ) : draft.name ? (
             <>
-              <div>
-                <Text strong style={{ display: "block", marginBottom: 6 }}>Urun Kodu</Text>
-                <Input
-                  size="large"
-                  value={draft.code}
-                  placeholder="Opsiyonel"
-                  onChange={(e) => setDraft((prev) => ({ ...prev, code: e.target.value }))}
-                />
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 12px",
+                  background: "#fffbe6",
+                  borderRadius: 10,
+                  border: "1px solid #ffe58f",
+                }}
+              >
+                <Text type="secondary" style={{ fontSize: 13 }}>Yeni urun kodu (otomatik)</Text>
+                <Text strong style={{ fontSize: 15 }}>{previewSbseCode || "—"}</Text>
               </div>
               <div>
                 <Text strong style={{ display: "block", marginBottom: 6 }}>
@@ -517,7 +570,7 @@ export function StoreShipmentMobileEditorPage() {
                 </Upload>
               </div>
             </>
-          )}
+          ) : null}
 
           <div>
             <Text strong style={{ display: "block", marginBottom: 6 }}>Satis Fiyati</Text>
