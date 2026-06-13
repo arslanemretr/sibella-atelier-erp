@@ -2,7 +2,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button, Card, Descriptions, Drawer, Input, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DownloadOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
-import { listProductsRawFresh } from "../productsData";
 import { listStockMovementsFresh } from "../stockMovementsData";
 
 const { Title, Text } = Typography;
@@ -90,19 +89,12 @@ export function StockListPage() {
   const refreshMovements = React.useCallback(async () => {
     setTableLoading(true);
     try {
-      const [movementRows, products] = await Promise.all([
-        listStockMovementsFresh(),
-        listProductsRawFresh(),
-      ]);
-
-      const productMap = new Map(products.map((item) => [item.id, item]));
+      const movementRows = await listStockMovementsFresh();
       setMovements(
         movementRows.map((item) => ({
           ...item,
           key: item.id,
           detailPath: buildDetailPath(item),
-          productCode: item.productCode || productMap.get(item.productId)?.code || "-",
-          productName: item.productName || productMap.get(item.productId)?.name || "-",
           unitAmountDisplay: formatMoney(item.unitAmount),
           totalAmountDisplay: formatMoney(item.totalAmount),
           quantitySignedDisplay: buildSignedQuantity(item),
@@ -266,11 +258,15 @@ export function StockListPage() {
       key: "movementTypeLabel",
       width: 140,
       sorter: (a, b) => String(a.movementTypeLabel || a.movementType || "").localeCompare(String(b.movementTypeLabel || b.movementType || ""), "tr"),
-      render: (_, record) => (
-        <Tag color={record.affectsStock ? (record.direction === "OUT" ? "volcano" : "green") : "gold"}>
-          {record.movementTypeLabel || record.movementType}
-        </Tag>
-      ),
+      render: (_, record) => {
+        let color = "gold";
+        if (record.affectsStock) {
+          if (record.movementType === "STOK_DUZELTME") color = "blue";
+          else if (record.direction === "OUT") color = "volcano";
+          else color = "green";
+        }
+        return <Tag color={color}>{record.movementTypeLabel || record.movementType}</Tag>;
+      },
     },
     {
       title: "Belge No",

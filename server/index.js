@@ -47,6 +47,7 @@ import {
   handlePurchasesList,
   handlePurchasesUpdate,
   handleStockEntriesCreate,
+  handleStockEntriesGet,
   handleStockEntriesList,
   handleStockEntriesUpdate,
 } from "./operations.js";
@@ -78,6 +79,7 @@ import {
 } from "./portalApi.js";
 import { ensureEarningsReady, handleEarningsRecordsList, handleEarningsRecordsUpsert } from "./earningsApi.js";
 import { startEarningsCron } from "./earningsCron.js";
+import { handleStockLocationCorrect } from "./inventory.js";
 import { handleStockMovementsList } from "./stockMovementsApi.js";
 import {
   handleStockLocationBalancesList,
@@ -247,6 +249,7 @@ app.get("/api/purchases", requireRole("Yonetici", "Muhasebe"), handlePurchasesLi
 app.post("/api/purchases", requireRole("Yonetici", "Muhasebe"), handlePurchasesCreate);
 app.put("/api/purchases/:id", requireRole("Yonetici", "Muhasebe"), handlePurchasesUpdate);
 app.get("/api/stock-entries", requireRole("Yonetici", "Muhasebe", "Tedarikci"), handleStockEntriesList);
+app.get("/api/stock-entries/:id", requireRole("Yonetici", "Muhasebe", "Tedarikci"), handleStockEntriesGet);
 app.post("/api/stock-entries", requireRole("Yonetici", "Muhasebe"), handleStockEntriesCreate);
 app.put("/api/stock-entries/:id", requireRole("Yonetici", "Muhasebe"), handleStockEntriesUpdate);
 app.get("/api/stock-movements", requireRole("Yonetici", "Muhasebe", "Magaza"), handleStockMovementsList);
@@ -254,6 +257,7 @@ app.get("/api/supplier-earnings", requireRole("Yonetici", "Muhasebe", "Tedarikci
 app.post("/api/supplier-earnings", requireRole("Yonetici", "Muhasebe"), handleEarningsRecordsUpsert);
 app.get("/api/stock-locations", requireRole("Yonetici", "Muhasebe"), handleStockLocationsList);
 app.get("/api/stock-locations/:id/balances", requireRole("Yonetici", "Muhasebe"), handleStockLocationBalancesList);
+app.post("/api/stock-locations/:id/correct", requireRole("Yonetici", "Muhasebe"), handleStockLocationCorrect);
 app.get("/api/contracts", requireRole("Yonetici", "Muhasebe", "Tedarikci"), handleContractsList);
 app.post("/api/contracts", requireRole("Yonetici", "Muhasebe"), handleContractsCreate);
 app.put("/api/contracts/:id", requireRole("Yonetici", "Muhasebe"), handleContractsUpdate);

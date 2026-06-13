@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
-import { createStockEntry, listStockEntriesFresh, updateStockEntry } from "../stockEntriesData";
+import { createStockEntry, getStockEntryFresh, listStockEntriesFresh, updateStockEntry } from "../stockEntriesData";
 import { listSuppliersFresh } from "../suppliersData";
 import { listProductsRawFresh } from "../productsData";
 
@@ -52,15 +52,12 @@ export function StockEntryEditorPage() {
     const loadPageData = async () => {
       try {
         setPageLoading(true);
-        const [suppliers, nextProducts, entries] = await Promise.all([
-          listSuppliersFresh({ slim: true }),
-          listProductsRawFresh(),
-          listStockEntriesFresh(),
-        ]);
+        const fetches = [listSuppliersFresh({ slim: true }), listProductsRawFresh()];
+        if (isEditMode) fetches.push(getStockEntryFresh(stockEntryId));
 
-        if (cancelled) {
-          return;
-        }
+        const [suppliers, nextProducts, stockEntry] = await Promise.all(fetches);
+
+        if (cancelled) return;
 
         setSupplierOptions(suppliers.map((item) => ({ value: item.id, label: item.company })));
         setProducts(nextProducts);
@@ -74,7 +71,6 @@ export function StockEntryEditorPage() {
           return;
         }
 
-        const stockEntry = entries.find((item) => item.id === stockEntryId);
         if (!stockEntry) {
           message.error("Stok giris kaydi bulunamadi.");
           navigate("/stock/entry");
@@ -257,9 +253,9 @@ export function StockEntryEditorPage() {
                 )}
               >
                 <Table
-          size="small"
+                  size="small"
                   rowKey="key"
-                  pagination={false}
+                  pagination={{ pageSize: 20, showSizeChanger: false, hideOnSinglePage: true }}
                   dataSource={fields.map((field) => ({ key: field.key, field }))}
                   columns={[
                     {
@@ -359,15 +355,25 @@ export function StockEntryListPage() {
     });
   }, [createForm]);
 
-  const refreshEntries = React.useCallback(async () => {
+  const cachedLookupsRef = React.useRef(null);
+
+  const refreshEntries = React.useCallback(async (forceRefreshLookups = false) => {
     try {
       setTableLoading(true);
+      let lookups = cachedLookupsRef.current;
+      const needsLookups = !lookups || forceRefreshLookups;
+
       const [suppliers, products, nextEntries] = await Promise.all([
-        listSuppliersFresh({ slim: true }),
-        listProductsRawFresh(),
+        needsLookups ? listSuppliersFresh({ slim: true }) : Promise.resolve(lookups.suppliers),
+        needsLookups ? listProductsRawFresh() : Promise.resolve(lookups.products),
         listStockEntriesFresh(),
       ]);
-      setSupplierOptions(suppliers.map((item) => ({ value: item.id, label: item.company })));
+
+      if (needsLookups) {
+        cachedLookupsRef.current = { suppliers, products };
+        setSupplierOptions(suppliers.map((item) => ({ value: item.id, label: item.company })));
+      }
+
       const productMap = Object.fromEntries(products.map((item) => [item.id, item]));
       setEntries(nextEntries.map((entry) => ({
         ...entry,
@@ -524,8 +530,8 @@ export function StockEntryListPage() {
           loading={tableLoading}
           columns={columns}
           dataSource={filteredEntries}
-          pagination={false}
-          scroll={{ x: 'max-content' }}
+          pagination={{ pageSize: 25, showSizeChanger: true, pageSizeOptions: ["25", "50", "100"], hideOnSinglePage: true }}
+          scroll={{ x: "max-content" }}
           locale={{ emptyText: "Henuz stok giris ana kaydi bulunmuyor." }}
           onRow={(record) => ({
             onClick: () => openDetailFromRow(setSelectedEntry, setDetailOpen, record),

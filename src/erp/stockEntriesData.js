@@ -85,6 +85,12 @@ export async function listStockEntriesFresh(lookups = {}) {
   return enrichStockEntriesWithLookups(entries, lookups);
 }
 
+export async function getStockEntryFresh(stockEntryId) {
+  const payload = await requestJson("GET", `/api/stock-entries/${encodeURIComponent(stockEntryId)}`);
+  if (!payload?.item) return null;
+  return enrichStockEntry(payload.item);
+}
+
 export function getStockEntryById(stockEntryId) {
   return loadStore().find((item) => item.id === stockEntryId) || null;
 }

@@ -758,3 +758,56 @@ export async function ensureStockMovementsReady() {
 export async function withInventoryTransaction(callback) {
   return withTransaction(callback);
 }
+
+export async function handleStockLocationCorrect(req, res) {
+  const stockLocationId = req.params.id;
+  const { productId, actualQty, note } = req.body || {};
+
+  if (!stockLocationId || !productId || actualQty === undefined || actualQty === null) {
+    return res.status(400).json({ ok: false, message: "productId ve actualQty zorunludur." });
+  }
+  const actualQuantity = Number(actualQty);
+  if (!Number.isFinite(actualQuantity) || actualQuantity < 0) {
+    return res.status(400).json({ ok: false, message: "Gecerli bir miktar giriniz (0 veya pozitif)." });
+  }
+
+  try {
+    await withInventoryTransaction(async (tx) => {
+      const balanceRow = await tx.one(
+        `SELECT COALESCE(quantity, 0)::float AS quantity
+         FROM stock_location_balances
+         WHERE stock_location_id = $1 AND product_id = $2`,
+        [stockLocationId, productId],
+      );
+      const currentQty = Number(balanceRow?.quantity || 0);
+      const delta = actualQuantity - currentQty;
+
+      if (Math.abs(delta) < 0.0001) return;
+
+      const movementId = createId("mov");
+      const now = nowIso();
+      const docNo = `DUZLT-${String(Date.now()).slice(-8)}`;
+
+      await tx.exec(
+        `INSERT INTO stock_movements (
+           id, movement_type, direction, affects_stock, quantity, stock_delta,
+           product_id, stock_location_id, document_no, document_date,
+           source_module, source_id, party_name, note, created_by, created_at
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::timestamptz,$11,$12,$13,$14,$15,$16::timestamptz)`,
+        [
+          movementId, "STOK_DUZELTME", delta > 0 ? "IN" : "OUT", true,
+          Math.abs(delta), delta,
+          productId, stockLocationId, docNo, now,
+          "stock-correction", movementId,
+          "Sayim Duzeltme", String(note || "").trim() || null,
+          req.authUser?.id || null, now,
+        ],
+      );
+
+      await rebuildStockBalancesForProducts([productId], tx);
+    });
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(400).json({ ok: false, message: error?.message || "Stok duzeltmesi yapilamadi." });
+  }
+}

@@ -306,6 +306,21 @@ export async function handlePurchasesUpdate(req, res) {
   }
 }
 
+export async function handleStockEntriesGet(req, res) {
+  try {
+    const entryRow = await sqlOne("SELECT * FROM stock_entries WHERE id = $1", [req.params.id]);
+    if (!entryRow) return httpError(res, 404, "Stok girisi bulunamadi.");
+    const lineRows = await sqlMany(
+      "SELECT * FROM stock_lines WHERE stock_entry_id = $1 ORDER BY sort_order ASC, id ASC",
+      [req.params.id],
+    );
+    const mapped = mapStockEntryRows([entryRow], lineRows);
+    return res.json({ ok: true, item: mapped[0] || null });
+  } catch (error) {
+    return httpError(res, 500, error?.message || "Stok girisi alinamadi.");
+  }
+}
+
 export async function handleStockEntriesList(req, res) {
   const authUser = req.authUser || null;
   const items =
