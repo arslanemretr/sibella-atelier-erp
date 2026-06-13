@@ -87,6 +87,7 @@ import {
   handleStockLocationsList,
   handleStoreShipmentsCreate,
   handleStoreShipmentsList,
+  handleStoreShipmentsGet,
   handleStoreShipmentsSend,
   handleStoreShipmentsUpdate,
   handleStoresCreate,
@@ -292,6 +293,7 @@ app.post("/api/stores", requireRole("Yonetici", "Muhasebe"), handleStoresCreate)
 app.put("/api/stores/:id", requireRole("Yonetici", "Muhasebe"), handleStoresUpdate);
 app.delete("/api/stores/:id", requireRole("Yonetici", "Muhasebe"), handleStoresDelete);
 app.get("/api/store-shipments", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsList);
+app.get("/api/store-shipments/:id", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsGet);
 app.post("/api/store-shipments", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsCreate);
 app.put("/api/store-shipments/:id", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsUpdate);
 app.post("/api/store-shipments/:id/send", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsSend);

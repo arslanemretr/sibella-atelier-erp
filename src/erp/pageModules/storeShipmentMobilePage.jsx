@@ -1,12 +1,12 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { AutoComplete, Button, Card, Drawer, Form, Input, InputNumber, Select, Space, Tag, Typography, Upload, message } from "antd";
 import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, MinusOutlined, PlusOutlined, SaveOutlined, SendOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
 import { getNextProductCodeFresh, listProductsRawFresh } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
-import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh } from "../storeShipmentsData";
+import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
 
 const { Text } = Typography;
@@ -37,6 +37,8 @@ function formatSbse(seq) {
 
 export function StoreShipmentMobileEditorPage() {
   const navigate = useNavigate();
+  const { shipmentId } = useParams();
+  const isEditMode = Boolean(shipmentId);
   const authUser = getAuthUser();
   const [form] = Form.useForm();
 
@@ -53,17 +55,20 @@ export function StoreShipmentMobileEditorPage() {
   const lineSeqRef = React.useRef(0);
 
   const watchedStoreId = Form.useWatch("storeId", form);
+  const watchedStatus = Form.useWatch("status", form) || "Taslak";
+  const isLocked = watchedStatus === "Gonderildi";
 
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         setPageLoading(true);
-        const [storeRows, productRows, supplierRows, nextCode] = await Promise.all([
+        const [storeRows, productRows, supplierRows, nextCode, existing] = await Promise.all([
           listStoresFresh(),
           listProductsRawFresh({ productType: "kendi" }),
           listSuppliersFresh({ slim: true }),
           getNextProductCodeFresh(),
+          isEditMode ? getStoreShipmentFresh(shipmentId) : Promise.resolve(null),
         ]);
         if (cancelled) return;
         setStores(storeRows);
@@ -71,14 +76,36 @@ export function StoreShipmentMobileEditorPage() {
         const sbse = supplierRows.find((s) => String(s.shortCode || "").toUpperCase() === "SBSE");
         setSbseSupplierId(sbse?.id || null);
         setNextSeq(nextCode?.next ?? null);
-        form.setFieldsValue({
-          storeId: undefined,
-          date: new Date().toISOString().slice(0, 10),
-          shippingMethod: "Kargo",
-          note: "",
-          status: "Taslak",
-          shipmentNo: "",
-        });
+
+        if (isEditMode) {
+          if (!existing) {
+            message.error("Gonderi kaydi bulunamadi.");
+            navigate("/stores/shipments");
+            return;
+          }
+          form.setFieldsValue({
+            storeId: existing.storeId,
+            date: existing.date || new Date().toISOString().slice(0, 10),
+            shippingMethod: existing.shippingMethod || "Kargo",
+            note: existing.note || "",
+            status: existing.status || "Taslak",
+            shipmentNo: existing.shipmentNo || "",
+          });
+          const loadedLines = (existing.lines || []).map((line, index) => {
+            lineSeqRef.current = index + 1;
+            return { ...line, id: line.id || `line-${index + 1}` };
+          });
+          setLines(loadedLines);
+        } else {
+          form.setFieldsValue({
+            storeId: undefined,
+            date: new Date().toISOString().slice(0, 10),
+            shippingMethod: "Kargo",
+            note: "",
+            status: "Taslak",
+            shipmentNo: "",
+          });
+        }
       } catch (error) {
         if (!cancelled) message.error(error?.message || "Veriler yuklenemedi.");
       } finally {
@@ -86,14 +113,14 @@ export function StoreShipmentMobileEditorPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [form]);
+  }, [form, isEditMode, shipmentId, navigate]);
 
   React.useEffect(() => {
-    if (!watchedStoreId) return;
+    if (!watchedStoreId || isEditMode) return;
     getNextStoreShipmentNoPreviewFresh(watchedStoreId)
       .then((nextNo) => form.setFieldValue("shipmentNo", nextNo))
       .catch(() => {});
-  }, [form, watchedStoreId]);
+  }, [form, watchedStoreId, isEditMode]);
 
   const productOptions = React.useMemo(
     () => products.map((item) => ({
@@ -207,18 +234,22 @@ export function StoreShipmentMobileEditorPage() {
     return saved;
   };
 
+  // Gonderi kaydeder (edit modunda PUT, yeni kayitta POST) ve kaydi doner
+  const saveShipment = async (status, shipmentLines) => {
+    const values = form.getFieldsValue();
+    const payload = { ...values, status, lines: shipmentLines, createdBy: authUser?.id || null };
+    const response = isEditMode
+      ? await requestJson("PUT", `/api/store-shipments/${encodeURIComponent(shipmentId)}`, payload)
+      : await requestJson("POST", "/api/store-shipments", payload);
+    return response?.item || response;
+  };
+
   const handleSaveDraft = async () => {
     try {
       setSaving(true);
       await form.validateFields();
       if (!lines.length) throw new Error("En az bir satir eklenmelidir.");
-      const values = form.getFieldsValue();
-      await requestJson("POST", "/api/store-shipments", {
-        ...values,
-        status: "Taslak",
-        lines,
-        createdBy: authUser?.id || null,
-      });
+      await saveShipment("Taslak", lines);
       message.success("Taslak kaydedildi.");
       navigate("/stores/shipments");
     } catch (error) {
@@ -250,16 +281,9 @@ export function StoreShipmentMobileEditorPage() {
         });
       }
 
-      const values = form.getFieldsValue();
-      const createRes = await requestJson("POST", "/api/store-shipments", {
-        ...values,
-        status: "Hazirlandi",
-        lines: preparedLines,
-        createdBy: authUser?.id || null,
-      });
-      const created = createRes?.item || createRes;
-      await requestJson("POST", `/api/store-shipments/${encodeURIComponent(created.id)}/send`, {});
-      try { await createStoreShipmentPdf(created); } catch { /* PDF opsiyonel */ }
+      const saved = await saveShipment("Hazirlandi", preparedLines);
+      await requestJson("POST", `/api/store-shipments/${encodeURIComponent(saved.id)}/send`, {});
+      try { await createStoreShipmentPdf(saved); } catch { /* PDF opsiyonel */ }
       message.success("Gonderi magazaya aktarildi.");
       navigate("/stores/shipments");
     } catch (error) {
@@ -273,7 +297,7 @@ export function StoreShipmentMobileEditorPage() {
   const totalAmount = lines.reduce((sum, l) => sum + Number(l.quantity || 0) * Number(l.salePrice || 0), 0);
 
   return (
-    <div style={{ maxWidth: 520, margin: "0 auto", paddingBottom: lines.length > 0 ? 132 : 24 }}>
+    <div style={{ maxWidth: 520, margin: "0 auto", paddingBottom: lines.length > 0 && !isLocked ? 132 : 24 }}>
       {/* Sticky header */}
       <div
         style={{
@@ -289,7 +313,12 @@ export function StoreShipmentMobileEditorPage() {
         }}
       >
         <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate("/stores/shipments")} />
-        <Text strong style={{ fontSize: 16 }}>Gonderi Olustur</Text>
+        <Text strong style={{ fontSize: 16, flex: 1 }}>{isEditMode ? "Gonderi Detayi" : "Gonderi Olustur"}</Text>
+        {isEditMode ? (
+          <Tag color={isLocked ? "green" : watchedStatus === "Hazirlandi" ? "gold" : "default"} style={{ marginInlineEnd: 0 }}>
+            {watchedStatus}
+          </Tag>
+        ) : null}
       </div>
 
       <div style={{ padding: 16 }}>
@@ -305,6 +334,7 @@ export function StoreShipmentMobileEditorPage() {
                 <Select
                   size="large"
                   placeholder="Magaza secin"
+                  disabled={isLocked}
                   options={stores.map((s) => ({ value: s.id, label: s.name }))}
                 />
               </Form.Item>
@@ -316,18 +346,19 @@ export function StoreShipmentMobileEditorPage() {
                   rules={[{ required: true, message: "Tarih zorunludur." }]}
                   style={{ flex: 1 }}
                 >
-                  <Input type="date" size="large" />
+                  <Input type="date" size="large" disabled={isLocked} />
                 </Form.Item>
                 <Form.Item name="shippingMethod" label="Gonderim" style={{ flex: 1 }}>
                   <Select
                     size="large"
+                    disabled={isLocked}
                     options={["Kargo", "Elden Teslim"].map((v) => ({ value: v, label: v }))}
                   />
                 </Form.Item>
               </div>
 
               <Form.Item name="note" label="Not" style={{ marginBottom: 8 }}>
-                <Input.TextArea rows={2} placeholder="Takip no vb. ek bilgiler buraya yazilabilir" />
+                <Input.TextArea rows={2} disabled={isLocked} placeholder="Takip no vb. ek bilgiler buraya yazilabilir" />
               </Form.Item>
 
               <Form.Item name="shipmentNo" hidden><Input /></Form.Item>
@@ -371,53 +402,66 @@ export function StoreShipmentMobileEditorPage() {
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <Button
-                        size="small"
-                        icon={<MinusOutlined />}
-                        onClick={() => updateLineQty(index, -1)}
-                        style={{ width: 30, height: 30, padding: 0 }}
-                      />
-                      <Text strong style={{ minWidth: 20, textAlign: "center" }}>{line.quantity}</Text>
-                      <Button
-                        size="small"
-                        icon={<PlusOutlined />}
-                        onClick={() => updateLineQty(index, 1)}
-                        style={{ width: 30, height: 30, padding: 0 }}
-                      />
+                      {isLocked ? (
+                        <Text type="secondary" style={{ fontSize: 13 }}>{line.quantity} adet</Text>
+                      ) : (
+                        <>
+                          <Button
+                            size="small"
+                            icon={<MinusOutlined />}
+                            onClick={() => updateLineQty(index, -1)}
+                            style={{ width: 30, height: 30, padding: 0 }}
+                          />
+                          <Text strong style={{ minWidth: 20, textAlign: "center" }}>{line.quantity}</Text>
+                          <Button
+                            size="small"
+                            icon={<PlusOutlined />}
+                            onClick={() => updateLineQty(index, 1)}
+                            style={{ width: 30, height: 30, padding: 0 }}
+                          />
+                        </>
+                      )}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <Text strong style={{ color: "#1677ff", fontSize: 14 }}>
                         {formatMoney(line.salePrice * line.quantity)}
                       </Text>
-                      <Button
-                        size="small"
-                        danger
-                        type="text"
-                        icon={<DeleteOutlined />}
-                        onClick={() => removeLine(index)}
-                      />
+                      {!isLocked ? (
+                        <Button
+                          size="small"
+                          danger
+                          type="text"
+                          icon={<DeleteOutlined />}
+                          onClick={() => removeLine(index)}
+                        />
+                      ) : null}
                     </div>
                   </div>
                 </div>
               </div>
             ))}
 
-            <Button
-              type="dashed"
-              icon={<PlusOutlined />}
-              size="large"
-              block
-              onClick={() => { setDraft(EMPTY_DRAFT); setAddOpen(true); }}
-              style={{ height: 52, borderRadius: 12, fontSize: 15, marginTop: lines.length ? 4 : 0 }}
-            >
-              Urun Ekle
-            </Button>
+            {lines.length === 0 && isLocked ? (
+              <Text type="secondary">Urun bulunmuyor.</Text>
+            ) : null}
+            {!isLocked ? (
+              <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                size="large"
+                block
+                onClick={() => { setDraft(EMPTY_DRAFT); setAddOpen(true); }}
+                style={{ height: 52, borderRadius: 12, fontSize: 15, marginTop: lines.length ? 4 : 0 }}
+              >
+                Urun Ekle
+              </Button>
+            ) : null}
           </Card>
         </Space>
       </div>
 
       {/* Sticky bottom action bar */}
-      {lines.length > 0 && (
+      {lines.length > 0 && !isLocked && (
         <div
           style={{
             position: "fixed",

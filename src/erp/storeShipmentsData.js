@@ -1,4 +1,4 @@
-import { mutateResourceSync, requestCollection, requestCollectionSync } from "./apiClient";
+import { mutateResourceSync, requestCollection, requestCollectionSync, requestJson } from "./apiClient";
 import { getStoreById, listStoresFresh } from "./storesData";
 import { jsPDF, ensurePdfFont, drawPdfLogo, drawShipmentTableHeader, formatPdfDate, formatPdfMoney } from "./pdfUtils";
 
@@ -92,6 +92,12 @@ export async function listStoreShipmentsFresh() {
 export function getStoreShipmentById(shipmentId) {
   const shipment = loadStore().find((item) => item.id === shipmentId);
   return shipment ? enrichShipment(shipment) : null;
+}
+
+export async function getStoreShipmentFresh(shipmentId) {
+  const payload = await requestJson("GET", `/api/store-shipments/${encodeURIComponent(shipmentId)}`);
+  if (!payload?.item) return null;
+  return enrichShipment(payload.item);
 }
 
 export function createStoreShipment(values) {

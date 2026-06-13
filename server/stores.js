@@ -302,6 +302,7 @@ async function listStockLocationBalances(stockLocationId) {
 async function listStoreShipmentRows() {
   const shipmentRows = await sqlMany(`
     SELECT ss.*,
+      to_char(ss.date, 'YYYY-MM-DD')  AS date_str,
       COALESCE(agg.line_count, 0)    AS line_count,
       COALESCE(agg.total_quantity, 0) AS total_quantity,
       COALESCE(agg.total_amount, 0)   AS total_amount
@@ -322,7 +323,7 @@ async function listStoreShipmentRows() {
     shipmentNo:     row.shipment_no || "",
     storeId:        row.store_id || null,
     storeName:      row.store_name || "",
-    date:           row.date || "",
+    date:           row.date_str || "",
     shippingMethod: row.shipping_method || "Kargo",
     trackingNo:     row.tracking_no || "",
     note:           row.note || "",
@@ -340,7 +341,10 @@ async function listStoreShipmentRows() {
 
 // Tek kayıt için: satırlarla birlikte çek (detay/editör için)
 async function getStoreShipmentRow(shipmentId) {
-  const row = await sqlOne("SELECT * FROM store_shipments WHERE id = $1", [shipmentId]);
+  const row = await sqlOne(
+    "SELECT *, to_char(date, 'YYYY-MM-DD') AS date_str FROM store_shipments WHERE id = $1",
+    [shipmentId],
+  );
   if (!row) return null;
   const lineRows = await sqlMany(
     "SELECT * FROM store_shipment_lines WHERE shipment_id = $1 ORDER BY sort_order ASC, id ASC",
@@ -354,7 +358,7 @@ async function getStoreShipmentRow(shipmentId) {
     shipmentNo:     row.shipment_no || "",
     storeId:        row.store_id || null,
     storeName:      row.store_name || "",
-    date:           row.date || "",
+    date:           row.date_str || "",
     shippingMethod: row.shipping_method || "Kargo",
     trackingNo:     row.tracking_no || "",
     note:           row.note || "",
@@ -643,6 +647,14 @@ export async function handleStockLocationBalancesList(req, res) {
 
 export async function handleStoreShipmentsList(_req, res) {
   return res.json({ ok: true, items: await listStoreShipmentRows() });
+}
+
+export async function handleStoreShipmentsGet(req, res) {
+  const item = await getStoreShipmentRow(req.params.id);
+  if (!item) {
+    return httpError(res, 404, "Gonderi kaydi bulunamadi.");
+  }
+  return res.json({ ok: true, item });
 }
 
 export async function handleStoreShipmentsCreate(req, res) {

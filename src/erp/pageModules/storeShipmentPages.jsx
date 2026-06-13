@@ -1,7 +1,7 @@
 ﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AutoComplete, Button, Card, Col, Descriptions, Drawer, Form, Grid, Input, InputNumber, Row, Select, Space, Table, Tag, Tooltip, Typography, Upload, message } from "antd";
-import { CheckOutlined, DeleteOutlined, EditOutlined, FilePdfOutlined, PlusCircleOutlined, PlusOutlined, SendOutlined, UploadOutlined } from "@ant-design/icons";
+import { AutoComplete, Button, Card, Col, Descriptions, Drawer, Form, Grid, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, Tooltip, Typography, Upload, message } from "antd";
+import { CheckOutlined, DeleteOutlined, EditOutlined, FilePdfOutlined, FilterOutlined, PlusCircleOutlined, PlusOutlined, SendOutlined, UploadOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
@@ -23,9 +23,10 @@ function formatMoney(value, currency = "TRY") {
 
 function formatDisplayDate(value) {
   if (!value) return "-";
-  const [y, m, d] = String(value).split("-");
-  if (!y || !m || !d) return value;
-  return `${d}.${m}.${String(y).slice(2)}`;
+  // ISO timestamp ("2026-06-14T00:00:00.000Z") gelse bile ilk 10 karakter tarih kismidir
+  const [y, m, d] = String(value).slice(0, 10).split("-");
+  if (!y || !m || !d) return String(value);
+  return `${d}.${m}.${y}`;
 }
 
 function buildDraftFromProduct(product) {
@@ -58,6 +59,9 @@ function statusColor(value) {
   return value === "Gonderildi" ? "green" : value === "Hazirlandi" ? "gold" : "default";
 }
 
+const SHIPMENT_FILTERS_KEY = "sibella.erp.shipmentFilters.v1";
+const EMPTY_SHIPMENT_FILTERS = { search: "", storeId: undefined, status: undefined, dateFrom: undefined, dateTo: undefined };
+
 export function StoreShipmentListPage() {
   const navigate = useNavigate();
   const screens = Grid.useBreakpoint();
@@ -66,6 +70,19 @@ export function StoreShipmentListPage() {
   const [loading, setLoading] = React.useState(true);
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedShipment, setSelectedShipment] = React.useState(null);
+
+  // Filtreler
+  const [filters, setFilters] = React.useState(EMPTY_SHIPMENT_FILTERS);
+  const [filterModalOpen, setFilterModalOpen] = React.useState(false);
+  const [savedFilterName, setSavedFilterName] = React.useState("");
+  const [savedFilters, setSavedFilters] = React.useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(window.localStorage.getItem(SHIPMENT_FILTERS_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  });
 
   const refreshShipments = React.useCallback(async () => {
     try {
@@ -82,35 +99,108 @@ export function StoreShipmentListPage() {
     void refreshShipments();
   }, [refreshShipments]);
 
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleResetFilters = () => {
+    setFilters(EMPTY_SHIPMENT_FILTERS);
+  };
+
+  const persistSavedFilters = (next) => {
+    setSavedFilters(next);
+    try {
+      window.localStorage.setItem(SHIPMENT_FILTERS_KEY, JSON.stringify(next));
+    } catch { /* yoksay */ }
+  };
+
+  const handleSaveFilterPreset = () => {
+    const name = savedFilterName.trim();
+    if (!name) {
+      message.warning("Filtre adi giriniz.");
+      return;
+    }
+    persistSavedFilters([
+      { name, filters },
+      ...savedFilters.filter((item) => item.name !== name),
+    ]);
+    setSavedFilterName("");
+    message.success("Filtre kaydedildi.");
+  };
+
+  const applySavedFilter = (preset) => {
+    setFilters({ ...EMPTY_SHIPMENT_FILTERS, ...preset.filters });
+    setFilterModalOpen(false);
+    message.success(`${preset.name} filtresi uygulandi.`);
+  };
+
+  const storeOptions = React.useMemo(
+    () => Array.from(
+      new Map(shipments.filter((s) => s.storeId).map((s) => [s.storeId, s.storeName || "-"])).entries(),
+    ).map(([value, label]) => ({ value, label })),
+    [shipments],
+  );
+
+  const activeFilterCount = React.useMemo(
+    () => [
+      filters.search,
+      filters.storeId,
+      filters.status,
+      filters.dateFrom,
+      filters.dateTo,
+    ].filter((v) => v !== undefined && v !== null && v !== "").length,
+    [filters],
+  );
+
+  const filteredShipments = React.useMemo(() => {
+    const search = String(filters.search || "").trim().toLowerCase();
+    return shipments.filter((item) => {
+      const matchesSearch = !search
+        || [item.shipmentNo, item.storeName, item.note].filter(Boolean).some((v) => String(v).toLowerCase().includes(search));
+      const matchesStore = !filters.storeId || item.storeId === filters.storeId;
+      const matchesStatus = !filters.status || item.status === filters.status;
+      const dateStr = String(item.date || "").slice(0, 10);
+      const matchesFrom = !filters.dateFrom || (dateStr && dateStr >= filters.dateFrom);
+      const matchesTo = !filters.dateTo || (dateStr && dateStr <= filters.dateTo);
+      return matchesSearch && matchesStore && matchesStatus && matchesFrom && matchesTo;
+    });
+  }, [shipments, filters]);
+
   return (
     <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-        <div>
-          <Title level={3} style={{ marginBottom: 6 }}>Gonderi Listesi</Title>
-          <Text type="secondary">Magazalara acilan konsinye gonderiler durum bazli izlenir.</Text>
-        </div>
-        {!isMobile ? (
-          <Button onClick={() => navigate("/stores/shipments/new-mobil")}>Mobil</Button>
-        ) : null}
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => navigate(isMobile ? "/stores/shipments/new-mobil" : "/stores/shipments/new")}
-        >
-          Gonderi Olustur
-        </Button>
+        <Title level={3} style={{ margin: 0 }}>Gonderi Listesi</Title>
+        <Space>
+          {isMobile ? (
+            <Button
+              icon={<FilterOutlined />}
+              onClick={() => setFilterModalOpen(true)}
+            >
+              {activeFilterCount > 0 ? `Filtre (${activeFilterCount})` : "Filtre"}
+            </Button>
+          ) : (
+            <Button onClick={() => navigate("/stores/shipments/new-mobil")}>Mobil</Button>
+          )}
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => navigate(isMobile ? "/stores/shipments/new-mobil" : "/stores/shipments/new")}
+          >
+            Gonderi Olustur
+          </Button>
+        </Space>
       </div>
 
       {isMobile ? (
-        <Card title="Tum Gonderiler" className="erp-list-table-card" loading={loading} styles={{ body: { padding: 12 } }}>
-          {shipments.length === 0 ? (
-            <Text type="secondary">Gonderi bulunmuyor.</Text>
+        <Card title={`Tum Gonderiler (${filteredShipments.length})`} className="erp-list-table-card" loading={loading} styles={{ body: { padding: 12 } }}>
+          {filteredShipments.length === 0 ? (
+            <Text type="secondary">{shipments.length === 0 ? "Gonderi bulunmuyor." : "Filtreye uygun gonderi yok."}</Text>
           ) : (
             <Space direction="vertical" size={10} style={{ width: "100%" }}>
-              {shipments.map((record) => (
+              {filteredShipments.map((record) => (
                 <div
                   key={record.id}
-                  onClick={() => navigate(`/stores/shipments/${record.id}`)}
+                  onClick={() => navigate(`/stores/shipments/${record.id}/mobil`)}
                   style={{
                     padding: 14,
                     borderRadius: 12,
@@ -146,7 +236,7 @@ export function StoreShipmentListPage() {
           loading={loading}
           pagination={false}
           scroll={{ x: 'max-content' }}
-          dataSource={shipments}
+          dataSource={filteredShipments}
           columns={[
             {
               title: "Gonderi No",
@@ -251,6 +341,104 @@ export function StoreShipmentListPage() {
           </Space>
         ) : null}
       </Drawer>
+
+      <Modal
+        title="Gonderi Filtrele"
+        open={filterModalOpen}
+        onCancel={() => setFilterModalOpen(false)}
+        footer={null}
+      >
+        <Space vertical size={16} style={{ width: "100%" }}>
+          <Row gutter={[12, 12]}>
+            <Col span={24}>
+              <Form.Item label="Ara (gonderi no / magaza / not)" style={{ marginBottom: 0 }}>
+                <Input
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange("search", e.target.value)}
+                  allowClear
+                  placeholder="Aranacak metin"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item label="Magaza" style={{ marginBottom: 0 }}>
+                <Select
+                  value={filters.storeId}
+                  onChange={(value) => handleFilterChange("storeId", value)}
+                  options={storeOptions}
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="Tumu"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item label="Durum" style={{ marginBottom: 0 }}>
+                <Select
+                  value={filters.status}
+                  onChange={(value) => handleFilterChange("status", value)}
+                  options={["Taslak", "Hazirlandi", "Gonderildi"].map((v) => ({ value: v, label: v }))}
+                  allowClear
+                  placeholder="Tumu"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Baslangic Tarihi" style={{ marginBottom: 0 }}>
+                <Input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => handleFilterChange("dateFrom", e.target.value || undefined)}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Bitis Tarihi" style={{ marginBottom: 0 }}>
+                <Input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => handleFilterChange("dateTo", e.target.value || undefined)}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Card size="small" title="Filtreyi Kaydet">
+            <Space.Compact style={{ width: "100%" }}>
+              <Input value={savedFilterName} onChange={(e) => setSavedFilterName(e.target.value)} placeholder="Filtre adi" />
+              <Button type="primary" onClick={handleSaveFilterPreset}>Kaydet</Button>
+            </Space.Compact>
+          </Card>
+
+          <Card size="small" title="Kayitli Filtreler">
+            {savedFilters.length === 0 ? (
+              <Text type="secondary">Henuz kayitli filtre yok.</Text>
+            ) : (
+              <Space vertical size={6} style={{ width: "100%" }}>
+                {savedFilters.map((item) => (
+                  <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Button style={{ flex: 1, textAlign: "left" }} onClick={() => applySavedFilter(item)}>{item.name}</Button>
+                    <Popconfirm
+                      title="Bu filtre silinsin mi?"
+                      okText="Sil"
+                      cancelText="Vazgec"
+                      onConfirm={() => persistSavedFilters(savedFilters.filter((f) => f.name !== item.name))}
+                    >
+                      <Button type="text" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                  </div>
+                ))}
+              </Space>
+            )}
+          </Card>
+
+          <Space style={{ justifyContent: "space-between", width: "100%" }}>
+            <Button onClick={handleResetFilters}>Temizle</Button>
+            <Button type="primary" onClick={() => setFilterModalOpen(false)}>Uygula</Button>
+          </Space>
+        </Space>
+      </Modal>
     </Space>
   );
 }

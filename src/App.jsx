@@ -179,6 +179,7 @@ function ProtectedApp() {
         <Route path="/stores/shipments" element={withRolePage(<StoreShipmentListPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/stores/shipments/new" element={withRolePage(<StoreShipmentEditorPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/stores/shipments/new-mobil" element={withRolePage(<StoreShipmentMobileEditorPage />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/stores/shipments/:shipmentId/mobil" element={withRolePage(<StoreShipmentMobileEditorPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/stores/shipments/:shipmentId" element={withRolePage(<StoreShipmentEditorPage />, authUser, "Yonetici", "Muhasebe")} />
 
         <Route path="/stock/entry" element={withLazyPage(<StockEntryListPage />)} />
