@@ -326,13 +326,16 @@ export function StoreShipmentMobileEditorPage() {
           {/* Panel 1 — Genel Bilgiler */}
           <Card size="small" title="Genel Bilgiler" loading={pageLoading} styles={{ body: { paddingBottom: 4 } }}>
             <Form form={form} layout="vertical">
-              {isEditMode ? (
-                <Form.Item label="Gonderi No" style={{ marginBottom: 16 }}>
-                  <Form.Item name="shipmentNo" noStyle>
-                    <Input size="large" disabled readOnly />
-                  </Form.Item>
+              <Form.Item label="Gonderi No" style={{ marginBottom: 16 }}>
+                <Form.Item name="shipmentNo" noStyle>
+                  <Input
+                    size="large"
+                    disabled
+                    readOnly
+                    placeholder={isEditMode ? "" : "Magaza secince otomatik olusur"}
+                  />
                 </Form.Item>
-              ) : null}
+              </Form.Item>
 
               <Form.Item
                 name="storeId"
@@ -369,7 +372,6 @@ export function StoreShipmentMobileEditorPage() {
                 <Input.TextArea rows={2} disabled={isLocked} placeholder="Takip no vb. ek bilgiler buraya yazilabilir" />
               </Form.Item>
 
-              {!isEditMode ? <Form.Item name="shipmentNo" hidden><Input /></Form.Item> : null}
               <Form.Item name="status" hidden><Input /></Form.Item>
             </Form>
           </Card>
