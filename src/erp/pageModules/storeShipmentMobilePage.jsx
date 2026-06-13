@@ -355,14 +355,15 @@ export function StoreShipmentMobileEditorPage() {
                   name="date"
                   label="Tarih"
                   rules={[{ required: true, message: "Tarih zorunludur." }]}
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, minWidth: 0, marginBottom: 16 }}
                 >
-                  <Input type="date" size="large" disabled={isLocked} />
+                  <Input type="date" size="large" disabled={isLocked} style={{ width: "100%" }} />
                 </Form.Item>
-                <Form.Item name="shippingMethod" label="Gonderim" style={{ flex: 1 }}>
+                <Form.Item name="shippingMethod" label="Gonderim" style={{ flex: 1, minWidth: 0, marginBottom: 16 }}>
                   <Select
                     size="large"
                     disabled={isLocked}
+                    style={{ width: "100%" }}
                     options={["Kargo", "Elden Teslim"].map((v) => ({ value: v, label: v }))}
                   />
                 </Form.Item>
