@@ -42,8 +42,15 @@ function normalizeShipmentLine(line, index, shipmentId) {
 }
 
 function enrichShipment(item) {
-  const totalQuantity = (item.lines || []).reduce((sum, line) => sum + Number(line.quantity || 0), 0);
-  const totalAmount = (item.lines || []).reduce((sum, line) => sum + (Number(line.quantity || 0) * Number(line.salePrice || 0)), 0);
+  // Liste endpoint'i satirlari bos doner ama toplamlari ayrica saglar;
+  // satir varsa onlardan hesapla, yoksa backend'in donduldugu toplamlari kullan
+  const hasLines = (item.lines || []).length > 0;
+  const totalQuantity = hasLines
+    ? item.lines.reduce((sum, line) => sum + Number(line.quantity || 0), 0)
+    : Number(item.totalQuantity || 0);
+  const totalAmount = hasLines
+    ? item.lines.reduce((sum, line) => sum + (Number(line.quantity || 0) * Number(line.salePrice || 0)), 0)
+    : Number(item.totalAmount || 0);
   return {
     ...item,
     lineCount: item.lineCount ?? (item.lines?.length || 0),
