@@ -6,7 +6,7 @@ import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
 import { getNextProductCodeFresh, listProductsCatalogFresh } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
-import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh } from "../storeShipmentsData";
+import { getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
 
 const { Text } = Typography;
@@ -283,7 +283,6 @@ export function StoreShipmentMobileEditorPage() {
 
       const saved = await saveShipment("Hazirlandi", preparedLines);
       await requestJson("POST", `/api/store-shipments/${encodeURIComponent(saved.id)}/send`, {});
-      try { await createStoreShipmentPdf(saved); } catch { /* PDF opsiyonel */ }
       message.success("Gonderi magazaya aktarildi.");
       navigate("/stores/shipments");
     } catch (error) {
