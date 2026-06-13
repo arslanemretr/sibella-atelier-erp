@@ -1,7 +1,7 @@
 ﻿import React from "react";
 import dayjs from "dayjs";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { AutoComplete, Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { AutoComplete, Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Grid, Input, InputNumber, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { AppstoreOutlined, BarsOutlined, CheckOutlined, DeleteOutlined, DownloadOutlined, DownOutlined, EditOutlined, EyeOutlined, FilterOutlined, InboxOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { getAuthUser } from "../../auth";
@@ -303,6 +303,8 @@ function buildEarningsSummary({ periodDate, products = [], sales = [], returns =
 
 export function SupplierPortalEarningsPage() {
   const authUser = getAuthUser();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [periodDate, setPeriodDate] = React.useState(() => toPeriodDate(getDefaultEarningsPeriod()));
   const [pageLoading, setPageLoading] = React.useState(false);
   const [resolvedSupplierId, setResolvedSupplierId] = React.useState(authUser?.supplierId || null);
@@ -545,6 +547,35 @@ export function SupplierPortalEarningsPage() {
         className="erp-card-logo-divider"
         extra={<Button icon={<DownloadOutlined />} onClick={handleExportDetail}>Excel'e Aktar</Button>}
       >
+        {isMobile ? (
+          <Space direction="vertical" size={10} style={{ width: "100%" }}>
+            {currentSummary.detailRows.length === 0 ? (
+              <Text type="secondary">Bu dönemde satış bulunmamaktadır.</Text>
+            ) : (
+              <>
+                {currentSummary.detailRows.map((row) => (
+                  <div key={row.key} style={{ padding: 12, borderRadius: 10, border: "1px solid #f0f0f0", background: "#fff" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                      <Text strong style={{ fontSize: 14 }}>{row.productName}</Text>
+                      <Text type="secondary" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{row.productCode}</Text>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 13 }}>
+                      <Text type="secondary">Satış {row.salesQuantity} · İade {row.returnQuantity} · Net <b>{row.netQuantity}</b></Text>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 13 }}>
+                      <Text type="secondary">Birim {formatDisplayMoney(row.unitPrice)} · %{Number(row.commissionRate || 0).toFixed(2)}</Text>
+                      <Text strong style={{ color: "#1677ff" }}>{formatDisplayMoney(row.netAmount)}</Text>
+                    </div>
+                  </div>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", background: "#d86d5b", borderRadius: 10 }}>
+                  <Text strong style={{ color: "#fff" }}>Toplam Hakediş</Text>
+                  <Text strong style={{ color: "#fff" }}>{formatDisplayMoney(currentSummary.earningsTotal)}</Text>
+                </div>
+              </>
+            )}
+          </Space>
+        ) : (
         <Table
           size="small"
           rowKey="key"
@@ -613,6 +644,7 @@ export function SupplierPortalEarningsPage() {
             </Table.Summary>
           )}
         />
+        )}
       </Card>
 
       <Card
@@ -622,6 +654,40 @@ export function SupplierPortalEarningsPage() {
         className="erp-card-logo-divider"
         extra={<Button icon={<DownloadOutlined />} onClick={handleExportHistory}>Excel'e Aktar</Button>}
       >
+        {isMobile ? (
+          <Space direction="vertical" size={10} style={{ width: "100%" }}>
+            {historySummaries.map((item) => {
+              const meta = earningsStatusMetaMap[item.status] || earningsStatusMetaMap["Satış Yok"];
+              const selected = item.periodKey === currentSummary.periodKey;
+              return (
+                <div
+                  key={item.periodKey}
+                  onClick={() => setPeriodDate(item.periodDate)}
+                  style={{
+                    padding: 12,
+                    borderRadius: 10,
+                    border: `1px solid ${selected ? "#1677ff" : "#f0f0f0"}`,
+                    background: selected ? "#e6f4ff" : "#fff",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text strong>{item.periodLabel}</Text>
+                    <Tag color={meta.color} style={{ marginInlineEnd: 0 }}>{item.status}</Tag>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 13 }}>
+                    <Text type="secondary">Net Satış: {formatDisplayMoney(item.netSalesTotal)}</Text>
+                    <Text type="secondary">%{Number(item.commissionRate || 0).toFixed(2)}</Text>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 13 }}>
+                    <Text type="secondary">Hakediş</Text>
+                    <Text strong style={{ color: "#1677ff" }}>{formatDisplayMoney(item.earningsTotal)}</Text>
+                  </div>
+                </div>
+              );
+            })}
+          </Space>
+        ) : (
         <Table
           size="small"
           rowKey="periodKey"
@@ -702,6 +768,7 @@ export function SupplierPortalEarningsPage() {
             );
           }}
         />
+        )}
       </Card>
     </Space>
   );
@@ -711,6 +778,8 @@ export function SupplierPortalProductListPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const authUser = getAuthUser();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const supplierId = authUser?.supplierId || null;
   const SAVED_FILTERS_KEY = "sibella.erp.supplierPortalProductFilters.v1";
   const [viewMode, setViewMode] = React.useState("liste");
@@ -771,14 +840,15 @@ export function SupplierPortalProductListPage() {
   }, [refreshProducts]);
 
   React.useEffect(() => {
-    if (viewMode !== "kanban" || kanbanFetchedRef.current) return;
+    // Kanban veya mobil kart görünümünde ürün görselleri yüklenir
+    if ((viewMode !== "kanban" && !isMobile) || kanbanFetchedRef.current) return;
     kanbanFetchedRef.current = true;
     setKanbanImagesLoading(true);
     listProductImagesFresh()
       .then((imageMap) => setKanbanImageMap(imageMap))
       .catch(() => {})
       .finally(() => setKanbanImagesLoading(false));
-  }, [viewMode]);
+  }, [viewMode, isMobile]);
 
   const persistSavedFilters = (nextSavedFilters) => {
     setSavedFilters(nextSavedFilters);
@@ -943,16 +1013,18 @@ export function SupplierPortalProductListPage() {
           <Title level={3} style={{ marginBottom: 6 }}>Ürünlerim</Title>
           <Text type="secondary">Yalnızca size ait ürün kayıtlarını görüntüleyebilirsiniz.</Text>
         </div>
-        <Space wrap className="erp-page-intro-actions">
-          <Segmented
-            value={viewMode}
-            onChange={setViewMode}
-            options={[
-              { value: "kanban", icon: <AppstoreOutlined />, label: "Kanban" },
-              { value: "liste", icon: <BarsOutlined />, label: "Liste" },
-            ]}
-          />
-        </Space>
+        {!isMobile ? (
+          <Space wrap className="erp-page-intro-actions">
+            <Segmented
+              value={viewMode}
+              onChange={setViewMode}
+              options={[
+                { value: "kanban", icon: <AppstoreOutlined />, label: "Kanban" },
+                { value: "liste", icon: <BarsOutlined />, label: "Liste" },
+              ]}
+            />
+          </Space>
+        ) : null}
       </div>
 
       <Card bordered={false} className="erp-list-toolbar-card">
@@ -973,7 +1045,7 @@ export function SupplierPortalProductListPage() {
         </div>
       </Card>
 
-      {viewMode === "liste" ? (
+      {viewMode === "liste" && !isMobile ? (
         <Card title="Ürün Listesi" className="erp-list-table-card erp-card-logo-divider erp-supplier-products-table-card">
           <Table
           size="small"
@@ -994,7 +1066,7 @@ export function SupplierPortalProductListPage() {
           </div>
         </Card>
       ) : (
-        <Card title="Kanban Görünümü" className="erp-card-logo-divider">
+        <Card title={isMobile ? "Ürün Listesi" : "Kanban Görünümü"} className="erp-card-logo-divider">
           <Row gutter={[16, 16]}>
             {filteredProducts.map((product) => (
               <Col xs={24} sm={12} xl={8} key={product.id}>
@@ -1609,6 +1681,8 @@ export function SupplierPortalDeliveryListPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const authUser = getAuthUser();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const supplierId = authUser?.supplierId || null;
   const [records, setRecords] = React.useState([]);
   const [tableLoading, setTableLoading] = React.useState(false);
@@ -1851,7 +1925,47 @@ export function SupplierPortalDeliveryListPage() {
         </div>
       </Card>
 
-      <Card title="Teslimatlarim" className="erp-list-table-card erp-card-logo-divider erp-delivery-list-table-card">
+      <Card title="Teslimatlarim" className="erp-list-table-card erp-card-logo-divider erp-delivery-list-table-card" styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          <Space direction="vertical" size={10} style={{ width: "100%" }}>
+            {filteredRecords.length === 0 ? (
+              <Text type="secondary">Henuz teslimat kaydiniz bulunmuyor.</Text>
+            ) : (
+              filteredRecords.map((record) => {
+                const colorMap = { Taslak: "default", "Onay Bekleniyor": "gold", Onaylandi: "green", Tamamlandi: "blue", "Revizyon Istendi": "red" };
+                return (
+                  <div
+                    key={record.id}
+                    onClick={() => navigate(`/supplier/deliveries/${record.id}`)}
+                    style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <Text strong style={{ fontSize: 15 }}>{record.deliveryNo}</Text>
+                      <Tag color={colorMap[record.status || "Taslak"] || "blue"} style={{ marginInlineEnd: 0 }}>{record.status || "Taslak"}</Tag>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <Text type="secondary" style={{ fontSize: 13 }}>{record.contactName || "-"}</Text>
+                      <Text type="secondary" style={{ fontSize: 13 }}>{formatDisplayDate(record.date)}</Text>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <Text type="secondary" style={{ fontSize: 13 }}>{record.lineCount} çeşit · {record.totalQuantity} adet</Text>
+                      <Text strong style={{ color: "#1677ff" }}>{record.totalAmountDisplay}</Text>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
+                      <Button size="small" icon={<EyeOutlined />} onClick={() => navigate(`/supplier/deliveries/${record.id}`)}>Aç</Button>
+                      <Button size="small" icon={<DownloadOutlined />} onClick={() => void handleDownloadPdf(record)}>PDF</Button>
+                      {record.status === "Taslak" ? (
+                        <Popconfirm title="Bu teslimat silinsin mi?" okText="Sil" cancelText="Vazgeç" onConfirm={() => void handleDeleteRecord(record)}>
+                          <Button size="small" danger icon={<DeleteOutlined />}>Sil</Button>
+                        </Popconfirm>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </Space>
+        ) : (
         <Table
           size="small"
           rowKey="id"
@@ -1866,9 +1980,12 @@ export function SupplierPortalDeliveryListPage() {
           })}
           rowClassName={() => "erp-clickable-row"}
         />
+        )}
+        {!isMobile ? (
         <div className="erp-table-footer">
           <span>Toplam Kayit: {filteredRecords.length}</span>
         </div>
+        ) : null}
       </Card>
 
       <Drawer title="Teslimat Detayi" placement="right" styles={{ wrapper: { width: 420 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
@@ -1906,7 +2023,7 @@ export function SupplierPortalDeliveryListPage() {
           </div>
         ) : (
           <Space vertical size={16} style={{ width: "100%", paddingTop: 8 }}>
-            <Descriptions column={2} size="small" bordered>
+            <Descriptions column={isMobile ? 1 : 2} size="small" bordered>
               <Descriptions.Item label="Teslimat Kodu">{newModalMeta.deliveryNo || "-"}</Descriptions.Item>
               <Descriptions.Item label="Firma">{newModalMeta.supplierName || "-"}</Descriptions.Item>
               <Descriptions.Item label="Yetkili Kişi">{newModalMeta.contactName || "-"}</Descriptions.Item>
@@ -1947,6 +2064,8 @@ export function SupplierPortalDeliveryEditorPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { deliveryId: deliveryIdParam } = useParams();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [deliveryId, setDeliveryId] = React.useState((deliveryIdParam && deliveryIdParam !== "new") ? deliveryIdParam : null);
   const authUser = getAuthUser();
   const isAdminView = location.pathname.startsWith("/supplier-portal/");
@@ -2622,6 +2741,46 @@ export function SupplierPortalDeliveryEditorPage() {
           </Card>
           ) : null}
 
+          {isMobile ? (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {watchedLines.length === 0 ? (
+                <Text type="secondary">Henüz ürün eklenmedi.</Text>
+              ) : (
+                <>
+                  {watchedLines.map((line, index) => (
+                    <div key={line.id || `dl-${index}`} style={{ display: "flex", gap: 12, padding: 12, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
+                      <img src={line.image || "/products/baroque-necklace.svg"} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Text strong style={{ display: "block", fontSize: 14 }}>{line.name}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{line.code || "—"}</Text>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                          <Text type="secondary" style={{ fontSize: 13 }}>
+                            {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(Number(line.salePrice || 0))} × {line.quantity}
+                          </Text>
+                          <Text strong style={{ color: "#1677ff" }}>
+                            {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(Number(line.salePrice || 0) * Number(line.quantity || 0))}
+                          </Text>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                          <Button size="small" icon={<EditOutlined />} onClick={() => openEditDrawer(index)} disabled={isDeliveryLocked && !isAdminView}>Düzenle</Button>
+                          {isAdminView && line.isNewProduct && !line.productId ? (
+                            <Button size="small" icon={<PlusCircleOutlined />} onClick={() => openPromoteDrawer(index)}>Ürün Yap</Button>
+                          ) : null}
+                          {!isDeliveryLocked ? (
+                            <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDeleteLine(index, line.id)}>Sil</Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", background: "#f6f8fb", borderRadius: 10 }}>
+                    <Text strong>Alt Toplam</Text>
+                    <Text strong>{new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(totalAmount)}</Text>
+                  </div>
+                </>
+              )}
+            </Space>
+          ) : (
           <div className="erp-delivery-lines-table-wrap">
             <Table
           size="small"
@@ -2708,13 +2867,14 @@ export function SupplierPortalDeliveryEditorPage() {
               )}
             />
           </div>
+          )}
         </Card>
       </Form>
 
       <Drawer
         title="Teslimat Satiri Duzenle"
         placement="right"
-        width={480}
+        width={isMobile ? "100%" : 480}
         open={editOpen}
         onClose={() => {
           setEditOpen(false);
