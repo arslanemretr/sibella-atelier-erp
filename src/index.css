@@ -1470,7 +1470,7 @@ html, body {
   }
 
   .erp-pos-toolbar {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .erp-pos-order-header-main {
