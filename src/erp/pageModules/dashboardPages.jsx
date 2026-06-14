@@ -140,6 +140,8 @@ function CustomBarTooltip({ active, payload, label }) {
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const defaultDateRange = React.useMemo(() => {
     const end = dayjs();
     return [end.subtract(29, "day"), end];
@@ -300,32 +302,64 @@ export function DashboardPage() {
           <Title level={3} style={{ marginBottom: 2 }}>Dashboard</Title>
           <Text type="secondary">Satış, stok, satın alma ve operasyon özeti.</Text>
         </div>
-        <Space wrap>
-          <DatePicker.RangePicker
-            value={dateRange}
-            allowClear={false}
-            format="DD.MM.YYYY"
-            onChange={(v) => { if (v?.[0] && v?.[1]) setDateRange(v); }}
-          />
-          <Button icon={<ReloadOutlined />} onClick={() => { setDateRange(defaultDateRange); void refresh(defaultDateRange); }}>
-            Son 30 Gün
-          </Button>
-          <Button type="primary" loading={loading} onClick={() => void refresh()}>
-            Getir
-          </Button>
-        </Space>
+        {isMobile ? (
+          <div style={{ display: "flex", gap: 8, width: "100%" }}>
+            <DatePicker.RangePicker
+              value={dateRange}
+              allowClear={false}
+              format="DD.MM"
+              inputReadOnly
+              onChange={(v) => { if (v?.[0] && v?.[1]) setDateRange(v); }}
+              style={{ flex: 1, minWidth: 0 }}
+            />
+            <Button type="primary" loading={loading} icon={<ReloadOutlined />} onClick={() => void refresh()} style={{ flexShrink: 0 }} />
+          </div>
+        ) : (
+          <Space wrap>
+            <DatePicker.RangePicker
+              value={dateRange}
+              allowClear={false}
+              format="DD.MM.YYYY"
+              onChange={(v) => { if (v?.[0] && v?.[1]) setDateRange(v); }}
+            />
+            <Button icon={<ReloadOutlined />} onClick={() => { setDateRange(defaultDateRange); void refresh(defaultDateRange); }}>
+              Son 30 Gün
+            </Button>
+            <Button type="primary" loading={loading} onClick={() => void refresh()}>
+              Getir
+            </Button>
+          </Space>
+        )}
       </div>
 
       {/* Hızlı Erişim */}
-      <Card bordered={false} styles={{ body: { padding: "12px 20px" } }}>
-        <Space wrap>
-          <Text type="secondary" style={{ fontSize: 13 }}>Hızlı Erişim:</Text>
-          <Button icon={<ThunderboltOutlined />} onClick={() => navigate("/pos/store")}>POS Ekranı</Button>
-          <Button icon={<PlusOutlined />} onClick={() => navigate("/products/new")}>Ürün Ekle</Button>
-          <Button icon={<AppstoreOutlined />} onClick={() => navigate("/stock/entry/new")}>Stok Girişi</Button>
-          <Button icon={<ShoppingCartOutlined />} onClick={() => navigate("/purchasing/entry")}>Satın Alma</Button>
-          <Button icon={<BarChartOutlined />} onClick={() => navigate("/pos/orders")}>Satış Listesi</Button>
-        </Space>
+      <Card bordered={false} styles={{ body: { padding: isMobile ? 10 : "12px 20px" } }}>
+        {isMobile ? (
+          <Row gutter={[8, 8]}>
+            {[
+              { icon: <ThunderboltOutlined />, label: "POS", to: "/pos/store" },
+              { icon: <PlusOutlined />, label: "Ürün", to: "/products/new" },
+              { icon: <AppstoreOutlined />, label: "Stok", to: "/stock/entry/new" },
+              { icon: <ShoppingCartOutlined />, label: "Alım", to: "/purchasing/entry" },
+              { icon: <BarChartOutlined />, label: "Satış", to: "/pos/orders" },
+            ].map((q) => (
+              <Col span={8} key={q.to}>
+                <Button block icon={q.icon} onClick={() => navigate(q.to)} style={{ height: 48, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, fontSize: 12, padding: 4 }}>
+                  {q.label}
+                </Button>
+              </Col>
+            ))}
+          </Row>
+        ) : (
+          <Space wrap>
+            <Text type="secondary" style={{ fontSize: 13 }}>Hızlı Erişim:</Text>
+            <Button icon={<ThunderboltOutlined />} onClick={() => navigate("/pos/store")}>POS Ekranı</Button>
+            <Button icon={<PlusOutlined />} onClick={() => navigate("/products/new")}>Ürün Ekle</Button>
+            <Button icon={<AppstoreOutlined />} onClick={() => navigate("/stock/entry/new")}>Stok Girişi</Button>
+            <Button icon={<ShoppingCartOutlined />} onClick={() => navigate("/purchasing/entry")}>Satın Alma</Button>
+            <Button icon={<BarChartOutlined />} onClick={() => navigate("/pos/orders")}>Satış Listesi</Button>
+          </Space>
+        )}
       </Card>
 
       {/* Hata */}
@@ -337,7 +371,7 @@ export function DashboardPage() {
           DÖNEM SATIŞ
         </Text>
         <Row gutter={[16, 16]} style={{ marginTop: 8 }}>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <KpiCard
               loading={loading}
               title="Dönem Ciro"
@@ -348,7 +382,7 @@ export function DashboardPage() {
               onClick={() => navigate("/pos/orders")}
             />
           </Col>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <KpiCard
               loading={loading}
               title="Satış İşlemi"
@@ -359,7 +393,7 @@ export function DashboardPage() {
               onClick={() => navigate("/pos/orders")}
             />
           </Col>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <KpiCard
               loading={loading}
               title="Satılan Ürün Adedi"
@@ -370,7 +404,7 @@ export function DashboardPage() {
               onClick={() => navigate("/pos/orders")}
             />
           </Col>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <KpiCard
               loading={loading}
               title="İade Tutarı"
@@ -390,7 +424,7 @@ export function DashboardPage() {
           OPERASYON
         </Text>
         <Row gutter={[16, 16]} style={{ marginTop: 8 }}>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <KpiCard
               loading={loading}
               title="Aktif Ürün"
@@ -401,7 +435,7 @@ export function DashboardPage() {
               onClick={() => navigate("/products/list")}
             />
           </Col>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <KpiCard
               loading={loading}
               title="Aktif Tedarikçi"
@@ -412,7 +446,7 @@ export function DashboardPage() {
               onClick={() => openDrawer("suppliers")}
             />
           </Col>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <KpiCard
               loading={loading}
               title="Düşük Stok"
@@ -423,7 +457,7 @@ export function DashboardPage() {
               onClick={stats.lowStockCount > 0 ? () => openDrawer("low-stock") : null}
             />
           </Col>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <KpiCard
               loading={loading}
               title="Satın Alma Kaydı"
@@ -553,6 +587,7 @@ export function DashboardPage() {
               rowKey="id"
               size="small"
               pagination={false}
+              scroll={{ x: "max-content" }}
               dataSource={recentSales}
               locale={{ emptyText: "Bu dönemde satış kaydı yok." }}
               onRow={(r) => ({ onClick: () => navigate("/pos/orders"), style: { cursor: "pointer" } })}
@@ -603,6 +638,7 @@ export function DashboardPage() {
                 rowKey="id"
                 size="small"
                 pagination={false}
+                scroll={{ x: "max-content" }}
                 dataSource={lowStockProducts.slice(0, 8)}
                 locale={{ emptyText: "Düşük stok yok." }}
                 onRow={(r) => ({ onClick: () => navigate(`/products/${r.id}`), style: { cursor: "pointer" } })}
