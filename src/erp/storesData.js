@@ -16,12 +16,14 @@ function loadStore() {
 }
 
 function normalizeStore(values, existingStore) {
+  const isCenter = Boolean(values.isCenter);
   return {
     id: existingStore?.id || createId("store"),
     code: values.code || "",
     name: values.name || "",
     taxNumber: values.taxNumber || "",
-    commissionRate: Number(values.commissionRate || 0),
+    commissionRate: isCenter ? 0 : Number(values.commissionRate || 0),
+    isCenter,
     address: values.address || "",
     contactName: values.contactName || "",
     contactPhone: values.contactPhone || "",

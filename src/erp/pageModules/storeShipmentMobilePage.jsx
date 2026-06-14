@@ -379,7 +379,7 @@ export function StoreShipmentMobileEditorPage() {
                   size="large"
                   placeholder="Magaza secin"
                   disabled={isLocked}
-                  options={stores.map((s) => ({ value: s.id, label: s.name }))}
+                  options={stores.filter((s) => !s.isCenter).map((s) => ({ value: s.id, label: s.name }))}
                 />
               </Form.Item>
 

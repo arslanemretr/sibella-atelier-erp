@@ -358,6 +358,8 @@ CREATE TABLE IF NOT EXISTS stores (
   name TEXT NOT NULL,
   tax_number TEXT,
   commission_rate DOUBLE PRECISION NOT NULL DEFAULT 0,
+  payment_due_days INT,
+  is_center BOOLEAN NOT NULL DEFAULT FALSE,
   address TEXT,
   contact_name TEXT,
   contact_phone TEXT,

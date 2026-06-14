@@ -204,6 +204,8 @@ async function ensureDefaultStockLocationAndBalances() {
 
 async function ensureStoresSchema() {
   await sqlExec(`ALTER TABLE stores ADD COLUMN IF NOT EXISTS payment_due_days INT`);
+  // Merkez magaza (Sibella'nin kendi satis noktasi) bayragi
+  await sqlExec(`ALTER TABLE stores ADD COLUMN IF NOT EXISTS is_center BOOLEAN NOT NULL DEFAULT FALSE`);
   await sqlExec(`CREATE INDEX IF NOT EXISTS idx_store_shipment_lines_shipment_id ON store_shipment_lines (shipment_id)`);
 }
 

@@ -1,7 +1,7 @@
 ﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, Col, Descriptions, Drawer, Form, Grid, Input, InputNumber, Popconfirm, Row, Space, Table, Tag, Tooltip, Typography, message } from "antd";
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import { Alert, Button, Card, Checkbox, Col, Descriptions, Drawer, Form, Grid, Input, InputNumber, Popconfirm, Row, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { DeleteOutlined, EditOutlined, HomeOutlined, PlusOutlined } from "@ant-design/icons";
 import { createStore, deleteStore, listStoresFresh, updateStore } from "../storesData";
 
 const { Title, Text } = Typography;
@@ -18,7 +18,10 @@ export function StoreListPage() {
   const refreshStores = React.useCallback(async () => {
     try {
       setLoading(true);
-      setStores(await listStoresFresh());
+      const list = await listStoresFresh();
+      // Merkez magaza her zaman en ustte
+      list.sort((a, b) => (b.isCenter ? 1 : 0) - (a.isCenter ? 1 : 0));
+      setStores(list);
     } catch (error) {
       message.error(error?.message || "Magaza listesi yuklenemedi.");
     } finally {
@@ -62,12 +65,19 @@ export function StoreListPage() {
                   style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <Text strong style={{ fontSize: 15 }}>{record.name}</Text>
+                    <Space size={6}>
+                      <Text strong style={{ fontSize: 15 }}>{record.name}</Text>
+                      {record.isCenter ? <Tag color="gold" icon={<HomeOutlined />}>Merkez</Tag> : null}
+                    </Space>
                     <Text type="secondary" style={{ fontSize: 13 }}>{record.code}</Text>
                   </div>
-                  <Text type="secondary" style={{ fontSize: 13, display: "block", marginBottom: 8 }}>{record.stockLocationName || "-"}</Text>
+                  <Text type="secondary" style={{ fontSize: 13, display: "block", marginBottom: 8 }}>{record.isCenter ? "Ana Depo" : (record.stockLocationName || "-")}</Text>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <Tag color="blue">%{Number(record.commissionRate || 0).toFixed(2)} komisyon</Tag>
+                    {record.isCenter ? (
+                      <Tag color="gold">Komisyon yok (Sibella)</Tag>
+                    ) : (
+                      <Tag color="blue">%{Number(record.commissionRate || 0).toFixed(2)} komisyon</Tag>
+                    )}
                     {record.paymentDueDays !== null && record.paymentDueDays !== undefined ? <Tag>{record.paymentDueDays} gün vade</Tag> : null}
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
@@ -108,8 +118,14 @@ export function StoreListPage() {
                 </button>
               ),
             },
-            { title: "Magaza Adi", dataIndex: "name", key: "name", width: 180,
-              sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr") },
+            { title: "Magaza Adi", dataIndex: "name", key: "name", width: 200,
+              sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr"),
+              render: (value, record) => (
+                <Space size={6}>
+                  <span>{value}</span>
+                  {record.isCenter ? <Tag color="gold" icon={<HomeOutlined />}>Merkez</Tag> : null}
+                </Space>
+              ) },
             { title: "VKN", dataIndex: "taxNumber", key: "taxNumber", width: 130,
               sorter: (a, b) => String(a.taxNumber || "").localeCompare(String(b.taxNumber || ""), "tr") },
             {
@@ -118,7 +134,7 @@ export function StoreListPage() {
               key: "commissionRate",
               width: 100,
               sorter: (a, b) => Number(a.commissionRate || 0) - Number(b.commissionRate || 0),
-              render: (value) => `%${Number(value || 0).toFixed(2)}`,
+              render: (value, record) => (record.isCenter ? <Text type="secondary">Yok</Text> : `%${Number(value || 0).toFixed(2)}`),
             },
             {
               title: "Vade (Gün)",
@@ -162,10 +178,11 @@ export function StoreListPage() {
         {selectedStore ? (
           <>
             <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="Tip">{selectedStore.isCenter ? <Tag color="gold" icon={<HomeOutlined />}>Merkez Mağaza</Tag> : <Tag>Mağaza</Tag>}</Descriptions.Item>
               <Descriptions.Item label="Magaza Adi">{selectedStore.name}</Descriptions.Item>
               <Descriptions.Item label="Magaza Kodu">{selectedStore.code}</Descriptions.Item>
               <Descriptions.Item label="VKN">{selectedStore.taxNumber || "-"}</Descriptions.Item>
-              <Descriptions.Item label="Komisyon">{`%${Number(selectedStore.commissionRate || 0).toFixed(2)}`}</Descriptions.Item>
+              <Descriptions.Item label="Komisyon">{selectedStore.isCenter ? "Yok (Sibella)" : `%${Number(selectedStore.commissionRate || 0).toFixed(2)}`}</Descriptions.Item>
               <Descriptions.Item label="Vade">{selectedStore.paymentDueDays !== null && selectedStore.paymentDueDays !== undefined ? `${selectedStore.paymentDueDays} gün` : "-"}</Descriptions.Item>
               <Descriptions.Item label="Stok Yeri">{selectedStore.stockLocationName || "-"}</Descriptions.Item>
               <Descriptions.Item label="Yetkili">{selectedStore.contactName || "-"}</Descriptions.Item>
@@ -193,6 +210,7 @@ export function StoreEditorPage() {
   const { storeId } = useParams();
   const isEditMode = Boolean(storeId);
   const [form] = Form.useForm();
+  const isCenter = Form.useWatch("isCenter", form);
   const [pageLoading, setPageLoading] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
 
@@ -212,6 +230,7 @@ export function StoreEditorPage() {
             name: "",
             taxNumber: "",
             commissionRate: 0,
+            isCenter: false,
             address: "",
             contactName: "",
             contactPhone: "",
@@ -278,10 +297,11 @@ export function StoreEditorPage() {
           <Col xs={24} xl={10}>
             <Card title="Magaza Ozet" loading={pageLoading}>
               <Descriptions column={1} size="small" bordered>
+                <Descriptions.Item label="Tip">{isCenter ? <Tag color="gold">Merkez Mağaza</Tag> : <Tag>Mağaza</Tag>}</Descriptions.Item>
                 <Descriptions.Item label="Magaza Adi">{form.getFieldValue("name") || "-"}</Descriptions.Item>
                 <Descriptions.Item label="Magaza Kodu">{form.getFieldValue("code") || "-"}</Descriptions.Item>
-                <Descriptions.Item label="Stok Yeri">{form.getFieldValue("stockLocationName") || "-"}</Descriptions.Item>
-                <Descriptions.Item label="Komisyon">{`%${Number(form.getFieldValue("commissionRate") || 0).toFixed(2)}`}</Descriptions.Item>
+                <Descriptions.Item label="Stok Yeri">{isCenter ? "Ana Depo" : (form.getFieldValue("stockLocationName") || "-")}</Descriptions.Item>
+                <Descriptions.Item label="Komisyon">{isCenter ? "Yok (Sibella)" : `%${Number(form.getFieldValue("commissionRate") || 0).toFixed(2)}`}</Descriptions.Item>
               </Descriptions>
             </Card>
           </Col>
@@ -290,12 +310,37 @@ export function StoreEditorPage() {
             <Space vertical size={20} style={{ width: "100%" }}>
               <Card title="Genel Bilgiler" loading={pageLoading}>
                 <Row gutter={[16, 16]}>
+                  <Col xs={24}>
+                    <Form.Item name="isCenter" valuePropName="checked" noStyle>
+                      <Checkbox>Bu bir Merkez Mağazadır (Sibella'nın kendi satış noktası)</Checkbox>
+                    </Form.Item>
+                  </Col>
+                  {isCenter ? (
+                    <Col xs={24}>
+                      <Alert
+                        type="info"
+                        showIcon
+                        message="Merkez mağaza"
+                        description="Stok ana depodan gelir (tedarikçi teslimatları doğrudan buraya girer, ayrı gönderi yapılmaz). Sibella'nın kendi satış noktası olduğundan komisyon hesaplanmaz."
+                      />
+                    </Col>
+                  ) : null}
                   <Col xs={24} md={12}><Form.Item name="name" label="Magaza Adi" rules={[{ required: true, message: "Magaza adi zorunludur." }]}><Input /></Form.Item></Col>
                   <Col xs={24} md={12}><Form.Item name="code" label="Magaza Kodu" rules={[{ required: true, message: "Magaza kodu zorunludur." }]}><Input /></Form.Item></Col>
                   <Col xs={24} md={12}><Form.Item name="taxNumber" label="VKN" rules={[{ required: true, message: "VKN zorunludur." }]}><Input /></Form.Item></Col>
-                  <Col xs={24} md={12}><Form.Item name="commissionRate" label="Calisan Komisyon Orani" rules={[{ required: true, message: "Komisyon orani zorunludur." }]}><InputNumber min={0} max={100} style={{ width: "100%" }} addonAfter="%" /></Form.Item></Col>
+                  {!isCenter ? (
+                    <Col xs={24} md={12}><Form.Item name="commissionRate" label="Calisan Komisyon Orani" rules={[{ required: true, message: "Komisyon orani zorunludur." }]}><InputNumber min={0} max={100} style={{ width: "100%" }} addonAfter="%" /></Form.Item></Col>
+                  ) : null}
                   <Col xs={24} md={12}><Form.Item name="paymentDueDays" label="Vade (Gün)"><InputNumber min={0} max={365} style={{ width: "100%" }} addonAfter="gün" placeholder="örn: 30" /></Form.Item></Col>
-                  <Col xs={24}><Form.Item name="stockLocationName" label="Stok Yeri Adi" rules={[{ required: true, message: "Stok yeri adi zorunludur." }]}><Input placeholder="Sarkoy Magaza / Nisantasi Showroom" /></Form.Item></Col>
+                  {isCenter ? (
+                    <Col xs={24}>
+                      <Form.Item label="Stok Yeri">
+                        <Input value="Ana Depo" disabled prefix={<HomeOutlined />} />
+                      </Form.Item>
+                    </Col>
+                  ) : (
+                    <Col xs={24}><Form.Item name="stockLocationName" label="Stok Yeri Adi" rules={[{ required: true, message: "Stok yeri adi zorunludur." }]}><Input placeholder="Sarkoy Magaza / Nisantasi Showroom" /></Form.Item></Col>
+                  )}
                 </Row>
               </Card>
 

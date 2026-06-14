@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { sqlExec, sqlMany, sqlOne } from "./db.js";
 import {
+  getMainStockLocation,
   rebuildStockBalancesFromMovements,
   replaceStockMovementsForSource,
   withInventoryTransaction,
@@ -30,6 +31,7 @@ function mapStoreRow(row) {
     taxNumber: row.tax_number || "",
     commissionRate: Number(row.commission_rate || 0),
     paymentDueDays: row.payment_due_days !== null && row.payment_due_days !== undefined ? Number(row.payment_due_days) : null,
+    isCenter: Boolean(row.is_center),
     address: row.address || "",
     contactName: row.contact_name || "",
     contactPhone: row.contact_phone || "",
@@ -83,13 +85,16 @@ async function getStoreRow(storeId) {
 }
 
 function normalizeStore(values, existingRecord) {
+  const isCenter = Boolean(values.isCenter);
   return {
     id: existingRecord?.id || createId("store"),
     code: String(values.code || "").trim(),
     name: String(values.name || "").trim(),
     taxNumber: String(values.taxNumber || "").trim(),
-    commissionRate: Number(values.commissionRate || 0),
+    // Merkez magaza (Sibella'nin kendisi) komisyonsuzdur
+    commissionRate: isCenter ? 0 : Number(values.commissionRate || 0),
     paymentDueDays: values.paymentDueDays !== undefined && values.paymentDueDays !== "" && values.paymentDueDays !== null ? Number(values.paymentDueDays) : null,
+    isCenter,
     address: String(values.address || "").trim(),
     contactName: String(values.contactName || "").trim(),
     contactPhone: String(values.contactPhone || "").trim(),
@@ -104,8 +109,11 @@ function normalizeStore(values, existingRecord) {
 async function createOrUpdateStoreRecord(values, existingRecord) {
   const storeId = await withInventoryTransaction(async (tx) => {
     const item = normalizeStore(values, existingRecord);
-    if (!item.code || !item.name || !item.stockLocationName) {
-      throw new Error("Magaza kodu, magaza adi ve stok yeri adi zorunludur.");
+    if (!item.code || !item.name) {
+      throw new Error("Magaza kodu ve magaza adi zorunludur.");
+    }
+    if (!item.isCenter && !item.stockLocationName) {
+      throw new Error("Stok yeri adi zorunludur.");
     }
 
     const duplicateCode = await tx.one(
@@ -116,51 +124,86 @@ async function createOrUpdateStoreRecord(values, existingRecord) {
       throw new Error("Bu magaza kodu daha once kullanilmis.");
     }
 
-    const duplicateLocation = await tx.one(
-      `
-        SELECT id
-        FROM stock_locations
-        WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
-          AND id <> COALESCE($2, '')
-      `,
-      [item.stockLocationName, existingRecord?.stockLocationId || null],
-    );
-    if (duplicateLocation) {
-      throw new Error("Bu stok yeri adi daha once kullanilmis.");
-    }
-
+    const mainLocation = await getMainStockLocation(tx);
     let stockLocationId = existingRecord?.stockLocationId;
 
-    if (!stockLocationId) {
-      stockLocationId = createId("stockloc");
+    if (item.isCenter) {
+      // Merkez magaza (Sibella'nin kendisi) ana depoya baglanir; ayri stok yeri olusturulmaz.
+      // Boylece tedarikci teslimatlari dogrudan merkez stogunu olusturur, POS satisi oradan duser.
+      if (!mainLocation) {
+        throw new Error("Ana depo bulunamadi, merkez magaza tanimlanamaz.");
+      }
+      // Normalden donusumde eski ozel stok yerinin baglantisini kopar
+      if (stockLocationId && stockLocationId !== mainLocation.id) {
+        await tx.exec(
+          "UPDATE stock_locations SET store_id = NULL, updated_at = $2::timestamptz WHERE id = $1 AND is_default_main = FALSE",
+          [stockLocationId, item.updatedAt],
+        );
+      }
+      stockLocationId = mainLocation.id;
+      item.stockLocationName = mainLocation.name;
       await tx.exec(
-        `
-          INSERT INTO stock_locations (id, name, store_id, is_default_main, created_at, updated_at)
-          VALUES ($1, $2, $3, FALSE, $4::timestamptz, $5::timestamptz)
-        `,
-        [stockLocationId, item.stockLocationName, item.id, item.createdAt, item.updatedAt],
+        "UPDATE stock_locations SET store_id = $2, updated_at = $3::timestamptz WHERE id = $1",
+        [stockLocationId, item.id, item.updatedAt],
       );
     } else {
-      await tx.exec(
+      const duplicateLocation = await tx.one(
         `
-          UPDATE stock_locations
-          SET name = $2,
-              store_id = $3,
-              updated_at = $4::timestamptz
-          WHERE id = $1
+          SELECT id
+          FROM stock_locations
+          WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
+            AND id <> COALESCE($2, '')
         `,
-        [stockLocationId, item.stockLocationName, item.id, item.updatedAt],
+        [item.stockLocationName, existingRecord?.stockLocationId || null],
       );
+      if (duplicateLocation) {
+        throw new Error("Bu stok yeri adi daha once kullanilmis.");
+      }
+
+      // Merkezden normale donusum: ana depoya bagliydi, kendine ozel stok yeri olustur
+      const wasBoundToMain = stockLocationId && mainLocation && stockLocationId === mainLocation.id;
+      if (!stockLocationId || wasBoundToMain) {
+        if (wasBoundToMain) {
+          await tx.exec(
+            "UPDATE stock_locations SET store_id = NULL, updated_at = $2::timestamptz WHERE id = $1",
+            [stockLocationId, item.updatedAt],
+          );
+        }
+        stockLocationId = createId("stockloc");
+        await tx.exec(
+          `
+            INSERT INTO stock_locations (id, name, store_id, is_default_main, created_at, updated_at)
+            VALUES ($1, $2, $3, FALSE, $4::timestamptz, $5::timestamptz)
+          `,
+          [stockLocationId, item.stockLocationName, item.id, item.createdAt, item.updatedAt],
+        );
+      } else {
+        await tx.exec(
+          `
+            UPDATE stock_locations
+            SET name = $2,
+                store_id = $3,
+                updated_at = $4::timestamptz
+            WHERE id = $1
+          `,
+          [stockLocationId, item.stockLocationName, item.id, item.updatedAt],
+        );
+      }
+    }
+
+    // Tek merkez kurali: yeni merkez isaretlenince digerleri merkez olmaktan cikar
+    if (item.isCenter) {
+      await tx.exec("UPDATE stores SET is_center = FALSE WHERE id <> $1", [item.id]);
     }
 
     if (!existingRecord) {
       await tx.exec(
         `
           INSERT INTO stores (
-            id, code, name, tax_number, commission_rate, payment_due_days, address, contact_name,
+            id, code, name, tax_number, commission_rate, payment_due_days, is_center, address, contact_name,
             contact_phone, contact_email, stock_location_id, created_at, updated_at
           )
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::timestamptz,$13::timestamptz)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::timestamptz,$14::timestamptz)
         `,
         [
           item.id,
@@ -169,6 +212,7 @@ async function createOrUpdateStoreRecord(values, existingRecord) {
           item.taxNumber,
           item.commissionRate,
           item.paymentDueDays,
+          item.isCenter,
           item.address,
           item.contactName,
           item.contactPhone,
@@ -187,12 +231,13 @@ async function createOrUpdateStoreRecord(values, existingRecord) {
               tax_number = $4,
               commission_rate = $5,
               payment_due_days = $6,
-              address = $7,
-              contact_name = $8,
-              contact_phone = $9,
-              contact_email = $10,
-              stock_location_id = $11,
-              updated_at = $12::timestamptz
+              is_center = $7,
+              address = $8,
+              contact_name = $9,
+              contact_phone = $10,
+              contact_email = $11,
+              stock_location_id = $12,
+              updated_at = $13::timestamptz
           WHERE id = $1
         `,
         [
@@ -202,6 +247,7 @@ async function createOrUpdateStoreRecord(values, existingRecord) {
           item.taxNumber,
           item.commissionRate,
           item.paymentDueDays,
+          item.isCenter,
           item.address,
           item.contactName,
           item.contactPhone,
@@ -224,6 +270,12 @@ async function deleteStoreRecord(storeId) {
       return false;
     }
 
+    // Merkez magaza ana depoya bagliydiysa once baglantiyi kopar (FK ihlali olmasin),
+    // ana depo silinmez; yalnizca magazaya ait ozel stok yeri silinir.
+    await tx.exec(
+      "UPDATE stock_locations SET store_id = NULL, updated_at = $2::timestamptz WHERE id = $1 AND is_default_main = TRUE",
+      [existingStore.stock_location_id, nowIso()],
+    );
     await tx.exec("DELETE FROM stores WHERE id = $1", [storeId]);
     await tx.exec("DELETE FROM stock_locations WHERE id = $1 AND is_default_main = FALSE", [existingStore.stock_location_id]);
     return true;
