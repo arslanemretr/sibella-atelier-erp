@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Card, Descriptions, Drawer, InputNumber, Modal, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { Button, Card, Descriptions, Drawer, Grid, InputNumber, Modal, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { AimOutlined } from "@ant-design/icons";
 import { correctStockLocation, listStockLocationBalancesFresh, listStockLocationsFresh } from "../stockLocationsData";
 
@@ -8,6 +8,8 @@ const { Title, Text } = Typography;
 const EMPTY_CORRECTION = { productId: null, productName: "", productCode: "", currentQty: 0, actualQty: null, note: "" };
 
 export function StockLocationListPage() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [locations, setLocations] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -184,7 +186,32 @@ export function StockLocationListPage() {
         <Text type="secondary">Merkez ve magaza bazli stok gorunumu burada izlenir.</Text>
       </div>
 
-      <Card title="Stok Yeri Listesi" className="erp-list-table-card">
+      <Card title="Stok Yeri Listesi" className="erp-list-table-card" styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          locations.length === 0 ? (
+            <Text type="secondary">Stok yeri bulunamadı.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {locations.map((record) => (
+                <div
+                  key={record.id}
+                  onClick={() => { void openDrawer(record); }}
+                  style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <Text strong style={{ fontSize: 15 }}>{record.name}</Text>
+                    {record.isDefaultMain ? <Tag color="blue" style={{ marginInlineEnd: 0 }}>Merkez</Tag> : null}
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 13, display: "block", marginBottom: 6 }}>{record.storeName || "-"}</Text>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                    <Text type="secondary">{record.productVariety} çeşit</Text>
+                    <Text strong>{record.totalQuantity} adet</Text>
+                  </div>
+                </div>
+              ))}
+            </Space>
+          )
+        ) : (
         <Table
           size="small"
           rowKey="id"
@@ -196,18 +223,19 @@ export function StockLocationListPage() {
           onRow={(record) => ({ onClick: () => { void openDrawer(record); } })}
           rowClassName={() => "erp-clickable-row"}
         />
+        )}
       </Card>
 
       <Drawer
         title={selectedLocation ? `${selectedLocation.name} — Bakiyeler` : "Stok Yeri Detayi"}
         placement="right"
-        width={560}
+        width={isMobile ? "100%" : 560}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       >
         {selectedLocation ? (
           <Space vertical size={16} style={{ width: "100%" }}>
-            <Descriptions column={2} size="small" bordered>
+            <Descriptions column={isMobile ? 1 : 2} size="small" bordered>
               <Descriptions.Item label="Stok Yeri" span={2}>{selectedLocation.name}</Descriptions.Item>
               <Descriptions.Item label="Bagli Magaza">{selectedLocation.storeName || "-"}</Descriptions.Item>
               <Descriptions.Item label="Merkez">{selectedLocation.isDefaultMain ? "Evet" : "Hayir"}</Descriptions.Item>

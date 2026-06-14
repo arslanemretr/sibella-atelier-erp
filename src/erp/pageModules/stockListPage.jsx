@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, Descriptions, Drawer, Input, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { Button, Card, Descriptions, Drawer, Grid, Input, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DownloadOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { listStockMovementsFresh } from "../stockMovementsData";
 
@@ -75,6 +75,8 @@ function openDetailFromRow(setSelected, setOpen, record) {
 
 export function StockListPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedMovement, setSelectedMovement] = React.useState(null);
   const [movements, setMovements] = React.useState([]);
@@ -359,27 +361,34 @@ export function StockListPage() {
 
   return (
     <Space vertical size={20} style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-        <div>
-          <Title level={3} style={{ marginBottom: 6 }}>Stok Hareketleri</Title>
-          <Text type="secondary">Tum fiili stok giris ve cikislari veritabanindaki hareket kayitlarindan listelenir.</Text>
+      {isMobile ? (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <Title level={3} style={{ margin: 0 }}>Stok Hareketleri</Title>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/stock/entry")}>Giriş</Button>
         </div>
-        <Space>
-          <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/stock/entry")}>Stok Girisi</Button>
-        </Space>
-      </div>
+      ) : (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+          <div>
+            <Title level={3} style={{ marginBottom: 6 }}>Stok Hareketleri</Title>
+            <Text type="secondary">Tum fiili stok giris ve cikislari veritabanindaki hareket kayitlarindan listelenir.</Text>
+          </div>
+          <Space>
+            <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/stock/entry")}>Stok Girisi</Button>
+          </Space>
+        </div>
+      )}
 
       <Card bordered={false} className="erp-list-toolbar-card">
-        <Space wrap size={12} style={{ width: "100%", justifyContent: "space-between" }}>
-          <Space wrap>
+        <Space wrap size={isMobile ? 8 : 12} style={{ width: "100%", justifyContent: isMobile ? "flex-start" : "space-between" }}>
+          <Space wrap style={isMobile ? { width: "100%" } : undefined}>
             <Input
               prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
-              placeholder="Belge no, urun, kaynak ya da not ara"
+              placeholder="Belge no, urun, kaynak ara"
               value={filters.search}
               onChange={(event) => handleFilterChange("search", event.target.value)}
               allowClear
-              style={{ width: 320 }}
+              style={{ width: isMobile ? "100%" : 320 }}
             />
             <Select
               value={filters.movementType}
@@ -387,7 +396,7 @@ export function StockListPage() {
               options={movementTypeOptions}
               allowClear
               placeholder="Hareket tipi"
-              style={{ width: 220 }}
+              style={{ width: isMobile ? "calc(50% - 4px)" : 220 }}
             />
             <Select
               value={filters.productId}
@@ -397,7 +406,7 @@ export function StockListPage() {
               showSearch
               optionFilterProp="label"
               placeholder="Urun"
-              style={{ width: 260 }}
+              style={{ width: isMobile ? "calc(50% - 4px)" : 260 }}
             />
             <Select
               value={filters.stockLocationId}
@@ -407,17 +416,47 @@ export function StockListPage() {
               showSearch
               optionFilterProp="label"
               placeholder="Stok yeri"
-              style={{ width: 220 }}
+              style={{ width: isMobile ? "100%" : 220 }}
             />
           </Space>
-          <Space>
-            <Button onClick={handleResetFilters}>Temizle</Button>
-            <Button icon={<ReloadOutlined />} onClick={() => void refreshMovements()}>Yenile</Button>
+          <Space style={isMobile ? { width: "100%" } : undefined}>
+            <Button onClick={handleResetFilters} block={isMobile}>Temizle</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => void refreshMovements()} block={isMobile}>Yenile</Button>
           </Space>
         </Space>
       </Card>
 
-      <Card title="Tum Stok Hareketleri" className="erp-list-table-card">
+      <Card title="Tum Stok Hareketleri" className="erp-list-table-card" styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          filteredMovements.length === 0 ? (
+            <Text type="secondary">Stok hareketi bulunamadı.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {filteredMovements.slice(0, 100).map((record) => (
+                <div
+                  key={record.id}
+                  onClick={() => openDetailFromRow(setSelectedMovement, setDetailOpen, record)}
+                  style={{ padding: 12, borderRadius: 10, border: "1px solid #f0f0f0", cursor: "pointer" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <Text strong style={{ fontSize: 13 }}>{record.productCode} - {record.productName}</Text>
+                    <Tag color={record.affectsStock ? (record.movementType === "STOK_DUZELTME" ? "blue" : record.direction === "OUT" ? "volcano" : "green") : "gold"} style={{ marginInlineEnd: 0 }}>
+                      {record.affectsStock ? record.quantitySignedDisplay : record.quantity}
+                    </Tag>
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 12, display: "block" }}>
+                    {record.movementTypeLabel || record.movementType} · {record.stockLocationName || "-"}
+                  </Text>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 12 }}>
+                    <Text type="secondary">{formatDateTime(record.documentDate || record.createdAt)}</Text>
+                    <Text type="secondary">{record.totalAmountDisplay}</Text>
+                  </div>
+                </div>
+              ))}
+              {filteredMovements.length > 100 ? <Text type="secondary" style={{ fontSize: 12 }}>İlk 100 kayıt gösteriliyor.</Text> : null}
+            </Space>
+          )
+        ) : (
         <Table
           size="small"
           loading={tableLoading}
@@ -434,9 +473,10 @@ export function StockListPage() {
           })}
           rowClassName={() => "erp-clickable-row"}
         />
+        )}
       </Card>
 
-      <Drawer title="Stok Hareket Detayi" placement="right" styles={{ wrapper: { width: 500 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Stok Hareket Detayi" placement="right" styles={{ wrapper: { width: isMobile ? "100%" : 500 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedMovement ? (
           <>
             <Descriptions column={1} size="small" bordered>

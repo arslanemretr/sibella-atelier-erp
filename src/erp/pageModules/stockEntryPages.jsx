@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { Button, Card, Col, Descriptions, Drawer, Form, Grid, Input, InputNumber, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { createStockEntry, getStockEntryFresh, listStockEntriesFresh, updateStockEntry } from "../stockEntriesData";
@@ -23,6 +23,8 @@ function openDetailFromRow(setSelected, setOpen, record) {
 
 export function StockEntryEditorPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const { stockEntryId } = useParams();
   const isEditMode = Boolean(stockEntryId);
   const [form] = Form.useForm();
@@ -207,11 +209,11 @@ export function StockEntryEditorPage() {
     <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
-          <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Stok Girisi Duzenle" : "Stok Giris Ekrani"}</Title>
-          <Text type="secondary">Ana kaydin genel bilgilerini ve ilgili urun kalemlerini bu sayfada yonetin.</Text>
+          <Title level={3} style={{ margin: isMobile ? 0 : undefined, marginBottom: isMobile ? 0 : 6 }}>{isEditMode ? "Stok Girisi Duzenle" : "Stok Giris Ekrani"}</Title>
+          {!isMobile ? <Text type="secondary">Ana kaydin genel bilgilerini ve ilgili urun kalemlerini bu sayfada yonetin.</Text> : null}
         </div>
         <Space>
-          <Button onClick={() => navigate("/stock/entry")}>Ana Kayitlara Don</Button>
+          <Button onClick={() => navigate("/stock/entry")}>{isMobile ? "Geri" : "Ana Kayitlara Don"}</Button>
           <Button type="primary" onClick={handleSubmit} loading={loading}>Kaydet</Button>
         </Space>
       </div>
@@ -252,6 +254,36 @@ export function StockEntryEditorPage() {
                   </Space>
                 )}
               >
+                {isMobile ? (
+                  fields.length === 0 ? (
+                    <Text type="secondary">Henüz kalem eklenmedi.</Text>
+                  ) : (
+                    <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                      {fields.map((field, idx) => (
+                        <div key={field.key} style={{ padding: 12, borderRadius: 10, border: "1px solid #f0f0f0", background: "#fff" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                            <Text strong>Kalem {idx + 1}</Text>
+                            <Button size="small" danger type="text" icon={<DeleteOutlined />} onClick={() => remove(field.name)} />
+                          </div>
+                          <Form.Item name={[field.name, "productId"]} rules={[{ required: true, message: "Urun seciniz." }]} style={{ marginBottom: 8 }}>
+                            <Select showSearch placeholder="Urun seciniz" options={productOptions} optionFilterProp="label" filterOption={(input, option) => String(option?.label || "").toLowerCase().includes(input.toLowerCase())} />
+                          </Form.Item>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <Form.Item name={[field.name, "quantity"]} label="Miktar" rules={[{ required: true, message: "Miktar" }]} style={{ flex: 1, marginBottom: 8 }}>
+                              <InputNumber min={1} style={{ width: "100%" }} />
+                            </Form.Item>
+                            <Form.Item name={[field.name, "unitCost"]} label="Birim Maliyet" rules={[{ required: true, message: "Maliyet" }]} style={{ flex: 1, marginBottom: 8 }}>
+                              <InputNumber min={0} style={{ width: "100%" }} />
+                            </Form.Item>
+                          </div>
+                          <Form.Item name={[field.name, "note"]} style={{ marginBottom: 0 }}>
+                            <Input placeholder="Satir notu" />
+                          </Form.Item>
+                        </div>
+                      ))}
+                    </Space>
+                  )
+                ) : (
                 <Table
                   size="small"
                   rowKey="key"
@@ -314,6 +346,7 @@ export function StockEntryEditorPage() {
                     },
                   ]}
                 />
+                )}
               </Card>
             )}
           </Form.List>
@@ -325,6 +358,8 @@ export function StockEntryEditorPage() {
 
 export function StockEntryListPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [createForm] = Form.useForm();
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedEntry, setSelectedEntry] = React.useState(null);
@@ -523,7 +558,33 @@ export function StockEntryListPage() {
         </div>
       </Card>
 
-      <Card title="Ana Kayit Listesi" className="erp-list-table-card">
+      <Card title={`Ana Kayit Listesi${isMobile ? ` (${filteredEntries.length})` : ""}`} className="erp-list-table-card" styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          filteredEntries.length === 0 ? (
+            <Text type="secondary">Henuz stok giris ana kaydi bulunmuyor.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {filteredEntries.map((record) => (
+                <div
+                  key={record.id}
+                  onClick={() => openDetailFromRow(setSelectedEntry, setDetailOpen, record)}
+                  style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <Text strong style={{ fontSize: 15 }}>{record.documentNo}</Text>
+                    <Tag style={{ marginInlineEnd: 0 }}>{record.status}</Tag>
+                  </div>
+                  <Text style={{ display: "block" }}>{record.sourcePartyName || "-"}</Text>
+                  <Text type="secondary" style={{ fontSize: 13, display: "block", marginTop: 4 }}>{record.date} · {record.sourceType} · {record.lineCount} kalem</Text>
+                  <div style={{ textAlign: "right", marginTop: 4 }}>
+                    <Text strong style={{ color: "#1677ff" }}>{record.totalAmountDisplay}</Text>
+                  </div>
+                </div>
+              ))}
+            </Space>
+          )
+        ) : (
+        <>
         <Table
           size="small"
           rowKey="id"
@@ -544,9 +605,11 @@ export function StockEntryListPage() {
             <strong>{filteredEntries.length}</strong>
           </Space>
         </div>
+        </>
+        )}
       </Card>
 
-      <Drawer title="Stok Giris Detayi" placement="right" styles={{ wrapper: { width: 420 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Stok Giris Detayi" placement="right" styles={{ wrapper: { width: isMobile ? "100%" : 420 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedEntry ? (
           <>
             <Descriptions column={1} size="small" bordered>
