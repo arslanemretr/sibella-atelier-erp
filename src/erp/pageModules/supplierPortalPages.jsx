@@ -496,33 +496,55 @@ export function SupplierPortalEarningsPage() {
       </div>
 
       <Card bordered={false} className="erp-list-toolbar-card">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <Space wrap>
-            <Button onClick={() => setPeriodDate((current) => addMonths(current, -1))}>← Önceki Ay</Button>
-            <Tag color="blue" style={{ padding: "8px 18px", fontSize: 18, fontWeight: 700, lineHeight: 1.4 }}>{formatPeriodBadge(periodDate)}</Tag>
-            <Button onClick={() => setPeriodDate((current) => addMonths(current, 1))}>Sonraki Ay →</Button>
-          </Space>
-          {isCurrentPeriod(periodDate) ? <Tag color="gold">Dönem henüz tamamlanmadı</Tag> : null}
+        <Text strong style={{ display: "block", marginBottom: 10 }}>Dönem</Text>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+          <Button onClick={() => setPeriodDate((current) => addMonths(current, -1))} style={{ flexShrink: 0 }}>
+            {isMobile ? "←" : "← Önceki Ay"}
+          </Button>
+          <Tag color="blue" style={{ padding: isMobile ? "6px 8px" : "8px 18px", fontSize: isMobile ? 15 : 18, fontWeight: 700, lineHeight: 1.4, marginInlineEnd: 0, textAlign: "center", flex: isMobile ? 1 : undefined }}>
+            {formatPeriodBadge(periodDate)}
+          </Tag>
+          <Button onClick={() => setPeriodDate((current) => addMonths(current, 1))} style={{ flexShrink: 0 }}>
+            {isMobile ? "→" : "Sonraki Ay →"}
+          </Button>
         </div>
+        {isCurrentPeriod(periodDate) ? <div style={{ marginTop: 10 }}><Tag color="gold">Dönem henüz tamamlanmadı</Tag></div> : null}
       </Card>
 
-      <Row gutter={[16, 16]}>
-        {summaryCards.map((card) => (
-          <Col xs={24} sm={12} xl={6} key={card.title}>
-            <Card
-              bordered={false}
-              loading={pageLoading}
-              style={{ background: statusMeta.cardBg, border: `1px solid ${statusMeta.cardBorder}` }}
-            >
-              <Text type="secondary">{card.title}</Text>
-              <div style={{ fontSize: 28, fontWeight: 700, marginTop: 8, marginBottom: 6 }}>
-                {card.isStatus ? <Tag color={statusMeta.color} style={{ fontSize: 18, padding: "6px 10px" }}>{card.value}</Tag> : card.value}
-              </div>
-              {card.description ? <Text type="secondary">{card.description}</Text> : null}
-            </Card>
-          </Col>
-        ))}
-      </Row>
+      {(() => {
+        const renderSummaryCard = (card, compact) => (
+          <Card
+            bordered={false}
+            loading={pageLoading}
+            style={{ background: statusMeta.cardBg, border: `1px solid ${statusMeta.cardBorder}`, height: "100%" }}
+            styles={compact ? { body: { padding: 12 } } : undefined}
+          >
+            <Text type="secondary" style={{ fontSize: compact ? 11 : 14, display: "block" }}>{card.title}</Text>
+            <div style={{ fontSize: compact ? 15 : 28, fontWeight: 700, marginTop: compact ? 4 : 8, marginBottom: compact ? 0 : 6, wordBreak: "break-word" }}>
+              {card.isStatus ? <Tag color={statusMeta.color} style={{ fontSize: compact ? 13 : 18, padding: compact ? "2px 8px" : "6px 10px" }}>{card.value}</Tag> : card.value}
+            </div>
+            {card.description && !compact ? <Text type="secondary">{card.description}</Text> : null}
+          </Card>
+        );
+        // summaryCards: [0]=Net Satış, [1]=Komisyon, [2]=Hakediş, [3]=Ödeme Durumu
+        if (isMobile) {
+          return (
+            <Row gutter={[10, 10]}>
+              <Col span={24}>{renderSummaryCard(summaryCards[3], false)}</Col>
+              <Col span={8}>{renderSummaryCard(summaryCards[0], true)}</Col>
+              <Col span={8}>{renderSummaryCard(summaryCards[1], true)}</Col>
+              <Col span={8}>{renderSummaryCard(summaryCards[2], true)}</Col>
+            </Row>
+          );
+        }
+        return (
+          <Row gutter={[16, 16]}>
+            {summaryCards.map((card) => (
+              <Col xs={24} sm={12} xl={6} key={card.title}>{renderSummaryCard(card, false)}</Col>
+            ))}
+          </Row>
+        );
+      })()}
 
       <Card bordered={false} loading={pageLoading} style={{ background: statusMeta.bandBg, border: `1px solid ${statusMeta.cardBorder}` }}>
         {currentSummary.status === "Dönem Tamamlanmadı" ? (
