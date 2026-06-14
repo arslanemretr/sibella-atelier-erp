@@ -11,6 +11,7 @@ import {
   Descriptions,
   Drawer,
   Empty,
+  Grid,
   Row,
   Space,
   Statistic,
@@ -669,6 +670,8 @@ function formatDisplayDate(value) {
 
 export function SupplierDashboardPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const authUser = getAuthUser();
   const [supplier, setSupplier] = React.useState(null);
   const [products, setProducts] = React.useState([]);
@@ -755,14 +758,32 @@ export function SupplierDashboardPage() {
 
   return (
     <Space vertical size={20} style={{ width: "100%" }}>
-      <div>
-        <Title level={3} style={{ marginBottom: 6 }}>Dashboard</Title>
-        <Text type="secondary">Tedarikçi hesabınızdaki ürün, stok ve teslimat özetini buradan takip edebilirsiniz.</Text>
-      </div>
+      <Title level={3} style={{ margin: 0 }}>Dashboard</Title>
+      {!isMobile ? (
+        <Text type="secondary" style={{ marginTop: -12 }}>Tedarikçi hesabınızdaki ürün, stok ve teslimat özetini buradan takip edebilirsiniz.</Text>
+      ) : null}
 
       <Row gutter={[16, 16]} align="stretch">
         <Col xs={24} lg={10}>
           <Card bordered={false} loading={pageLoading} className="erp-card-logo-divider" style={{ height: "100%" }}>
+            {isMobile ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                {supplierVisual ? (
+                  <img src={supplierVisual} alt={supplier?.company || "Tedarikci logosu"} style={{ width: 84, height: 84, borderRadius: "50%", objectFit: "cover", border: "1px solid #f0f0f0" }} />
+                ) : (
+                  <div style={{ width: 84, height: 84, borderRadius: "50%", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 700, color: "#888" }}>
+                    {supplier?.initials || (supplier?.company || "TP").split(" ").map((part) => part[0] || "").slice(0, 2).join("").toUpperCase()}
+                  </div>
+                )}
+                <Text strong style={{ fontSize: 16, textAlign: "center" }}>{supplier?.company || "-"}</Text>
+                <Descriptions column={1} size="small" style={{ width: "100%" }}>
+                  <Descriptions.Item label="Yetkili">{supplier?.contact || authUser?.fullName || "-"}</Descriptions.Item>
+                  <Descriptions.Item label="E-posta">{supplier?.email || authUser?.email || "-"}</Descriptions.Item>
+                  <Descriptions.Item label="Telefon">{supplier?.phone || "-"}</Descriptions.Item>
+                  <Descriptions.Item label="Şehir">{supplier?.city || "-"}</Descriptions.Item>
+                </Descriptions>
+              </div>
+            ) : (
             <div className="erp-supplier-info-card">
               <div className="erp-supplier-info-main">
                 <Descriptions column={1} size="small">
@@ -783,6 +804,7 @@ export function SupplierDashboardPage() {
                 )}
               </div>
             </div>
+            )}
           </Card>
         </Col>
         <Col xs={24} lg={14}>
@@ -800,7 +822,24 @@ export function SupplierDashboardPage() {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} xl={12}>
-          <Card title="Son Teslimatlar" bordered={false} loading={pageLoading} className="erp-card-logo-divider">
+          <Card title="Son Teslimatlar" bordered={false} loading={pageLoading} className="erp-card-logo-divider" styles={isMobile ? { body: { padding: 12 } } : undefined}>
+            {isMobile ? (
+              deliveries.length === 0 ? (
+                <Text type="secondary">Henüz teslimat kaydınız bulunmuyor.</Text>
+              ) : (
+                <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                  {deliveries.slice(0, 5).map((d) => (
+                    <div key={d.id} onClick={() => navigate(`/supplier/deliveries/${d.id}`)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderRadius: 10, border: "1px solid #f0f0f0", cursor: "pointer" }}>
+                      <div>
+                        <Text strong style={{ display: "block", fontSize: 14 }}>{d.deliveryNo}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{formatDisplayDate(d.date)} · {d.lineCount} kalem</Text>
+                      </div>
+                      <Tag color={deliveryStatusColorMap[d.status] || "default"} style={{ marginInlineEnd: 0 }}>{d.status || "Taslak"}</Tag>
+                    </div>
+                  ))}
+                </Space>
+              )
+            ) : (
             <Table
               rowKey="id"
               pagination={false}
@@ -820,10 +859,28 @@ export function SupplierDashboardPage() {
                   render: (v) => <Tag color={deliveryStatusColorMap[v] || "default"}>{v || "Taslak"}</Tag> },
               ]}
             />
+            )}
           </Card>
         </Col>
         <Col xs={24} xl={12}>
-          <Card title="Hakediş Özeti" bordered={false} loading={pageLoading} className="erp-card-logo-divider">
+          <Card title="Hakediş Özeti" bordered={false} loading={pageLoading} className="erp-card-logo-divider" styles={isMobile ? { body: { padding: 12 } } : undefined}>
+            {isMobile ? (
+              earningsSummaries.length === 0 ? (
+                <Text type="secondary">Henüz hakedişe konu satış bulunmuyor.</Text>
+              ) : (
+                <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                  {earningsSummaries.map((e) => (
+                    <div key={e.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderRadius: 10, border: "1px solid #f0f0f0" }}>
+                      <div>
+                        <Text strong style={{ display: "block", fontSize: 14 }}>{e.periodLabel}</Text>
+                        <Text strong style={{ color: "#d86d5b", fontSize: 13 }}>{formatEarningsMoney(e.earningsTotal)}</Text>
+                      </div>
+                      <Tag color={EARNINGS_STATUS_META[e.status]?.color || "default"} style={{ marginInlineEnd: 0 }}>{e.status}</Tag>
+                    </div>
+                  ))}
+                </Space>
+              )
+            ) : (
             <Table
               rowKey="key"
               pagination={false}
@@ -841,6 +898,7 @@ export function SupplierDashboardPage() {
                   render: (v) => <Tag color={EARNINGS_STATUS_META[v]?.color || "default"}>{v}</Tag> },
               ]}
             />
+            )}
           </Card>
         </Col>
       </Row>
