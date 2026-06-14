@@ -1,7 +1,7 @@
 ﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Modal, Row, Select, Space, Table, Typography, message } from "antd";
+import { Button, Card, Col, Descriptions, Drawer, Form, Grid, Input, InputNumber, Modal, Row, Select, Space, Table, Tag, Typography, message } from "antd";
 import { listMasterDataFresh } from "../masterData";
 import { listProductsFresh, listProductsRawFresh } from "../productsData";
 import { createPurchase, listPurchasesFresh, updatePurchase } from "../purchasesData";
@@ -16,6 +16,8 @@ function openDetailFromRow(setSelected, setOpen, record) {
 
 export function PurchaseListPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const SAVED_FILTERS_KEY = "sibella.erp.purchaseFilters.v1";
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedPurchase, setSelectedPurchase] = React.useState(null);
@@ -197,40 +199,94 @@ export function PurchaseListPage() {
 
   return (
     <Space vertical size={20} style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-        <div>
-          <Title level={3} style={{ marginBottom: 6 }}>Satinalma Listesi</Title>
-          <Text type="secondary">Gecmis satin alma kayitlari tedarikci, belge ve toplam tutar ile listelenir.</Text>
+      {isMobile ? (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <Title level={3} style={{ margin: 0 }}>Satinalma</Title>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/purchasing/entry")}>Yeni</Button>
         </div>
-        <Space>
-          <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/purchasing/entry")}>Satinalma Giris</Button>
-        </Space>
-      </div>
+      ) : (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+          <div>
+            <Title level={3} style={{ marginBottom: 6 }}>Satinalma Listesi</Title>
+            <Text type="secondary">Gecmis satin alma kayitlari tedarikci, belge ve toplam tutar ile listelenir.</Text>
+          </div>
+          <Space>
+            <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/purchasing/entry")}>Satinalma Giris</Button>
+          </Space>
+        </div>
+      )}
 
       <Card bordered={false} className="erp-list-toolbar-card">
-        <div className="erp-list-toolbar erp-product-toolbar-single">
-          <Space wrap className="erp-product-toolbar-actions">
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/purchasing/entry")}>Yeni Satinalma</Button>
-            <Button icon={<SearchOutlined />} onClick={() => message.info(`${filteredPurchases.length} kayit listeleniyor.`)}>Ara</Button>
-            <Button icon={<DeleteOutlined />} onClick={handleResetFilters}>Temizle</Button>
-            <Button icon={<ReloadOutlined />} onClick={() => { void refreshPurchases(); message.success("Satinalma listesi yenilendi."); }}>Yenile</Button>
-            <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-          </Space>
-          <div className="erp-product-toolbar-search">
+        {isMobile ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Button icon={<DownloadOutlined />} onClick={handleExport} style={{ flexShrink: 0 }} />
             <Input
               prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
-              placeholder="Belge No"
+              placeholder="Belge no / tedarikçi"
               value={filters.search}
               onChange={(event) => handleFilterChange("search", event.target.value)}
               allowClear
+              style={{ flex: 1, minWidth: 0 }}
             />
-            <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
+            <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} style={{ flexShrink: 0 }} />
           </div>
-        </div>
+        ) : (
+          <div className="erp-list-toolbar erp-product-toolbar-single">
+            <Space wrap className="erp-product-toolbar-actions">
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/purchasing/entry")}>Yeni Satinalma</Button>
+              <Button icon={<SearchOutlined />} onClick={() => message.info(`${filteredPurchases.length} kayit listeleniyor.`)}>Ara</Button>
+              <Button icon={<DeleteOutlined />} onClick={handleResetFilters}>Temizle</Button>
+              <Button icon={<ReloadOutlined />} onClick={() => { void refreshPurchases(); message.success("Satinalma listesi yenilendi."); }}>Yenile</Button>
+              <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+            </Space>
+            <div className="erp-product-toolbar-search">
+              <Input
+                prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
+                placeholder="Belge No"
+                value={filters.search}
+                onChange={(event) => handleFilterChange("search", event.target.value)}
+                allowClear
+              />
+              <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
+            </div>
+          </div>
+        )}
       </Card>
 
-      <Card title="Tum Satinalma Kayitlari" className="erp-list-table-card">
+      <Card title={`Tum Satinalma Kayitlari${isMobile ? ` (${filteredPurchases.length})` : ""}`} className="erp-list-table-card" loading={isMobile ? tableLoading : false} styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          filteredPurchases.length === 0 ? (
+            <Text type="secondary">Satinalma kaydi bulunamadi.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {filteredPurchases.map((record) => (
+                <div
+                  key={record.id}
+                  onClick={() => navigate(`/purchasing/entry/${record.id}`)}
+                  style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <Text strong style={{ fontSize: 15 }}>{record.documentNo}</Text>
+                    <Text type="secondary" style={{ fontSize: 13 }}>{record.date}</Text>
+                  </div>
+                  <Text style={{ display: "block", marginBottom: 8 }}>{record.supplierName}</Text>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>{record.lineCount} kalem</Text>
+                    <Text strong style={{ color: "#1677ff" }}>{record.totalAmountDisplay}</Text>
+                  </div>
+                  {(record.procurementTypeLabel || record.paymentTermLabel) ? (
+                    <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {record.procurementTypeLabel ? <Tag>{record.procurementTypeLabel}</Tag> : null}
+                      {record.paymentTermLabel ? <Tag color="blue">{record.paymentTermLabel}</Tag> : null}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </Space>
+          )
+        ) : (
+        <>
         <Table
           size="small"
           loading={tableLoading}
@@ -253,9 +309,11 @@ export function PurchaseListPage() {
             <span>Sayfa 1 / 1</span>
           </Space>
         </div>
+        </>
+        )}
       </Card>
 
-      <Drawer title="Satinalma Detayi" placement="right" styles={{ wrapper: { width: 460 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Satinalma Detayi" placement="right" styles={{ wrapper: { width: isMobile ? "100%" : 460 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedPurchase ? (
           <Space vertical size={16} style={{ width: "100%" }}>
             <Descriptions column={1} size="small" bordered>
@@ -338,6 +396,8 @@ export function PurchaseListPage() {
 
 export function PurchaseEditorPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const { purchaseId } = useParams();
   const isEditMode = Boolean(purchaseId);
   const [form] = Form.useForm();
@@ -438,11 +498,11 @@ export function PurchaseEditorPage() {
     <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
-          <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Satinalma Duzenle" : "Satinalma Giris"}</Title>
-          <Text type="secondary">Tedarikci, belge ve urun satirlari ile satin alma kaydi acilir.</Text>
+          <Title level={3} style={{ margin: 0 }}>{isEditMode ? "Satinalma Duzenle" : "Satinalma Giris"}</Title>
+          {!isMobile ? <Text type="secondary">Tedarikci, belge ve urun satirlari ile satin alma kaydi acilir.</Text> : null}
         </div>
         <Space>
-          <Button onClick={() => navigate("/purchasing/list")}>Listeye Don</Button>
+          <Button onClick={() => navigate("/purchasing/list")}>{isMobile ? "Geri" : "Listeye Don"}</Button>
           <Button type="primary" onClick={handleSubmit} loading={loading}>Kaydet</Button>
         </Space>
       </div>
@@ -462,7 +522,37 @@ export function PurchaseEditorPage() {
 
           <Form.List name="lines">
             {(fields, { add, remove }) => (
-              <Card title="Satinalma Kalemleri" extra={<Button icon={<PlusOutlined />} onClick={() => add({ productId: undefined, quantity: 1, unitPrice: 0, note: "" })}>Satir Ekle</Button>}>
+              <Card title="Satinalma Kalemleri" extra={<Button icon={<PlusOutlined />} onClick={() => add({ productId: undefined, quantity: 1, unitPrice: 0, note: "" })}>{isMobile ? "Ekle" : "Satir Ekle"}</Button>}>
+                {isMobile ? (
+                  fields.length === 0 ? (
+                    <Text type="secondary">Henüz kalem eklenmedi.</Text>
+                  ) : (
+                    <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                      {fields.map((field, idx) => (
+                        <div key={field.key} style={{ padding: 12, borderRadius: 10, border: "1px solid #f0f0f0", background: "#fff" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                            <Text strong>Kalem {idx + 1}</Text>
+                            <Button size="small" danger type="text" icon={<DeleteOutlined />} onClick={() => remove(field.name)} />
+                          </div>
+                          <Form.Item name={[field.name, "productId"]} rules={[{ required: true, message: "Urun seciniz." }]} style={{ marginBottom: 8 }}>
+                            <Select showSearch placeholder="Urun seciniz" options={productOptions} optionFilterProp="label" filterOption={(input, option) => String(option?.label || "").toLowerCase().includes(input.toLowerCase())} />
+                          </Form.Item>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <Form.Item name={[field.name, "quantity"]} label="Miktar" rules={[{ required: true, message: "Miktar" }]} style={{ flex: 1, marginBottom: 8 }}>
+                              <InputNumber min={1} style={{ width: "100%" }} />
+                            </Form.Item>
+                            <Form.Item name={[field.name, "unitPrice"]} label="Birim Fiyat" rules={[{ required: true, message: "Fiyat" }]} style={{ flex: 1, marginBottom: 8 }}>
+                              <InputNumber min={0} style={{ width: "100%" }} />
+                            </Form.Item>
+                          </div>
+                          <Form.Item name={[field.name, "note"]} style={{ marginBottom: 0 }}>
+                            <Input placeholder="Satir notu" />
+                          </Form.Item>
+                        </div>
+                      ))}
+                    </Space>
+                  )
+                ) : (
                 <Table
           size="small"
                   rowKey="key"
@@ -529,6 +619,7 @@ export function PurchaseEditorPage() {
                     },
                   ]}
                 />
+                )}
               </Card>
             )}
           </Form.List>
