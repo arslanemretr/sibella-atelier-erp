@@ -958,6 +958,8 @@ function buildAdminEarningsList({ suppliers, products, sales, returns, contracts
 }
 
 export function SupplierEarningsManagementPage() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [rows, setRows] = React.useState([]);
   const [pageLoading, setPageLoading] = React.useState(false);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -1068,15 +1070,15 @@ export function SupplierEarningsManagementPage() {
       </div>
 
       <Card bordered={false} className="erp-list-toolbar-card">
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <Select
-            style={{ width: 220 }}
+            style={{ width: isMobile ? "100%" : 220 }}
             value={supplierFilter || "all"}
             options={supplierOptions}
             onChange={(val) => setSupplierFilter(val === "all" ? undefined : val)}
           />
           <Select
-            style={{ width: 200 }}
+            style={{ width: isMobile ? "calc(50% - 4px)" : 200 }}
             value={statusFilter || "all"}
             options={statusOptions}
             onChange={(val) => setStatusFilter(val === "all" ? undefined : val)}
@@ -1088,9 +1090,9 @@ export function SupplierEarningsManagementPage() {
             placeholder="Dönem seç"
             format="MMMM YYYY"
             allowClear
-            style={{ width: 180 }}
+            style={{ width: isMobile ? "calc(50% - 4px)" : 180 }}
           />
-          <Button icon={<SearchOutlined />} loading={pageLoading} onClick={() => void refresh()}>
+          <Button icon={<SearchOutlined />} loading={pageLoading} onClick={() => void refresh()} block={isMobile}>
             Yenile
           </Button>
         </div>
@@ -1120,7 +1122,35 @@ export function SupplierEarningsManagementPage() {
         </Col>
       </Row>
 
-      <Card bordered={false} className="erp-list-table-card" style={{ paddingBottom: 16 }}>
+      <Card bordered={false} className="erp-list-table-card" style={{ paddingBottom: 16 }} styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          filteredRows.length === 0 ? (
+            <Text type="secondary">Hakediş oluşturan dönem bulunamadı.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {filteredRows.map((record) => {
+                const meta = EARNINGS_STATUS_META[record.status] || { color: "default" };
+                return (
+                  <div
+                    key={record.key}
+                    onClick={() => openDrawer(record)}
+                    style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <Text strong style={{ fontSize: 14 }}>{record.supplierName}</Text>
+                      <Tag color={meta.color} style={{ marginInlineEnd: 0 }}>{record.status}</Tag>
+                    </div>
+                    <Text type="secondary" style={{ fontSize: 13, display: "block", marginBottom: 8 }}>{record.periodLabel}</Text>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                      <Text type="secondary">Net: {formatMoneyAdmin(record.netTotal)}</Text>
+                      <Text strong style={{ color: "#389e0d" }}>{formatMoneyAdmin(record.earningsTotal)}</Text>
+                    </div>
+                  </div>
+                );
+              })}
+            </Space>
+          )
+        ) : (
         <Table
           size="small"
           rowKey="key"
@@ -1171,12 +1201,13 @@ export function SupplierEarningsManagementPage() {
             },
           ]}
         />
+        )}
       </Card>
 
       <Drawer
         title={selectedRow ? `${selectedRow.supplierName} — ${selectedRow.periodLabel}` : "Hakediş Detayı"}
         placement="right"
-        width={520}
+        width={isMobile ? "100%" : 520}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         extra={

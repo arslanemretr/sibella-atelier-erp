@@ -1448,6 +1448,8 @@ function formatDateTR(dateStr) {
 
 export function SupplierDeliveryListsPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [filters, setFilters] = React.useState({
     search: "",
     supplierId: undefined,
@@ -1609,37 +1611,96 @@ export function SupplierDeliveryListsPage() {
 
   return (
     <Space vertical size={20} style={{ width: "100%" }}>
-      <div>
-        <Title level={3} style={{ marginBottom: 6 }}>Teslimat Listeleri</Title>
-        <Text type="secondary">Tedarikciler tarafindan olusturulan teslimat listeleri burada izlenir, acilir ve durumlari guncellenir.</Text>
-      </div>
+      {isMobile ? (
+        <Title level={3} style={{ margin: 0 }}>Teslimat Listeleri</Title>
+      ) : (
+        <div>
+          <Title level={3} style={{ marginBottom: 6 }}>Teslimat Listeleri</Title>
+          <Text type="secondary">Tedarikciler tarafindan olusturulan teslimat listeleri burada izlenir, acilir ve durumlari guncellenir.</Text>
+        </div>
+      )}
 
       <Card bordered={false} className="erp-list-toolbar-card">
-        <div className="erp-list-toolbar">
-          <Space wrap>
-            <Button icon={<ReloadOutlined />} onClick={() => void refreshRecords()}>Yenile</Button>
-          </Space>
-          <Space wrap>
+        {isMobile ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Input
               prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
-              placeholder="Teslimat no veya tedarikci ara"
+              placeholder="Teslimat no / tedarikçi"
               value={filters.search}
               onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
               allowClear
-              style={{ width: 260 }}
+              style={{ flex: 1, minWidth: 0 }}
             />
             <Button
               icon={<FilterOutlined />}
               onClick={() => setFilterModalOpen(true)}
               type={activeFilterCount > 0 ? "primary" : "default"}
+              style={{ flexShrink: 0 }}
             >
-              {activeFilterCount > 0 ? `Filtreler (${activeFilterCount})` : "Gelismis Filtreler"}
+              {activeFilterCount > 0 ? activeFilterCount : ""}
             </Button>
-          </Space>
-        </div>
+          </div>
+        ) : (
+          <div className="erp-list-toolbar">
+            <Space wrap>
+              <Button icon={<ReloadOutlined />} onClick={() => void refreshRecords()}>Yenile</Button>
+            </Space>
+            <Space wrap>
+              <Input
+                prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
+                placeholder="Teslimat no veya tedarikci ara"
+                value={filters.search}
+                onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+                allowClear
+                style={{ width: 260 }}
+              />
+              <Button
+                icon={<FilterOutlined />}
+                onClick={() => setFilterModalOpen(true)}
+                type={activeFilterCount > 0 ? "primary" : "default"}
+              >
+                {activeFilterCount > 0 ? `Filtreler (${activeFilterCount})` : "Gelismis Filtreler"}
+              </Button>
+            </Space>
+          </div>
+        )}
       </Card>
 
-      <Card title="Gelen Kayitlar" className="erp-list-table-card">
+      <Card title={`Gelen Kayitlar${isMobile ? ` (${filteredRecords.length})` : ""}`} className="erp-list-table-card" loading={isMobile ? tableLoading : false} styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          filteredRecords.length === 0 ? (
+            <Text type="secondary">Tedarikci portalindan gelen kayit bulunmuyor.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {filteredRecords.map((record) => {
+                const colorMap = { Taslak: "default", "Onay Bekleniyor": "gold", Onaylandi: "green", Tamamlandi: "green", "Revizyon Istendi": "red" };
+                const isCompleted = Boolean(record.stockEntryId || record.inventoryPostedAt);
+                const isApproved = (record.status || "Taslak") === "Onaylandi";
+                return (
+                  <div
+                    key={record.id}
+                    onClick={() => navigate(`/supplier-portal/delivery-lists/${record.id}`)}
+                    style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <Text strong style={{ fontSize: 15 }}>{record.deliveryNo}</Text>
+                      <Tag color={colorMap[record.status || "Taslak"] || "blue"} style={{ marginInlineEnd: 0 }}>{record.status || "Taslak"}</Tag>
+                    </div>
+                    <Text style={{ display: "block" }}>{record.supplierName}</Text>
+                    <Text type="secondary" style={{ fontSize: 13, display: "block", marginBottom: 8 }}>{formatDateTR(record.date)} · {record.lineCount} kalem · {record.totalAmountDisplay}</Text>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
+                      <Button size="small" icon={<EyeOutlined />} onClick={() => navigate(`/supplier-portal/delivery-lists/${record.id}`)}>Aç</Button>
+                      <Button size="small" icon={<CheckOutlined />} onClick={() => handleStatusUpdate(record.id, "Onaylandi")}>Onayla</Button>
+                      <Button size="small" icon={<EditOutlined />} onClick={() => handleStatusUpdate(record.id, "Revizyon Istendi")}>Revize</Button>
+                      <Button size="small" icon={<InboxOutlined />} disabled={!isApproved || isCompleted} onClick={() => handleStatusUpdate(record.id, "Tamamlandi")}>Teslim Al</Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </Space>
+          )
+        ) : (
+        <>
         <Table
           size="small"
           rowKey="id"
@@ -1655,6 +1716,8 @@ export function SupplierDeliveryListsPage() {
         <div className="erp-table-footer">
           <span>Toplam Kayit: {filteredRecords.length}</span>
         </div>
+        </>
+        )}
       </Card>
 
       <Modal title="Gelismis Filtreler" open={filterModalOpen} onCancel={() => setFilterModalOpen(false)} footer={null}>
