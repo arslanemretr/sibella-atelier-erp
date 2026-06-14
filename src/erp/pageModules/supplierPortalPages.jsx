@@ -2086,6 +2086,7 @@ export function SupplierPortalDeliveryEditorPage() {
     image: "",
     name: "",
     code: "",
+    supplierCode: "",
     salePrice: 0,
     categoryId: undefined,
     categoryLabel: "",
@@ -2093,6 +2094,7 @@ export function SupplierPortalDeliveryEditorPage() {
     collectionLabel: "",
     quantity: 1,
   });
+  const [addDrawerOpen, setAddDrawerOpen] = React.useState(false);
   const [editIndex, setEditIndex] = React.useState(null);
   const [editOpen, setEditOpen] = React.useState(false);
   const [editLine, setEditLine] = React.useState(null);
@@ -2233,6 +2235,7 @@ export function SupplierPortalDeliveryEditorPage() {
       image: "",
       name: "",
       code: "",
+      supplierCode: "",
       salePrice: 0,
       categoryId: undefined,
       categoryLabel: "",
@@ -2241,6 +2244,26 @@ export function SupplierPortalDeliveryEditorPage() {
       quantity: 1,
     });
   }, []);
+
+  // Tedarikcinin kendi urun kodlari arasindaki siradaki kod (shortCode + max suffix + 1)
+  const supplierShortCode = String(supplier?.shortCode || "").toUpperCase();
+  const nextSupplierCodeSeq = React.useMemo(() => {
+    if (!supplierShortCode) return 0;
+    const re = new RegExp(`^${supplierShortCode}(\\d+)$`, "i");
+    let max = 0;
+    supplierProducts.forEach((p) => {
+      const m = re.exec(String(p.code || "").trim());
+      if (m) max = Math.max(max, Number(m[1]) || 0);
+    });
+    return max;
+  }, [supplierProducts, supplierShortCode]);
+  const manualLineCount = React.useMemo(
+    () => deliveryLines.filter((l) => !l.productId).length,
+    [deliveryLines],
+  );
+  const previewNewProductCode = supplierShortCode
+    ? `${supplierShortCode}${String(nextSupplierCodeSeq + manualLineCount + 1).padStart(4, "0")}`
+    : "";
 
   const handleDraftProductSelect = (productId) => {
     if (isDeliveryLocked) {
@@ -2257,6 +2280,7 @@ export function SupplierPortalDeliveryEditorPage() {
       image: product.image || "",
       name: product.name || "",
       code: product.code || "",
+      supplierCode: product.supplierCode || "",
       salePrice: Number(product.salePrice || 0),
       categoryId: product.categoryId || undefined,
       categoryLabel: product.categoryLabel || categoryLabelMap[product.categoryId] || "",
@@ -2341,6 +2365,7 @@ export function SupplierPortalDeliveryEditorPage() {
         image: lineDraft.image,
         name: lineDraft.name,
         code: lineDraft.code,
+        supplierCode: lineDraft.supplierCode || "",
         salePrice: Number(lineDraft.salePrice),
         saleCurrency: "TRY",
         categoryId: lineDraft.categoryId || null,
@@ -2355,6 +2380,7 @@ export function SupplierPortalDeliveryEditorPage() {
       setDeliveryLines(nextLines);
       form.setFieldValue("lines", nextLines);
       resetLineDraft();
+      setAddDrawerOpen(false);
       message.success("Urun listeye eklendi.");
     } catch (error) {
       message.error(error?.message || "Satir eklenemedi.");
@@ -2490,7 +2516,7 @@ export function SupplierPortalDeliveryEditorPage() {
         posCategoryId: null,
         barcodeStandardId: editLine.barcodeStandardId || null,
         barcode: "",
-        supplierCode: editLine.code,
+        supplierCode: editLine.supplierCode || editLine.code,
         minStock: 0,
         supplierLeadTime: 0,
         productType: "konsinye",
@@ -2663,7 +2689,19 @@ export function SupplierPortalDeliveryEditorPage() {
         </Card>
 
         <Card title="Urun Listesi" className="erp-card-logo-divider" styles={{ body: { paddingTop: 16 } }} style={{ marginTop: 12 }}>
-          {!isDeliveryLocked ? (
+          {!isDeliveryLocked && !isAdminView ? (
+            <Button
+              type="dashed"
+              icon={<PlusOutlined />}
+              size="large"
+              block
+              onClick={() => { resetLineDraft(); setAddDrawerOpen(true); }}
+              style={{ height: 48, borderRadius: 10, marginBottom: 12 }}
+            >
+              Ürün Ekle
+            </Button>
+          ) : null}
+          {!isDeliveryLocked && isAdminView ? (
           <Card size="small" title="Urun Ekleme" style={{ marginBottom: 12 }}>
             <Row gutter={[12, 12]} align="bottom" className="erp-delivery-draft-grid">
               <Col xs={24} xl={6} className="erp-delivery-draft-name">
@@ -2752,7 +2790,7 @@ export function SupplierPortalDeliveryEditorPage() {
                       <img src={line.image || "/products/baroque-necklace.svg"} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <Text strong style={{ display: "block", fontSize: 14 }}>{line.name}</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>{line.code || "—"}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{line.code || "—"}{line.supplierCode ? ` · Td: ${line.supplierCode}` : ""}</Text>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                           <Text type="secondary" style={{ fontSize: 13 }}>
                             {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(Number(line.salePrice || 0))} × {line.quantity}
@@ -2985,6 +3023,96 @@ export function SupplierPortalDeliveryEditorPage() {
             </Space>
           </Space>
         ) : null}
+      </Drawer>
+
+      <Drawer
+        title="Ürün Ekle"
+        placement="bottom"
+        height="85%"
+        open={addDrawerOpen}
+        onClose={() => setAddDrawerOpen(false)}
+        styles={{ body: { padding: 16, overflowY: "auto" } }}
+      >
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <div>
+            <Text strong style={{ display: "block", marginBottom: 6 }}>Ürün Ara veya Gir</Text>
+            <AutoComplete
+              value={lineDraft.name}
+              options={productOptions.map((item) => ({ value: item.label, label: item.label, productId: item.value }))}
+              placeholder="Mevcut ürünü seçin veya yeni ürün adı yazın"
+              style={{ width: "100%" }}
+              size="large"
+              filterOption={(inputValue, option) => (option?.value || "").toLowerCase().includes(inputValue.toLowerCase())}
+              onSelect={(_, option) => { if (option?.productId) handleDraftProductSelect(option.productId); }}
+              onChange={(value) => {
+                setLineDraft((current) => ({
+                  ...current,
+                  productId: undefined,
+                  name: value,
+                  // Yeni (manuel) urun: kod tedarikcinin siradaki koduyla otomatik dolar
+                  code: value ? previewNewProductCode : "",
+                }));
+              }}
+            />
+          </div>
+
+          <Row gutter={12}>
+            <Col span={12}>
+              <Text strong style={{ display: "block", marginBottom: 6 }}>Ürün Kodu</Text>
+              <Input size="large" value={lineDraft.code} readOnly disabled placeholder="Otomatik" />
+            </Col>
+            <Col span={12}>
+              <Text strong style={{ display: "block", marginBottom: 6 }}>Tedarikçi Kodu</Text>
+              <Input
+                size="large"
+                value={lineDraft.supplierCode}
+                disabled={Boolean(lineDraft.productId)}
+                placeholder="Kendi kodunuz"
+                onChange={(e) => setLineDraft((current) => ({ ...current, supplierCode: e.target.value }))}
+              />
+            </Col>
+          </Row>
+
+          <div>
+            <Text strong style={{ display: "block", marginBottom: 6 }}>Satış Fiyatı</Text>
+            <InputNumber
+              size="large"
+              style={{ width: "100%" }}
+              min={0}
+              value={lineDraft.salePrice}
+              disabled={Boolean(lineDraft.productId)}
+              addonAfter="TRY"
+              onChange={(value) => setLineDraft((current) => ({ ...current, salePrice: value || 0 }))}
+            />
+          </div>
+
+          <div>
+            <Text strong style={{ display: "block", marginBottom: 10 }}>Adet</Text>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Button size="large" onClick={() => setLineDraft((c) => ({ ...c, quantity: Math.max(1, Number(c.quantity || 1) - 1) }))} style={{ width: 52, height: 52, flexShrink: 0, fontSize: 20 }}>−</Button>
+              <InputNumber size="large" min={1} value={lineDraft.quantity} controls={false} onChange={(value) => setLineDraft((current) => ({ ...current, quantity: value || 1 }))} style={{ flex: 1 }} />
+              <Button size="large" onClick={() => setLineDraft((c) => ({ ...c, quantity: Number(c.quantity || 1) + 1 }))} style={{ width: 52, height: 52, flexShrink: 0 }}>+</Button>
+            </div>
+          </div>
+
+          <div>
+            <Text strong style={{ display: "block", marginBottom: 6 }}>Görsel <Text type="danger">*</Text></Text>
+            <Space.Compact style={{ width: "100%" }}>
+              <Button size="large" onClick={() => lineDraftInputRef.current?.click()}>Kamera</Button>
+              <Button size="large" onClick={() => lineDraftGalleryInputRef.current?.click()}>Galeri</Button>
+              <Input size="large" value={lineDraft.image ? "Görsel eklendi" : ""} placeholder="Görsel gerekli" readOnly />
+            </Space.Compact>
+            {lineDraft.image ? (
+              <img src={lineDraft.image} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 8, marginTop: 8, border: "1px solid #d9d9d9" }} />
+            ) : null}
+            <input ref={lineDraftInputRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(event) => { handleDraftImageUpload(event.target.files?.[0]); event.target.value = ""; }} />
+            <input ref={lineDraftGalleryInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => { handleDraftImageUpload(event.target.files?.[0]); event.target.value = ""; }} />
+          </div>
+
+          <Button type="primary" size="large" block loading={loading} icon={<PlusOutlined />} onClick={handleAddLine} style={{ height: 52, borderRadius: 10, marginTop: 4 }}>
+            Listeye Ekle
+          </Button>
+        </Space>
       </Drawer>
     </Space>
   );
