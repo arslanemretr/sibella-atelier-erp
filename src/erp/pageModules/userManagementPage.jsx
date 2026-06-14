@@ -5,6 +5,7 @@ import {
   Checkbox,
   Drawer,
   Form,
+  Grid,
   Input,
   Modal,
   Popconfirm,
@@ -111,6 +112,8 @@ function PermissionsTable({ value = {}, onChange }) {
 }
 
 function UserManagementPage() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [userForm] = Form.useForm();
   const [roleForm] = Form.useForm();
 
@@ -351,8 +354,39 @@ function UserManagementPage() {
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateUser}>Kullanici Ekle</Button>
           </div>
-          <Card>
-            <Table rowKey="id" loading={tableLoading} columns={userColumns} dataSource={users} pagination={{ pageSize: 10 }}  size="small"/>
+          <Card styles={isMobile ? { body: { padding: 12 } } : undefined}>
+            {isMobile ? (
+              users.length === 0 ? (
+                <Text type="secondary">Kullanıcı bulunamadı.</Text>
+              ) : (
+                <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                  {users.map((record) => (
+                    <div key={record.id} style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <button type="button" className="erp-link-button" style={{ fontWeight: 600, fontSize: 15 }} onClick={() => openEditUser(record)}>{record.fullName}</button>
+                        <Tag color={record.status === "Aktif" ? "green" : "default"} style={{ marginInlineEnd: 0 }}>{record.status}</Tag>
+                      </div>
+                      <Text type="secondary" style={{ fontSize: 13, display: "block" }}>{record.email}</Text>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                        <Tag>{record.role}</Tag>
+                        <Space size={4}>
+                          <Button size="small" type="text" className="erp-icon-btn erp-icon-btn-edit" icon={<EditOutlined />} onClick={() => openEditUser(record)} />
+                          <Popconfirm title="Kullanici silinsin mi?" okText="Sil" cancelText="Vazgec"
+                            onConfirm={() => void (async () => {
+                              try { await deleteUser(record.id); await refreshUsers(); message.success("Kullanici silindi."); }
+                              catch (e) { message.error(e?.message || "Kullanici silinemedi."); }
+                            })()}>
+                            <Button size="small" type="text" className="erp-icon-btn erp-icon-btn-delete" icon={<DeleteOutlined />} />
+                          </Popconfirm>
+                        </Space>
+                      </div>
+                    </div>
+                  ))}
+                </Space>
+              )
+            ) : (
+              <Table rowKey="id" loading={tableLoading} columns={userColumns} dataSource={users} pagination={{ pageSize: 10 }}  size="small" scroll={{ x: "max-content" }}/>
+            )}
           </Card>
         </Space>
       ),
@@ -365,8 +399,26 @@ function UserManagementPage() {
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateRole}>Rol Oluştur</Button>
           </div>
-          <Card>
-            <Table rowKey="id" loading={rolesLoading} columns={roleColumns} dataSource={roles} pagination={false}  size="small"/>
+          <Card styles={isMobile ? { body: { padding: 12 } } : undefined}>
+            {isMobile ? (
+              roles.length === 0 ? (
+                <Text type="secondary">Rol bulunamadı.</Text>
+              ) : (
+                <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                  {roles.map((record) => (
+                    <div key={record.id} style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <Text strong style={{ fontSize: 15 }}>{record.name}</Text>
+                        <Tag color={record.isSystem ? "blue" : "default"} style={{ marginInlineEnd: 0 }}>{record.isSystem ? "Sistem" : "Özel"}</Tag>
+                      </div>
+                      <Text type="secondary" style={{ fontSize: 13 }}>{record.description || "-"}</Text>
+                    </div>
+                  ))}
+                </Space>
+              )
+            ) : (
+              <Table rowKey="id" loading={rolesLoading} columns={roleColumns} dataSource={roles} pagination={false}  size="small" scroll={{ x: "max-content" }}/>
+            )}
           </Card>
         </Space>
       ),
@@ -385,7 +437,7 @@ function UserManagementPage() {
       <Drawer
         title={editingUser ? "Kullanici Duzenle" : "Yeni Kullanici"}
         placement="right"
-        styles={{ wrapper: { width: 420 } }}
+        styles={{ wrapper: { width: isMobile ? "100%" : 420 } }}
         open={userDrawerOpen}
         onClose={() => setUserDrawerOpen(false)}
         extra={<Button type="primary" onClick={handleSaveUser} loading={userSaving}>Kaydet</Button>}
