@@ -377,7 +377,6 @@ function UserManagementPage() {
     <Space vertical size={20} style={{ width: "100%" }}>
       <div>
         <Title level={3} style={{ marginBottom: 6 }}>Kullanıcı Yönetimi</Title>
-        <Text type="secondary">ERP giriş kullanıcıları, roller ve yetki yönetimi bu ekrandan yapılır.</Text>
       </div>
 
       <Tabs items={tabItems} />

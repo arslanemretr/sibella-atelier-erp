@@ -491,7 +491,6 @@ export function SupplierPortalEarningsPage() {
       <div className="erp-page-intro">
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Hakediş Özeti</Title>
-          <Text type="secondary">Konsinye stok satışlarına göre dönem bazlı hakediş tutarlarınızı buradan takip edebilirsiniz.</Text>
         </div>
         <Space wrap className="erp-page-intro-actions" />
       </div>
@@ -1034,7 +1033,6 @@ export function SupplierPortalProductListPage() {
       <div className="erp-page-intro erp-page-intro-mobile-products">
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Ürünlerim</Title>
-          <Text type="secondary">Yalnızca size ait ürün kayıtlarını görüntüleyebilirsiniz.</Text>
         </div>
         {!isMobile ? (
           <Space wrap className="erp-page-intro-actions">
@@ -1317,7 +1315,6 @@ export function SupplierPortalProductEditorPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Urun Karti</Title>
-          <Text type="secondary">Bu ekranda sadece size ait urun kartini goruntuleyebilirsiniz.</Text>
         </div>
         <Space wrap>
           <Button onClick={() => navigate("/supplier/products")}>Listeye Don</Button>
@@ -1616,7 +1613,6 @@ export function SupplierDeliveryListsPage() {
       ) : (
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Teslimat Listeleri</Title>
-          <Text type="secondary">Tedarikciler tarafindan olusturulan teslimat listeleri burada izlenir, acilir ve durumlari guncellenir.</Text>
         </div>
       )}
 

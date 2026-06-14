@@ -208,7 +208,6 @@ export function PurchaseListPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
           <div>
             <Title level={3} style={{ marginBottom: 6 }}>Satinalma Listesi</Title>
-            <Text type="secondary">Gecmis satin alma kayitlari tedarikci, belge ve toplam tutar ile listelenir.</Text>
           </div>
           <Space>
             <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
@@ -499,7 +498,6 @@ export function PurchaseEditorPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ margin: 0 }}>{isEditMode ? "Satinalma Duzenle" : "Satinalma Giris"}</Title>
-          {!isMobile ? <Text type="secondary">Tedarikci, belge ve urun satirlari ile satin alma kaydi acilir.</Text> : null}
         </div>
         <Space>
           <Button onClick={() => navigate("/purchasing/list")}>{isMobile ? "Geri" : "Listeye Don"}</Button>

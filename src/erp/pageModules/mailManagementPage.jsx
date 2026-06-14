@@ -546,7 +546,6 @@ function MailManagementPage() {
     <Space vertical size={20} style={{ width: "100%" }}>
       <div>
         <Title level={3} style={{ marginBottom: 6 }}>Mail Yonetimi</Title>
-        <Text type="secondary">SMTP ayarlari, mail sablonlari, faz 2 senaryo kurallari ve gonderim gecmisi bu ekrandan yonetilir.</Text>
       </div>
 
       <Tabs

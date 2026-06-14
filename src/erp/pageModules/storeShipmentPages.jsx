@@ -811,7 +811,6 @@ export function StoreShipmentEditorPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Gonderi Formu" : "Gonderi Olustur"}</Title>
-          <Text type="secondary">Taslak ve hazirlanan kayitlar duzenlenebilir, gonderildi durumunda kilitlenir.</Text>
         </div>
         <Space wrap>
           <Button onClick={() => navigate("/stores/shipments")}>Listeye Don</Button>

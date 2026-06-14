@@ -45,7 +45,6 @@ export function StoreListPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ margin: isMobile ? 0 : undefined, marginBottom: isMobile ? 0 : 6 }}>Magaza Listesi</Title>
-          {!isMobile ? <Text type="secondary">Konsinye urun gonderilen magaza kartlari bu alanda tutulur.</Text> : null}
         </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/stores/new")}>{isMobile ? "Yeni" : "Magaza Tanimla"}</Button>
       </div>
@@ -267,7 +266,6 @@ export function StoreEditorPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ margin: isMobile ? 0 : undefined, marginBottom: isMobile ? 0 : 6 }}>{isEditMode ? "Magaza Duzenle" : "Magaza Tanimla"}</Title>
-          {!isMobile ? <Text type="secondary">Magaza karti ve bagli stok yeri bilgisi birlikte kaydedilir.</Text> : null}
         </div>
         <Space>
           <Button onClick={() => navigate("/stores/list")}>{isMobile ? "Geri" : "Listeye Don"}</Button>

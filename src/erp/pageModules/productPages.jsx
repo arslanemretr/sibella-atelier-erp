@@ -573,7 +573,6 @@ export function ProductListPage() {
           <div className="erp-page-intro">
             <div>
               <Title level={3} style={{ marginBottom: 6 }}>Urun Listesi</Title>
-              <Text type="secondary">Tum urunler kategori, koleksiyon, stok ve gorsel bilgileri ile listelenir.</Text>
             </div>
             <Space>
               <Segmented
@@ -1203,7 +1202,6 @@ export function ProductEditorPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Urun Duzenle" : "Urun Ekle"}</Title>
-          <Text type="secondary">Urun kartina ait genel bilgiler, fiyat ve stok ayarlari burada girilir.</Text>
         </div>
         <Space>
           {isEditMode ? (

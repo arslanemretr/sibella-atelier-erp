@@ -301,7 +301,6 @@ export function DashboardPage() {
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
           <Title level={3} style={{ marginBottom: 2 }}>Dashboard</Title>
-          <Text type="secondary">Satış, stok, satın alma ve operasyon özeti.</Text>
         </div>
         {isMobile ? (
           <div style={{ display: "flex", gap: 8, width: "100%" }}>

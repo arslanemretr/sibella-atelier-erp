@@ -370,7 +370,6 @@ export function StockListPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
           <div>
             <Title level={3} style={{ marginBottom: 6 }}>Stok Hareketleri</Title>
-            <Text type="secondary">Tum fiili stok giris ve cikislari veritabanindaki hareket kayitlarindan listelenir.</Text>
           </div>
           <Space>
             <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>

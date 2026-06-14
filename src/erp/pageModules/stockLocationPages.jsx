@@ -183,7 +183,6 @@ export function StockLocationListPage() {
     <Space vertical size={20} style={{ width: "100%" }}>
       <div>
         <Title level={3} style={{ marginBottom: 6 }}>Stok Yerleri</Title>
-        <Text type="secondary">Merkez ve magaza bazli stok gorunumu burada izlenir.</Text>
       </div>
 
       <Card title="Stok Yeri Listesi" className="erp-list-table-card" styles={isMobile ? { body: { padding: 12 } } : undefined}>

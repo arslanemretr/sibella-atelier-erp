@@ -210,7 +210,6 @@ export function StockEntryEditorPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ margin: isMobile ? 0 : undefined, marginBottom: isMobile ? 0 : 6 }}>{isEditMode ? "Stok Girisi Duzenle" : "Stok Giris Ekrani"}</Title>
-          {!isMobile ? <Text type="secondary">Ana kaydin genel bilgilerini ve ilgili urun kalemlerini bu sayfada yonetin.</Text> : null}
         </div>
         <Space>
           <Button onClick={() => navigate("/stock/entry")}>{isMobile ? "Geri" : "Ana Kayitlara Don"}</Button>
@@ -512,7 +511,6 @@ export function StockEntryListPage() {
     <Space vertical size={20} style={{ width: "100%" }}>
       <div>
         <Title level={3} style={{ marginBottom: 6 }}>Stok Giris Ana Kayitlar</Title>
-        <Text type="secondary">Stok giris ana kayitlari burada olusur. Kalemleri duzenlemek icin ana kayda girilir.</Text>
       </div>
 
       <Card

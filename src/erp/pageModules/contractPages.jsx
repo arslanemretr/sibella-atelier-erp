@@ -294,7 +294,6 @@ export function ContractsPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
           <div>
             <Title level={3} style={{ marginBottom: 6 }}>Sozlesmeler</Title>
-            <Text type="secondary">Konsinye urun alim sozlesmeleri firma, tarih araligi ve komisyon orani ile takip edilir.</Text>
           </div>
           <Space>
             <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>

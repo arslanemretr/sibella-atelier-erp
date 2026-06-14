@@ -277,9 +277,6 @@ export default function ConsolidatedEarningsReportPage() {
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
           <div>
             <Title level={3} style={{ marginBottom: 6 }}>Toplu Hakedis Raporu</Title>
-            <Text type="secondary">
-              Bu ekran, <strong>supplier-portal/earnings</strong> gorunumundeki donemsel toplamlari secilen periyotta belirlediginiz mail adreslerine gonderecek raporun ayarlarini ve mail tasarimini yonetir.
-            </Text>
           </div>
           <Space wrap>
             <Button icon={<ReloadOutlined />} loading={pageLoading} onClick={() => void refresh()}>
@@ -379,7 +376,6 @@ export default function ConsolidatedEarningsReportPage() {
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <div>
               <Title level={5} style={{ margin: 0 }}>Mail Tasarimi</Title>
-              <Text type="secondary">HTML editorunde sablonu duzenleyin; sag tarafta mailin aliciya nasil gidecegini birebir gorun.</Text>
             </div>
             <Space>
               <DatePicker

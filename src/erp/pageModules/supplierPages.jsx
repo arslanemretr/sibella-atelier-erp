@@ -233,7 +233,6 @@ export function SupplierListPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
           <div>
             <Title level={3} style={{ marginBottom: 6 }}>Tedarikci Listesi</Title>
-            <Text type="secondary">Tedarikciler tedarik tipi, odeme kosulu ve iletisim bilgileri ile izlenir.</Text>
           </div>
           <Space>
             <Segmented
@@ -596,7 +595,6 @@ export function SupplierEditorPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Tedarikci Duzenle" : "Tedarikci Ekle"}</Title>
-          <Text type="secondary">Tedarikci kartina ait temel bilgiler, tedarik tipi ve odeme kosulu burada yonetilir.</Text>
         </div>
         <Space>
           <Button onClick={() => navigate("/purchasing/suppliers")}>Listeye Don</Button>
@@ -620,7 +618,6 @@ export function SupplierEditorPage() {
                     )}
                     <div>
                       <Title level={5} style={{ margin: 0 }}>{watchedCompany}</Title>
-                      <Text type="secondary">{watchedContact}</Text>
                     </div>
                   </div>
                   <Descriptions column={1} size="small" bordered>
@@ -1066,7 +1063,6 @@ export function SupplierEarningsManagementPage() {
     <Space vertical size={20} style={{ width: "100%" }}>
       <div>
         <Title level={3} style={{ marginBottom: 6 }}>Hakediş Yönetimi</Title>
-        <Text type="secondary">Tedarikçi dönem hakediş takibi, fatura ve ödeme durumu girişleri.</Text>
       </div>
 
       <Card bordered={false} className="erp-list-toolbar-card">

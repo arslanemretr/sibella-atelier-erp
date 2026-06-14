@@ -1128,7 +1128,6 @@ export function PosScreenPage() {
           <Space vertical size={18} style={{ width: "100%", textAlign: "center" }}>
             <div>
               <Title level={2} style={{ marginBottom: 6 }}>POS Oturumu Kapali</Title>
-              <Text type="secondary">Kasa acilmadan urun satisina gecilmez. Oturum acilis ve kapanis tarihleri kayit altina alinir.</Text>
             </div>
             <div className="erp-pos-opening-meta">
               <div>
@@ -1786,7 +1785,6 @@ export function PosOrdersPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>POS Satışları</Title>
-          <Text type="secondary">Tüm POS satışları. İade işlemi için ilgili satışı seçin.</Text>
         </div>
         <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>Yenile</Button>
       </div>
@@ -2119,7 +2117,6 @@ export function PosReturnEditorPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>İade Oluştur</Title>
-          <Text type="secondary">Fiş: {sale.receiptNo} — {sale.customerName} — {sale.soldAt ? new Date(sale.soldAt).toLocaleString("tr-TR") : "-"}</Text>
         </div>
         <Space>
           <Button onClick={() => navigate("/pos/orders")}>Geri</Button>
@@ -2329,7 +2326,6 @@ export function PosReturnListPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>İade Listesi</Title>
-          <Text type="secondary">POS üzerinden gerçekleştirilen müşteri iadeleri.</Text>
         </div>
         <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>Yenile</Button>
       </div>

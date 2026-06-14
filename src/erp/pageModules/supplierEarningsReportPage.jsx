@@ -343,9 +343,6 @@ export default function SupplierEarningsReportPage() {
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
           <div>
             <Title level={3} style={{ marginBottom: 6 }}>Tedarikci Hakedis Raporu</Title>
-            <Text type="secondary">
-              Bu ekran, <strong>supplier/earnings</strong> gorunumundeki raporun tedarikcilere gidecek mail tasarimini yonetir. Otomatikte her tedarikciye kendi ozet bilgisi gidecek; <strong>Simdi Gonder</strong> secili tedarikciye, <strong>Elle Girilen Adrese Gonder</strong> ise yazdiginiz adrese test amaclidir.
-            </Text>
           </div>
           <Space wrap>
             <Button icon={<ReloadOutlined />} loading={pageLoading} onClick={() => void refresh()}>
@@ -426,7 +423,6 @@ export default function SupplierEarningsReportPage() {
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <div>
               <Title level={5} style={{ margin: 0 }}>Preview Secimi</Title>
-              <Text type="secondary">Tasarimi secili tedarikci ve doneme gore canli gorun.</Text>
             </div>
             <Space wrap>
               <Select

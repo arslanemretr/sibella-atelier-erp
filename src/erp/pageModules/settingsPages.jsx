@@ -168,7 +168,6 @@ export function SettingsDefinitionPage({ entityKey }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>{activeConfig.title}</Title>
-          <Text type="secondary">{activeConfig.description}</Text>
         </div>
         <Button type="primary" onClick={handleCreate}>{activeConfig.createLabel}</Button>
       </div>
@@ -309,7 +308,6 @@ export function ParametersPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Parametreler</Title>
-          <Text type="secondary">Sistem genelinde kullanilan ac/kapat ve davranis parametreleri burada yonetilir.</Text>
         </div>
         <Button type="primary" onClick={handleSubmit}>Kaydet</Button>
       </div>
@@ -422,7 +420,6 @@ export function SmtpSettingsPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>SMTP ve E-posta</Title>
-          <Text type="secondary">Sifre yenileme kodu gonderimi icin SMTP ayarlarinizi bu ekrandan yonetin.</Text>
         </div>
         <Button type="primary" onClick={handleSubmit}>Kaydet</Button>
       </div>
@@ -662,7 +659,6 @@ export function BarcodeStandardsPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Barkod Standartları</Title>
-          <Text type="secondary">Her tedarikçi için barkod üretim standardı tanımlanır. Ürün kartında standart seçilince barkod otomatik oluşur.</Text>
         </div>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={() => { void refresh(); }}>Yenile</Button>
@@ -917,7 +913,6 @@ export function BrandingPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Tema Ayarlari</Title>
-          <Text type="secondary">Uygulama adi, logosu ve renk temasini ozellestirin.</Text>
         </div>
         <Button type="primary" loading={saving} onClick={handleSave}>Kaydet</Button>
       </div>
