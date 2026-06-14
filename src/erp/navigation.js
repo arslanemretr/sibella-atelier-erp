@@ -200,6 +200,8 @@ export const supplierMainMenuItems = [
   { key: "/supplier/products", label: "Urunlerim" },
   { key: "/supplier/earnings", label: "Hakedis Ozeti" },
   { key: "/supplier/deliveries", label: "Teslimat Listesi" },
+  { key: "/supplier/reports/sales", label: "Satis Raporu" },
+  { key: "/supplier/reports/stock", label: "Stok Raporu" },
 ];
 
 export const supplierSidebarGroups = [
@@ -211,6 +213,14 @@ export const supplierSidebarGroups = [
       { key: "/supplier/products", label: "Urunlerim" },
       { key: "/supplier/earnings", label: "Hakedis Ozeti" },
       { key: "/supplier/deliveries", label: "Teslimat Listesi" },
+    ],
+  },
+  {
+    type: "group",
+    label: "RAPORLAR",
+    children: [
+      { key: "/supplier/reports/sales", label: "Satis Raporu" },
+      { key: "/supplier/reports/stock", label: "Stok Raporu" },
     ],
   },
 ];

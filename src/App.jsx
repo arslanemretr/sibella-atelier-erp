@@ -47,6 +47,8 @@ const SupplierPortalDeliveryListPage = React.lazy(() => import("./erp/pageModule
 const SupplierPortalEarningsPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalEarningsPage })));
 const SupplierPortalProductEditorPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalProductEditorPage })));
 const SupplierPortalProductListPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierPortalProductListPage })));
+const SupplierSalesReportPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierSalesReportPage })));
+const SupplierStockReportPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierStockReportPage })));
 const AuditLogPage = React.lazy(() => import("./erp/pageModules/auditLogPage"));
 const ActivityReportPage = React.lazy(() => import("./erp/pageModules/activityReportPage"));
 const StoreInvoiceListPage = React.lazy(() => import("./erp/pageModules/storeInvoicePages").then((m) => ({ default: m.StoreInvoiceListPage })));
@@ -214,6 +216,8 @@ function ProtectedApp() {
         <Route path="/supplier/earnings" element={withLazyPage(<SupplierPortalEarningsPage />)} />
         <Route path="/supplier/products/:productId" element={withLazyPage(<SupplierPortalProductEditorPage />)} />
         <Route path="/supplier/deliveries" element={withLazyPage(<SupplierPortalDeliveryListPage />)} />
+        <Route path="/supplier/reports/sales" element={withLazyPage(<SupplierSalesReportPage />)} />
+        <Route path="/supplier/reports/stock" element={withLazyPage(<SupplierStockReportPage />)} />
         <Route path="/supplier/deliveries/new" element={withLazyPage(<SupplierPortalDeliveryEditorPage />)} />
         <Route path="/supplier/deliveries/:deliveryId" element={withLazyPage(<SupplierPortalDeliveryEditorPage />)} />
       </Routes>

@@ -2990,5 +2990,342 @@ export function SupplierPortalDeliveryEditorPage() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────
+// TEDARIKCI SATIS RAPORU
+// ─────────────────────────────────────────────────────────────────
 
+function ReportSummaryCard({ title, value, color }) {
+  return (
+    <Card size="small" style={{ height: "100%" }}>
+      <Text type="secondary" style={{ fontSize: 12, display: "block" }}>{title}</Text>
+      <div style={{ fontSize: 22, fontWeight: 700, color: color || "inherit", marginTop: 4 }}>{value}</div>
+    </Card>
+  );
+}
+
+export function SupplierSalesReportPage() {
+  const authUser = getAuthUser();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
+  const supplierId = authUser?.supplierId || null;
+  const [loading, setLoading] = React.useState(false);
+  const [sales, setSales] = React.useState([]);
+  const [returns, setReturns] = React.useState([]);
+  const [products, setProducts] = React.useState([]);
+  const [dateRange, setDateRange] = React.useState([dayjs().startOf("month"), dayjs().endOf("day")]);
+
+  const load = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const [salesData, returnsData, productsData] = await Promise.all([
+        listPosSalesFresh(),
+        listPosReturnsFresh(),
+        listProductsFresh({ slim: true }),
+      ]);
+      setSales(salesData || []);
+      setReturns(returnsData || []);
+      setProducts(supplierId ? (productsData || []).filter((p) => p.supplierId === supplierId) : []);
+    } catch (err) {
+      message.error(err?.message || "Veriler yuklenemedi.");
+    } finally {
+      setLoading(false);
+    }
+  }, [supplierId]);
+
+  React.useEffect(() => { void load(); }, [load]);
+
+  const productMap = React.useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+
+  const rows = React.useMemo(() => {
+    const [from, to] = dateRange || [];
+    const fromMs = from ? from.startOf("day").valueOf() : null;
+    const toMs = to ? to.endOf("day").valueOf() : null;
+    const map = new Map();
+    const ensure = (productId) => {
+      const product = productMap.get(productId);
+      const row = map.get(productId) || {
+        productId,
+        code: product?.code || "-",
+        name: product?.name || "-",
+        salesQuantity: 0,
+        returnQuantity: 0,
+        salesAmount: 0,
+      };
+      map.set(productId, row);
+      return row;
+    };
+    (sales || []).forEach((sale) => {
+      const t = dayjs(sale.soldAt).valueOf();
+      if (fromMs && t < fromMs) return;
+      if (toMs && t > toMs) return;
+      (sale.lines || []).forEach((line) => {
+        if (!productMap.has(line.productId)) return;
+        const row = ensure(line.productId);
+        row.salesQuantity += Number(line.quantity || 0);
+        row.salesAmount += Number(line.lineTotal || (Number(line.quantity || 0) * Number(line.unitPrice || 0)));
+      });
+    });
+    (returns || []).forEach((ret) => {
+      const t = dayjs(ret.returnDate).valueOf();
+      if (fromMs && t < fromMs) return;
+      if (toMs && t > toMs) return;
+      (ret.lines || []).forEach((line) => {
+        if (!productMap.has(line.productId)) return;
+        const row = ensure(line.productId);
+        row.returnQuantity += Number(line.quantity || 0);
+      });
+    });
+    return Array.from(map.values())
+      .map((row) => ({ ...row, netQuantity: Math.max(0, row.salesQuantity - row.returnQuantity) }))
+      .filter((row) => row.salesQuantity > 0 || row.returnQuantity > 0)
+      .sort((a, b) => b.salesAmount - a.salesAmount);
+  }, [sales, returns, productMap, dateRange]);
+
+  const summary = React.useMemo(() => ({
+    totalSalesQty: rows.reduce((s, r) => s + r.salesQuantity, 0),
+    totalReturnQty: rows.reduce((s, r) => s + r.returnQuantity, 0),
+    totalNetQty: rows.reduce((s, r) => s + r.netQuantity, 0),
+    totalAmount: rows.reduce((s, r) => s + r.salesAmount, 0),
+  }), [rows]);
+
+  return (
+    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+      <Title level={4} style={{ margin: 0 }}>Satış Raporu</Title>
+
+      <Card size="small">
+        <Space wrap>
+          <DatePicker.RangePicker
+            value={dateRange}
+            onChange={(v) => setDateRange(v || [dayjs().startOf("month"), dayjs().endOf("day")])}
+            allowClear={false}
+            style={{ width: isMobile ? "100%" : 290 }}
+          />
+          <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Yenile</Button>
+        </Space>
+      </Card>
+
+      <Row gutter={[16, 16]}>
+        {[
+          { title: "Satılan Adet", value: summary.totalSalesQty, color: "#1677ff" },
+          { title: "İade Adedi", value: summary.totalReturnQty, color: "#d4380d" },
+          { title: "Net Satış Adedi", value: summary.totalNetQty, color: "#389e0d" },
+          { title: "Toplam Tutar", value: formatDisplayMoney(summary.totalAmount), color: "#722ed1" },
+        ].map((item) => (
+          <Col key={item.title} xs={12} sm={12} lg={6}><ReportSummaryCard {...item} /></Col>
+        ))}
+      </Row>
+
+      <Card size="small" title="Ürün Bazlı Satış" loading={loading}>
+        {isMobile ? (
+          <Space direction="vertical" size={10} style={{ width: "100%" }}>
+            {rows.length === 0 ? (
+              <Text type="secondary">Seçili dönemde satış bulunmuyor.</Text>
+            ) : (
+              rows.map((row) => (
+                <div key={row.productId} style={{ padding: 12, borderRadius: 10, border: "1px solid #f0f0f0", background: "#fff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <Text strong style={{ fontSize: 14 }}>{row.name}</Text>
+                    <Text type="secondary" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{row.code}</Text>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 13 }}>
+                    <Text type="secondary">Satış {row.salesQuantity} · İade {row.returnQuantity} · Net <b>{row.netQuantity}</b></Text>
+                    <Text strong style={{ color: "#1677ff" }}>{formatDisplayMoney(row.salesAmount)}</Text>
+                  </div>
+                </div>
+              ))
+            )}
+          </Space>
+        ) : (
+          <Table
+            rowKey="productId"
+            size="small"
+            dataSource={rows}
+            pagination={{ pageSize: 25, showSizeChanger: false, hideOnSinglePage: true }}
+            locale={{ emptyText: "Seçili dönemde satış bulunmuyor." }}
+            scroll={{ x: "max-content" }}
+            columns={[
+              { title: "Kod", dataIndex: "code", key: "code", width: 120,
+                sorter: (a, b) => String(a.code || "").localeCompare(String(b.code || ""), "tr") },
+              { title: "Ürün Adı", dataIndex: "name", key: "name", width: 220,
+                sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr") },
+              { title: "Satılan", dataIndex: "salesQuantity", key: "salesQuantity", align: "right", width: 100,
+                sorter: (a, b) => a.salesQuantity - b.salesQuantity },
+              { title: "İade", dataIndex: "returnQuantity", key: "returnQuantity", align: "right", width: 90,
+                sorter: (a, b) => a.returnQuantity - b.returnQuantity,
+                render: (v) => v > 0 ? <Text style={{ color: "#cf1322" }}>{v}</Text> : <Text type="secondary">-</Text> },
+              { title: "Net", dataIndex: "netQuantity", key: "netQuantity", align: "right", width: 90,
+                sorter: (a, b) => a.netQuantity - b.netQuantity, render: (v) => <Text strong>{v}</Text> },
+              { title: "Tutar", dataIndex: "salesAmount", key: "salesAmount", align: "right", width: 140,
+                sorter: (a, b) => a.salesAmount - b.salesAmount, render: (v) => <Text strong>{formatDisplayMoney(v)}</Text> },
+            ]}
+            summary={(data) => {
+              const tq = data.reduce((s, r) => s + r.salesQuantity, 0);
+              const tn = data.reduce((s, r) => s + r.netQuantity, 0);
+              const ta = data.reduce((s, r) => s + r.salesAmount, 0);
+              return (
+                <Table.Summary.Row style={{ background: "#fafafa" }}>
+                  <Table.Summary.Cell index={0} colSpan={2}><Text strong>Toplam</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={2} align="right"><Text strong>{tq}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={3} />
+                  <Table.Summary.Cell index={4} align="right"><Text strong>{tn}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={5} align="right"><Text strong>{formatDisplayMoney(ta)}</Text></Table.Summary.Cell>
+                </Table.Summary.Row>
+              );
+            }}
+          />
+        )}
+      </Card>
+    </Space>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TEDARIKCI STOK RAPORU
+// ─────────────────────────────────────────────────────────────────
+
+export function SupplierStockReportPage() {
+  const authUser = getAuthUser();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
+  const supplierId = authUser?.supplierId || null;
+  const [loading, setLoading] = React.useState(false);
+  const [products, setProducts] = React.useState([]);
+  const [statusFilter, setStatusFilter] = React.useState("all");
+
+  const load = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const productsData = await listProductsFresh({ slim: true });
+      setProducts(supplierId ? (productsData || []).filter((p) => p.supplierId === supplierId) : []);
+    } catch (err) {
+      message.error(err?.message || "Veriler yuklenemedi.");
+    } finally {
+      setLoading(false);
+    }
+  }, [supplierId]);
+
+  React.useEffect(() => { void load(); }, [load]);
+
+  const enriched = React.useMemo(() => products
+    .filter((p) => p.status === "Aktif")
+    .map((p) => {
+      const stock = Number(p.totalStock ?? p.stock ?? 0);
+      const price = Number(p.salePrice || 0);
+      const stockValue = stock * price;
+      const status = stock <= 0 ? "empty" : stock <= 5 ? "critical" : "ok";
+      return { ...p, stockQty: stock, price, stockValue, stockStatus: status };
+    }), [products]);
+
+  const filtered = React.useMemo(() => enriched.filter((p) => {
+    if (statusFilter === "critical") return p.stockStatus !== "ok";
+    if (statusFilter === "empty") return p.stockStatus === "empty";
+    return true;
+  }).sort((a, b) => a.stockQty - b.stockQty), [enriched, statusFilter]);
+
+  const summary = React.useMemo(() => ({
+    totalSku: filtered.length,
+    totalStock: filtered.reduce((s, p) => s + p.stockQty, 0),
+    totalValue: filtered.reduce((s, p) => s + p.stockValue, 0),
+    criticalCount: filtered.filter((p) => p.stockStatus !== "ok").length,
+  }), [filtered]);
+
+  const statusTag = (status) => {
+    if (status === "empty") return <Tag color="red">Stokta Yok</Tag>;
+    if (status === "critical") return <Tag color="orange">Kritik</Tag>;
+    return <Tag color="green">Yeterli</Tag>;
+  };
+
+  return (
+    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+      <Title level={4} style={{ margin: 0 }}>Stok Raporu</Title>
+
+      <Card size="small">
+        <Space wrap>
+          <Select
+            value={statusFilter}
+            onChange={setStatusFilter}
+            style={{ width: isMobile ? "100%" : 200 }}
+            options={[
+              { value: "all", label: "Tüm Ürünler" },
+              { value: "critical", label: "Kritik ve Stoksuz" },
+              { value: "empty", label: "Yalnızca Stoksuz" },
+            ]}
+          />
+          <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Yenile</Button>
+        </Space>
+      </Card>
+
+      <Row gutter={[16, 16]}>
+        {[
+          { title: "Toplam Ürün (Aktif)", value: summary.totalSku, color: "#1677ff" },
+          { title: "Toplam Stok Adedi", value: summary.totalStock, color: "#389e0d" },
+          { title: "Stok Değeri (Satış)", value: formatDisplayMoney(summary.totalValue), color: "#722ed1" },
+          { title: "Kritik / Stoksuz", value: summary.criticalCount, color: "#d4380d" },
+        ].map((item) => (
+          <Col key={item.title} xs={12} sm={12} lg={6}><ReportSummaryCard {...item} /></Col>
+        ))}
+      </Row>
+
+      <Card size="small" title="Ürün Stok Durumu" loading={loading}>
+        {isMobile ? (
+          <Space direction="vertical" size={10} style={{ width: "100%" }}>
+            {filtered.length === 0 ? (
+              <Text type="secondary">Filtrelere uygun ürün bulunamadı.</Text>
+            ) : (
+              filtered.map((p) => (
+                <div key={p.id} style={{ padding: 12, borderRadius: 10, border: "1px solid #f0f0f0", background: "#fff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <Text strong style={{ fontSize: 14 }}>{p.name}</Text>
+                    {statusTag(p.stockStatus)}
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 13 }}>
+                    <Text type="secondary">{p.code} · Stok <b>{p.stockQty}</b></Text>
+                    <Text type="secondary">{formatDisplayMoney(p.stockValue)}</Text>
+                  </div>
+                </div>
+              ))
+            )}
+          </Space>
+        ) : (
+          <Table
+            rowKey="id"
+            size="small"
+            dataSource={filtered}
+            pagination={{ pageSize: 50, showSizeChanger: false, hideOnSinglePage: true }}
+            locale={{ emptyText: "Filtrelere uygun ürün bulunamadı." }}
+            scroll={{ x: "max-content" }}
+            columns={[
+              { title: "Kod", dataIndex: "code", key: "code", width: 120,
+                sorter: (a, b) => String(a.code || "").localeCompare(String(b.code || ""), "tr") },
+              { title: "Ürün Adı", dataIndex: "name", key: "name", width: 240,
+                sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr") },
+              { title: "Mevcut Stok", dataIndex: "stockQty", key: "stockQty", align: "right", width: 120,
+                sorter: (a, b) => a.stockQty - b.stockQty },
+              { title: "Satış Fiyatı", dataIndex: "price", key: "price", align: "right", width: 130,
+                sorter: (a, b) => a.price - b.price, render: (v) => formatDisplayMoney(v) },
+              { title: "Stok Değeri", dataIndex: "stockValue", key: "stockValue", align: "right", width: 140,
+                sorter: (a, b) => a.stockValue - b.stockValue, render: (v) => formatDisplayMoney(v) },
+              { title: "Durum", dataIndex: "stockStatus", key: "stockStatus", align: "center", width: 110,
+                sorter: (a, b) => String(a.stockStatus || "").localeCompare(String(b.stockStatus || ""), "tr"),
+                render: (v) => statusTag(v) },
+            ]}
+            summary={(data) => {
+              const ts = data.reduce((s, r) => s + r.stockQty, 0);
+              const tv = data.reduce((s, r) => s + r.stockValue, 0);
+              return (
+                <Table.Summary.Row style={{ background: "#fafafa" }}>
+                  <Table.Summary.Cell index={0} colSpan={2}><Text strong>Toplam</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={2} align="right"><Text strong>{ts}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={3} />
+                  <Table.Summary.Cell index={4} align="right"><Text strong>{formatDisplayMoney(tv)}</Text></Table.Summary.Cell>
+                  <Table.Summary.Cell index={5} />
+                </Table.Summary.Row>
+              );
+            }}
+          />
+        )}
+      </Card>
+    </Space>
+  );
+}
 
