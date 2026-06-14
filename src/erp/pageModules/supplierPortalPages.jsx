@@ -1490,7 +1490,7 @@ export function SupplierDeliveryListsPage() {
       width: 150,
       sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
       render: (value) => {
-        const colorMap = { Taslak: "default", "Onay Bekleniyor": "gold", Onaylandi: "green", Tamamlandi: "blue", "Revizyon Istendi": "red" };
+        const colorMap = { Taslak: "default", "Onay Bekleniyor": "gold", Onaylandi: "green", Tamamlandi: "green", "Revizyon Istendi": "red" };
         return <Tag color={colorMap[value || "Taslak"] || "blue"}>{value || "Taslak"}</Tag>;
       },
     },
@@ -1837,7 +1837,7 @@ export function SupplierPortalDeliveryListPage() {
           Taslak: "default",
           "Onay Bekleniyor": "gold",
           Onaylandi: "green",
-          Tamamlandi: "blue",
+          Tamamlandi: "green",
           "Revizyon Istendi": "red",
         };
         return <Tag color={colorMap[value || "Taslak"] || "blue"}>{value || "Taslak"}</Tag>;
@@ -1901,27 +1901,21 @@ export function SupplierPortalDeliveryListPage() {
 
   return (
     <Space vertical size={20} style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <Title level={3} style={{ marginBottom: 6 }}>Teslimat Listesi</Title>
-          <Text type="secondary">Olusturdugunuz teslimatlar burada listelenir. Taslaklari duzenleyebilir ve gonderilen kayitlari izleyebilirsiniz.</Text>
-        </div>
-      </div>
+      <Title level={3} style={{ margin: 0 }}>Teslimat Listesi</Title>
 
       <Card bordered={false} className="erp-list-toolbar-card">
-        <div className="erp-list-toolbar erp-product-toolbar-single">
-          <Space wrap className="erp-product-toolbar-actions">
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => void handleOpenNewModal()}>Yeni Teslimat</Button>
-          </Space>
-          <div className="erp-product-toolbar-search">
-            <Input
-              prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
-              placeholder="Teslimat no / kargo / not"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              allowClear
-            />
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Input
+            prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
+            placeholder="Teslimat no / kargo / not"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            allowClear
+            style={{ flex: 1, minWidth: 0 }}
+          />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => void handleOpenNewModal()} style={{ flexShrink: 0 }}>
+            {isMobile ? "Yeni" : "Yeni Teslimat"}
+          </Button>
         </div>
       </Card>
 
@@ -1932,7 +1926,7 @@ export function SupplierPortalDeliveryListPage() {
               <Text type="secondary">Henuz teslimat kaydiniz bulunmuyor.</Text>
             ) : (
               filteredRecords.map((record) => {
-                const colorMap = { Taslak: "default", "Onay Bekleniyor": "gold", Onaylandi: "green", Tamamlandi: "blue", "Revizyon Istendi": "red" };
+                const colorMap = { Taslak: "default", "Onay Bekleniyor": "gold", Onaylandi: "green", Tamamlandi: "green", "Revizyon Istendi": "red" };
                 return (
                   <div
                     key={record.id}
