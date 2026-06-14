@@ -765,23 +765,36 @@ export function SupplierDashboardPage() {
 
       <Row gutter={[16, 16]} align="stretch">
         <Col xs={24} lg={10}>
-          <Card bordered={false} loading={pageLoading} className="erp-card-logo-divider" style={{ height: "100%" }}>
+          <Card
+            bordered={false}
+            loading={pageLoading}
+            className="erp-card-logo-divider"
+            style={{ height: "100%" }}
+            styles={isMobile ? { body: { padding: 0, overflow: "hidden" } } : undefined}
+          >
             {isMobile ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-                {supplierVisual ? (
-                  <img src={supplierVisual} alt={supplier?.company || "Tedarikci logosu"} style={{ width: 84, height: 84, borderRadius: "50%", objectFit: "cover", border: "1px solid #f0f0f0" }} />
-                ) : (
-                  <div style={{ width: 84, height: 84, borderRadius: "50%", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 700, color: "#888" }}>
-                    {supplier?.initials || (supplier?.company || "TP").split(" ").map((part) => part[0] || "").slice(0, 2).join("").toUpperCase()}
+              <div>
+                {/* Logo öne çıkan profil başlığı */}
+                <div style={{ background: "linear-gradient(135deg, #f38b7a 0%, #d86d5b 100%)", padding: "24px 16px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 120, height: 120, borderRadius: "50%", background: "#fff", padding: 6, boxShadow: "0 4px 14px rgba(0,0,0,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {supplierVisual ? (
+                      <img src={supplierVisual} alt={supplier?.company || "Tedarikci logosu"} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                    ) : (
+                      <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, fontWeight: 700, color: "#d86d5b" }}>
+                        {supplier?.initials || (supplier?.company || "TP").split(" ").map((part) => part[0] || "").slice(0, 2).join("").toUpperCase()}
+                      </div>
+                    )}
                   </div>
-                )}
-                <Text strong style={{ fontSize: 16, textAlign: "center" }}>{supplier?.company || "-"}</Text>
-                <Descriptions column={1} size="small" style={{ width: "100%" }}>
-                  <Descriptions.Item label="Yetkili">{supplier?.contact || authUser?.fullName || "-"}</Descriptions.Item>
-                  <Descriptions.Item label="E-posta">{supplier?.email || authUser?.email || "-"}</Descriptions.Item>
-                  <Descriptions.Item label="Telefon">{supplier?.phone || "-"}</Descriptions.Item>
-                  <Descriptions.Item label="Şehir">{supplier?.city || "-"}</Descriptions.Item>
-                </Descriptions>
+                  <Text strong style={{ fontSize: 18, textAlign: "center", color: "#fff" }}>{supplier?.company || "-"}</Text>
+                </div>
+                <div style={{ padding: 16 }}>
+                  <Descriptions column={1} size="small" style={{ width: "100%" }}>
+                    <Descriptions.Item label="Yetkili">{supplier?.contact || authUser?.fullName || "-"}</Descriptions.Item>
+                    <Descriptions.Item label="E-posta">{supplier?.email || authUser?.email || "-"}</Descriptions.Item>
+                    <Descriptions.Item label="Telefon">{supplier?.phone || "-"}</Descriptions.Item>
+                    <Descriptions.Item label="Şehir">{supplier?.city || "-"}</Descriptions.Item>
+                  </Descriptions>
+                </div>
               </div>
             ) : (
             <div className="erp-supplier-info-card">
