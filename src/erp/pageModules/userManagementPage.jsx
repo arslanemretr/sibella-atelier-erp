@@ -367,6 +367,11 @@ function UserManagementPage() {
                         <Tag color={record.status === "Aktif" ? "green" : "default"} style={{ marginInlineEnd: 0 }}>{record.status}</Tag>
                       </div>
                       <Text type="secondary" style={{ fontSize: 13, display: "block" }}>{record.email}</Text>
+                      {record.supplierId ? (
+                        <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 2 }}>
+                          Firma: {supplierOptions.find((s) => s.value === record.supplierId)?.label || record.supplierId}
+                        </Text>
+                      ) : null}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
                         <Tag>{record.role}</Tag>
                         <Space size={4}>
