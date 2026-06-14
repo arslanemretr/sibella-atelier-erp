@@ -2,7 +2,7 @@
 import dayjs from "dayjs";
 import { DatePicker } from "antd";
 import { DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined, FilterOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Card, Col, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tooltip, Typography, message } from "antd";
+import { Button, Card, Col, Form, Grid, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { createContract, deleteContract, listContractsFresh, updateContract } from "../contractsData";
 import { listSuppliersFresh } from "../suppliersData";
 
@@ -21,6 +21,8 @@ function readFileAsDataUrl(file) {
 }
 
 export function ContractsPage() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [records, setRecords] = React.useState([]);
   const [tableLoading, setTableLoading] = React.useState(false);
   const [modalOpen, setModalOpen] = React.useState(false);
@@ -283,39 +285,90 @@ export function ContractsPage() {
 
   return (
     <Space vertical size={20} style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-        <div>
-          <Title level={3} style={{ marginBottom: 6 }}>Sozlesmeler</Title>
-          <Text type="secondary">Konsinye urun alim sozlesmeleri firma, tarih araligi ve komisyon orani ile takip edilir.</Text>
+      {isMobile ? (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <Title level={3} style={{ margin: 0 }}>Sozlesmeler</Title>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>Yeni</Button>
         </div>
-        <Space>
-          <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>Sozlesme Ekle</Button>
-        </Space>
-      </div>
+      ) : (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+          <div>
+            <Title level={3} style={{ marginBottom: 6 }}>Sozlesmeler</Title>
+            <Text type="secondary">Konsinye urun alim sozlesmeleri firma, tarih araligi ve komisyon orani ile takip edilir.</Text>
+          </div>
+          <Space>
+            <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>Sozlesme Ekle</Button>
+          </Space>
+        </div>
+      )}
 
       <Card bordered={false} className="erp-list-toolbar-card">
-        <div className="erp-list-toolbar erp-product-toolbar-single">
-          <Space wrap className="erp-product-toolbar-actions">
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>Yeni Sozlesme</Button>
-            <Button icon={<ReloadOutlined />} onClick={() => { refreshRecords(); message.success("Sozlesmeler yenilendi."); }}>Yenile</Button>
-            <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-          </Space>
-
-          <div className="erp-product-toolbar-search">
+        {isMobile ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Button icon={<DownloadOutlined />} onClick={handleExport} style={{ flexShrink: 0 }} />
             <Input
               prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
               placeholder="Firma"
               value={filters.search}
               onChange={(event) => handleFilterChange("search", event.target.value)}
               allowClear
+              style={{ flex: 1, minWidth: 0 }}
             />
-            <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
+            <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} style={{ flexShrink: 0 }} />
           </div>
-        </div>
+        ) : (
+          <div className="erp-list-toolbar erp-product-toolbar-single">
+            <Space wrap className="erp-product-toolbar-actions">
+              <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>Yeni Sozlesme</Button>
+              <Button icon={<ReloadOutlined />} onClick={() => { refreshRecords(); message.success("Sozlesmeler yenilendi."); }}>Yenile</Button>
+              <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+            </Space>
+
+            <div className="erp-product-toolbar-search">
+              <Input
+                prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
+                placeholder="Firma"
+                value={filters.search}
+                onChange={(event) => handleFilterChange("search", event.target.value)}
+                allowClear
+              />
+              <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
+            </div>
+          </div>
+        )}
       </Card>
 
-      <Card title="Tum Sozlesmeler" className="erp-list-table-card">
+      <Card title={`Tum Sozlesmeler${isMobile ? ` (${filteredRecords.length})` : ""}`} className="erp-list-table-card" loading={isMobile ? tableLoading : false} styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          filteredRecords.length === 0 ? (
+            <Text type="secondary">Henuz sozlesme kaydi bulunmuyor.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {filteredRecords.map((record) => (
+                <div
+                  key={record.id}
+                  onClick={() => openEditModal(record)}
+                  style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <Text strong style={{ fontSize: 15 }}>{record.supplierName}</Text>
+                    <Tag color="blue" style={{ marginInlineEnd: 0 }}>%{Number(record.commissionRate || 0).toFixed(2)}</Tag>
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 13, display: "block" }}>
+                    {record.startDate ? dayjs(record.startDate).format("DD.MM.YYYY") : "-"} — {record.endDate ? dayjs(record.endDate).format("DD.MM.YYYY") : "-"}
+                  </Text>
+                  {record.pdfDataUrl ? (
+                    <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
+                      <Button size="small" icon={<EyeOutlined />} onClick={() => { setActivePdf(record); setPdfModalOpen(true); }}>PDF</Button>
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </Space>
+          )
+        ) : (
+        <>
         <Table
           size="small"
           rowKey="id"
@@ -345,6 +398,8 @@ export function ContractsPage() {
             <span>Sayfa 1 / 1</span>
           </Space>
         </div>
+        </>
+        )}
       </Card>
 
       <Modal title="Gelismis Filtreler" open={filterModalOpen} onCancel={() => setFilterModalOpen(false)} footer={null}>

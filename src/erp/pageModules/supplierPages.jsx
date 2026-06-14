@@ -1,7 +1,7 @@
 ﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppstoreOutlined, BarsOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import { Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Grid, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import dayjs from "dayjs";
 import { listContractsFresh } from "../contractsData";
 import { listEarningsRecordsFresh, upsertEarningsRecord } from "../earningsData";
@@ -23,6 +23,8 @@ function preventRowClick(event) {
 
 export function SupplierListPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const SAVED_FILTERS_KEY = "sibella.erp.supplierFilters.v1";
   const [viewMode, setViewMode] = React.useState("liste");
   const [detailOpen, setDetailOpen] = React.useState(false);
@@ -222,46 +224,96 @@ export function SupplierListPage() {
 
   return (
     <Space vertical size={20} style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-        <div>
-          <Title level={3} style={{ marginBottom: 6 }}>Tedarikci Listesi</Title>
-          <Text type="secondary">Tedarikciler tedarik tipi, odeme kosulu ve iletisim bilgileri ile izlenir.</Text>
+      {isMobile ? (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <Title level={3} style={{ margin: 0 }}>Tedarikciler</Title>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/purchasing/suppliers/new")}>Yeni</Button>
         </div>
-        <Space>
-          <Segmented
-            value={viewMode}
-            onChange={setViewMode}
-            options={[
-              { value: "kanban", icon: <AppstoreOutlined />, label: "Kanban" },
-              { value: "liste", icon: <BarsOutlined />, label: "Liste" },
-            ]}
-          />
-          <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/purchasing/suppliers/new")}>Tedarikci Ekle</Button>
-        </Space>
-      </div>
+      ) : (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+          <div>
+            <Title level={3} style={{ marginBottom: 6 }}>Tedarikci Listesi</Title>
+            <Text type="secondary">Tedarikciler tedarik tipi, odeme kosulu ve iletisim bilgileri ile izlenir.</Text>
+          </div>
+          <Space>
+            <Segmented
+              value={viewMode}
+              onChange={setViewMode}
+              options={[
+                { value: "kanban", icon: <AppstoreOutlined />, label: "Kanban" },
+                { value: "liste", icon: <BarsOutlined />, label: "Liste" },
+              ]}
+            />
+            <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/purchasing/suppliers/new")}>Tedarikci Ekle</Button>
+          </Space>
+        </div>
+      )}
 
       <Card bordered={false} className="erp-list-toolbar-card">
-        <div className="erp-list-toolbar erp-product-toolbar-single">
-          <Space wrap className="erp-product-toolbar-actions">
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/purchasing/suppliers/new")}>Yeni Tedarikci</Button>
-            <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-          </Space>
-
-          <div className="erp-product-toolbar-search">
+        {isMobile ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Button icon={<DownloadOutlined />} onClick={handleExport} style={{ flexShrink: 0 }} />
             <Input
               prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
-              placeholder="Firma"
+              placeholder="Firma / yetkili"
               value={filters.search}
               onChange={(event) => handleFilterChange("search", event.target.value)}
               allowClear
+              style={{ flex: 1, minWidth: 0 }}
             />
-            <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
+            <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} style={{ flexShrink: 0 }} />
           </div>
-        </div>
+        ) : (
+          <div className="erp-list-toolbar erp-product-toolbar-single">
+            <Space wrap className="erp-product-toolbar-actions">
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/purchasing/suppliers/new")}>Yeni Tedarikci</Button>
+              <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+            </Space>
+
+            <div className="erp-product-toolbar-search">
+              <Input
+                prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
+                placeholder="Firma"
+                value={filters.search}
+                onChange={(event) => handleFilterChange("search", event.target.value)}
+                allowClear
+              />
+              <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
+            </div>
+          </div>
+        )}
       </Card>
 
-      {viewMode === "liste" ? (
+      {isMobile ? (
+        <Card title={`Tum Tedarikciler (${filteredSuppliers.length})`} className="erp-list-table-card" loading={tableLoading} styles={{ body: { padding: 12 } }}>
+          {filteredSuppliers.length === 0 ? (
+            <Text type="secondary">Tedarikci bulunamadi.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {filteredSuppliers.map((supplier) => (
+                <div
+                  key={supplier.id}
+                  onClick={() => navigate(`/purchasing/suppliers/${supplier.id}`)}
+                  style={{ display: "flex", gap: 12, padding: 12, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}
+                >
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#fbeeea", color: "#d86d5b", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, flexShrink: 0 }}>
+                    {supplier.initials || String(supplier.company || "?").slice(0, 2).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Text strong style={{ display: "block", fontSize: 14 }}>{supplier.company}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{supplier.shortCode ? `${supplier.shortCode} · ` : ""}{supplier.contact || "-"}</Text>
+                    <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {supplier.procurementTypeLabel ? <Tag>{supplier.procurementTypeLabel}</Tag> : null}
+                      {supplier.paymentTermLabel ? <Tag color="blue">{supplier.paymentTermLabel}</Tag> : null}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </Space>
+          )}
+        </Card>
+      ) : viewMode === "liste" ? (
         <Card title="Tum Tedarikciler" className="erp-list-table-card">
           <Table
           size="small"
@@ -313,7 +365,7 @@ export function SupplierListPage() {
         </Card>
       )}
 
-      <Drawer title="Tedarikci Detayi" placement="right" styles={{ wrapper: { width: 420 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Tedarikci Detayi" placement="right" styles={{ wrapper: { width: isMobile ? "100%" : 420 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedSupplier ? (
           <>
             <Descriptions column={1} size="small" bordered>
