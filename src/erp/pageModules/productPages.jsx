@@ -691,40 +691,51 @@ export function ProductListPage() {
           />
         </Card>
       ) : (
-        <Card title="Kanban Gorunumu" loading={kanbanImagesLoading}>
-          <Row gutter={[16, 16]}>
-            {filteredProducts.map((product) => (
-              <Col xs={24} sm={12} xl={6} key={product.id}>
-                <Card
-                  hoverable
-                  className="erp-product-kanban-card"
-                  styles={{ body: { padding: 14 } }}
-                  onClick={() => openDetailFromRow(setSelectedProduct, setDetailOpen, product)}
-                >
-                  <div className="erp-product-kanban-row">
-                    <div className="erp-product-kanban-content">
-                      <Text strong className="erp-product-kanban-title">
-                        * {product.code}-{product.name}
-                      </Text>
-                      <Text type="secondary" className="erp-product-kanban-code">
-                        [{product.code}]
-                      </Text>
-                      <Text className="erp-product-kanban-line">Fiyat: {product.priceDisplay}</Text>
-                      <Text className="erp-product-kanban-line">Kategori: {product.categoryLabel.split(" / ").slice(-2, -1)[0] || product.categoryLabel}</Text>
-                    </div>
-                    <div className="erp-product-kanban-thumb">
+        <Card title={`Kanban Gorunumu (${filteredProducts.length})`} loading={kanbanImagesLoading}>
+          {filteredProducts.length === 0 ? (
+            <Text type="secondary">Urun bulunamadi.</Text>
+          ) : (
+            <Row gutter={[16, 16]}>
+              {filteredProducts.map((product) => (
+                <Col xs={12} sm={8} md={6} lg={4} xl={4} key={product.id}>
+                  <Card
+                    hoverable
+                    styles={{ body: { padding: 0 } }}
+                    onClick={() => openDetailFromRow(setSelectedProduct, setDetailOpen, product)}
+                    style={{ overflow: "hidden", borderRadius: 12 }}
+                  >
+                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "#f5f0ee" }}>
                       <img
                         src={kanbanImageMap[product.id] || product.image || "/products/baroque-necklace.svg"}
                         alt={product.name}
-                        className="erp-product-image-small"
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: Number(product.stock || 0) <= 0 ? 0.55 : 1 }}
                         loading="lazy"
                       />
+                      {Number(product.stock || 0) <= 0 ? (
+                        <div style={{ position: "absolute", top: 8, left: 8, background: "#cf1322", color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>
+                          STOKTA YOK
+                        </div>
+                      ) : null}
                     </div>
-                  </div>
-                </Card>
-              </Col>
-            ))}
-          </Row>
+                    <div style={{ padding: 12 }}>
+                      <Text strong style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontSize: 14, lineHeight: "18px", minHeight: 36 }}>
+                        {product.name}
+                      </Text>
+                      <Text type="secondary" style={{ display: "block", fontSize: 12 }}>{product.code}</Text>
+                      <Text strong style={{ display: "block", color: "#d86d5b", fontSize: 16, marginTop: 4 }}>{product.priceDisplay}</Text>
+                      <div style={{ marginTop: 4, fontSize: 12 }}>
+                        {Number(product.stock || 0) <= 0 ? (
+                          <Text strong style={{ color: "#cf1322" }}>Stok: 0</Text>
+                        ) : (
+                          <Text type="secondary">Stok: {Number(product.stock || 0)}</Text>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          )}
         </Card>
       )}
 
