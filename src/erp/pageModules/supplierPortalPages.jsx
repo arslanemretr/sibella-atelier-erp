@@ -2129,6 +2129,9 @@ export function SupplierPortalDeliveryEditorPage() {
   const isEditableSupplierStatus = ["Taslak", "Revizyon Istendi"].includes(currentStatus);
   const canEditDelivery = isAdminView || isEditableSupplierStatus;
   const isDeliveryLocked = !canEditDelivery;
+  // Tedarikci kayitli bir urunun ad/kod/fiyat gibi alanlarini degistiremez; yalnizca teslim adedi
+  const editLineIsRegistered = !isAdminView && Boolean(editLine?.productId);
+  const editLineFieldsLocked = (isDeliveryLocked && !isAdminView) || editLineIsRegistered;
 
   React.useEffect(() => {
     let cancelled = false;
@@ -2960,14 +2963,14 @@ export function SupplierPortalDeliveryEditorPage() {
                 event.target.value = "";
               }}
             />
-            <Button size="small" onClick={() => editImageInputRef.current?.click()} disabled={isDeliveryLocked && !isAdminView}>Gorsel Degistir</Button>
+            <Button size="small" onClick={() => editImageInputRef.current?.click()} disabled={editLineFieldsLocked}>Gorsel Degistir</Button>
 
             <Row gutter={[12, 8]}>
               <Col span={24}>
                 <Text strong>Urun Adi</Text>
                 <Input
                   value={editLine.name}
-                  disabled={isDeliveryLocked && !isAdminView}
+                  disabled={editLineFieldsLocked}
                   onChange={(e) => setEditLine((cur) => ({ ...cur, name: e.target.value }))}
                 />
               </Col>
@@ -2975,7 +2978,7 @@ export function SupplierPortalDeliveryEditorPage() {
                 <Text strong>Urun Kodu</Text>
                 <Input
                   value={editLine.code}
-                  disabled={isDeliveryLocked && !isAdminView}
+                  disabled={editLineFieldsLocked}
                   onChange={(e) => setEditLine((cur) => ({ ...cur, code: e.target.value }))}
                 />
               </Col>
@@ -2985,7 +2988,7 @@ export function SupplierPortalDeliveryEditorPage() {
                   style={{ width: "100%" }}
                   min={0}
                   value={editLine.salePrice}
-                  disabled={isDeliveryLocked && !isAdminView}
+                  disabled={editLineFieldsLocked}
                   addonAfter="TRY"
                   onChange={(value) => setEditLine((cur) => ({ ...cur, salePrice: value ?? 0 }))}
                 />
@@ -3000,38 +3003,40 @@ export function SupplierPortalDeliveryEditorPage() {
                   onChange={(value) => setEditLine((cur) => ({ ...cur, quantity: value || 1 }))}
                 />
               </Col>
-              <Col span={24}>
-                <Text strong>Kategori</Text>
-                <Select
-                  style={{ width: "100%" }}
-                  allowClear
-                  placeholder="Kategori seciniz"
-                  value={editLine.categoryId || undefined}
-                  options={categoryOptions}
-                  disabled={isDeliveryLocked && !isAdminView}
-                  onChange={(value) => setEditLine((cur) => ({ ...cur, categoryId: value || null }))}
-                  showSearch
-                  filterOption={(input, option) => String(option?.label || "").toLowerCase().includes(input.toLowerCase())}
-                />
-              </Col>
-              <Col span={24}>
-                <Text strong>Barkod Kategorisi</Text>
-                <Select
-                  style={{ width: "100%" }}
-                  allowClear
-                  placeholder="Barkod kategorisi seciniz"
-                  value={editLine.barcodeStandardId || undefined}
-                  options={barcodeStandardOptions}
-                  disabled={isDeliveryLocked && !isAdminView}
-                  onChange={(value) => setEditLine((cur) => ({ ...cur, barcodeStandardId: value || null }))}
-                />
-              </Col>
+              {isAdminView ? (
+                <>
+                  <Col span={24}>
+                    <Text strong>Kategori</Text>
+                    <Select
+                      style={{ width: "100%" }}
+                      allowClear
+                      placeholder="Kategori seciniz"
+                      value={editLine.categoryId || undefined}
+                      options={categoryOptions}
+                      onChange={(value) => setEditLine((cur) => ({ ...cur, categoryId: value || null }))}
+                      showSearch
+                      filterOption={(input, option) => String(option?.label || "").toLowerCase().includes(input.toLowerCase())}
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <Text strong>Barkod Kategorisi</Text>
+                    <Select
+                      style={{ width: "100%" }}
+                      allowClear
+                      placeholder="Barkod kategorisi seciniz"
+                      value={editLine.barcodeStandardId || undefined}
+                      options={barcodeStandardOptions}
+                      onChange={(value) => setEditLine((cur) => ({ ...cur, barcodeStandardId: value || null }))}
+                    />
+                  </Col>
+                </>
+              ) : null}
               <Col span={24}>
                 <Text strong>Aciklama</Text>
                 <Input.TextArea
                   rows={3}
                   value={editLine.description}
-                  disabled={isDeliveryLocked && !isAdminView}
+                  disabled={editLineFieldsLocked}
                   onChange={(e) => setEditLine((cur) => ({ ...cur, description: e.target.value }))}
                 />
               </Col>
