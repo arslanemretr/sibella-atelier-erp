@@ -68,6 +68,7 @@ import {
   handleDeliveryListsUpdate,
   handlePosSalesCreate,
   handlePosSalesList,
+  handlePosSalesTagsUpdate,
   handlePosSessionsClose,
   handlePosSessionsCreate,
   handlePosSessionsList,
@@ -270,6 +271,7 @@ app.post("/api/pos-sessions", requireRole("Yonetici", "Magaza"), handlePosSessio
 app.post("/api/pos-sessions/:id/close", requireRole("Yonetici", "Magaza"), handlePosSessionsClose);
 app.get("/api/pos-sales", requireRole("Yonetici", "Magaza", "Tedarikci"), handlePosSalesList);
 app.post("/api/pos-sales", requireRole("Yonetici", "Magaza"), handlePosSalesCreate);
+app.put("/api/pos-sales/:id/tags", requireRole("Yonetici", "Magaza"), handlePosSalesTagsUpdate);
 app.get("/api/pos-returns", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handlePosReturnsList);
 app.post("/api/pos-returns", requireRole("Yonetici", "Magaza"), handlePosReturnsCreate);
 app.get("/api/delivery-lists", requireRole("Yonetici", "Tedarikci"), handleDeliveryListsList);

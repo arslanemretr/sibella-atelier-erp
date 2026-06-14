@@ -25,6 +25,8 @@ export async function ensureStockLocationInSessions() {
   if (!hasCol) {
     await sqlExec("ALTER TABLE pos_sessions ADD COLUMN IF NOT EXISTS stock_location_id TEXT REFERENCES stock_locations(id)");
   }
+  // POS satış etiketleri
+  await sqlExec("ALTER TABLE pos_sales ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb");
 }
 
 export async function ensureDeliveryIndexes() {
@@ -205,6 +207,7 @@ async function listPosSalesRows(filters = {}) {
     subtotal: Number(row.subtotal || 0),
     taxTotal: Number(row.tax_total || 0),
     grandTotal: Number(row.grand_total || 0),
+    tags: Array.isArray(row.tags) ? row.tags : [],
     lines: linesBySaleId.get(row.id) || [],
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
@@ -674,6 +677,25 @@ export async function handlePosSalesList(req, res) {
     .filter((sale) => sale.lines.length > 0);
 
   return res.json({ ok: true, items: filteredItems });
+}
+
+export async function handlePosSalesTagsUpdate(req, res) {
+  try {
+    const saleId = req.params.id;
+    const existing = await sqlOne("SELECT id FROM pos_sales WHERE id = $1", [saleId]);
+    if (!existing) return httpError(res, 404, "Satis kaydi bulunamadi.");
+    const raw = Array.isArray(req.body?.tags) ? req.body.tags : [];
+    const tags = Array.from(new Set(
+      raw.map((t) => String(t || "").trim()).filter(Boolean),
+    ));
+    await sqlExec(
+      "UPDATE pos_sales SET tags = $2::jsonb, updated_at = $3::timestamptz WHERE id = $1",
+      [saleId, JSON.stringify(tags), nowIso()],
+    );
+    return res.json({ ok: true, tags });
+  } catch (error) {
+    return httpError(res, 400, error?.message || "Etiketler guncellenemedi.");
+  }
 }
 
 export async function handlePosSalesCreate(req, res) {

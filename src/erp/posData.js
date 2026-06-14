@@ -1,5 +1,10 @@
 import { getProductById, listProducts } from "./productsData";
-import { mutateResourceSync, requestCollection, requestCollectionSync } from "./apiClient";
+import { mutateResourceSync, requestCollection, requestCollectionSync, requestJson } from "./apiClient";
+
+export async function updatePosSaleTags(saleId, tags) {
+  const payload = await requestJson("PUT", `/api/pos-sales/${encodeURIComponent(saleId)}/tags`, { tags });
+  return payload?.tags || [];
+}
 
 function createId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {

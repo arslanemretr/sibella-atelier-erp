@@ -5,7 +5,7 @@ import { BarcodeOutlined, CloseCircleOutlined, CloseOutlined, DeleteOutlined, Ed
 import dayjs from "dayjs";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
-import { buildPosProductCatalogFresh, createPosReturn, getOpenPosSessionsFresh, listPosSalesFresh, listPosReturnsFresh, listPosSessionsFresh } from "../posData";
+import { buildPosProductCatalogFresh, createPosReturn, getOpenPosSessionsFresh, listPosSalesFresh, listPosReturnsFresh, listPosSessionsFresh, updatePosSaleTags } from "../posData";
 import { listStockLocationBalancesFresh, listStockLocationsFresh } from "../stockLocationsData";
 
 const { Title, Text } = Typography;
@@ -1554,6 +1554,7 @@ const EMPTY_POS_FILTERS = {
   search: "",
   productSearch: "",
   paymentMethod: undefined,
+  tag: undefined,
   dateFrom: null,
   dateTo: null,
 };
@@ -1638,6 +1639,7 @@ export function PosOrdersPage() {
         if (!hasMatch) return false;
       }
       if (filters.paymentMethod && sale.paymentMethod !== filters.paymentMethod) return false;
+      if (filters.tag && !((sale.tags || []).includes(filters.tag))) return false;
       if (filters.dateFrom && dayjs(sale.soldAt).isBefore(dayjs(filters.dateFrom).startOf("day"))) return false;
       if (filters.dateTo && dayjs(sale.soldAt).isAfter(dayjs(filters.dateTo).endOf("day"))) return false;
       return true;
@@ -1646,6 +1648,36 @@ export function PosOrdersPage() {
 
   const [detailSale, setDetailSale] = React.useState(null);
   const [detailOpen, setDetailOpen] = React.useState(false);
+  const [tagDraft, setTagDraft] = React.useState([]);
+  const [tagSaving, setTagSaving] = React.useState(false);
+
+  // Tüm satışlardaki mevcut etiketler (öneri + filtre için)
+  const allTagOptions = React.useMemo(() => {
+    const set = new Set();
+    sales.forEach((s) => (s.tags || []).forEach((t) => set.add(t)));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "tr")).map((t) => ({ value: t, label: t }));
+  }, [sales]);
+
+  const openSaleDetail = React.useCallback((sale) => {
+    setDetailSale(sale);
+    setTagDraft(sale?.tags || []);
+    setDetailOpen(true);
+  }, []);
+
+  const handleSaveTags = async () => {
+    if (!detailSale) return;
+    try {
+      setTagSaving(true);
+      const saved = await updatePosSaleTags(detailSale.id, tagDraft);
+      setSales((prev) => prev.map((s) => (s.id === detailSale.id ? { ...s, tags: saved } : s)));
+      setDetailSale((prev) => (prev ? { ...prev, tags: saved } : prev));
+      message.success("Etiketler kaydedildi.");
+    } catch (error) {
+      message.error(error?.message || "Etiketler kaydedilemedi.");
+    } finally {
+      setTagSaving(false);
+    }
+  };
 
   // Satışları düz satır listesine çevir (her line → bir satır)
   const flatRows = React.useMemo(() => {
@@ -1744,6 +1776,15 @@ export function PosOrdersPage() {
       render: (v) => <Text strong>{v}</Text>,
     },
     {
+      title: "Etiketler",
+      key: "tags",
+      width: 160,
+      render: (_, record) => {
+        const tags = record._sale?.tags || [];
+        return tags.length ? <Space size={2} wrap>{tags.map((t) => <Tag key={t} color="purple" style={{ marginInlineEnd: 0 }}>{t}</Tag>)}</Space> : <Text type="secondary">-</Text>;
+      },
+    },
+    {
       title: "İşlemler",
       key: "actions",
       width: 100,
@@ -1754,7 +1795,7 @@ export function PosOrdersPage() {
               size="small"
               className="erp-icon-btn erp-icon-btn-view"
               icon={<SearchOutlined />}
-              onClick={(e) => { e.stopPropagation(); setDetailSale(record._sale); setDetailOpen(true); }}
+              onClick={(e) => { e.stopPropagation(); openSaleDetail(record._sale); }}
             />
           </Tooltip>
           <Tooltip title="İade Yap">
@@ -1813,7 +1854,7 @@ export function PosOrdersPage() {
               {flatRows.slice(0, 100).map((record) => (
                 <div
                   key={record.key}
-                  onClick={() => { setDetailSale(record._sale); setDetailOpen(true); }}
+                  onClick={() => openSaleDetail(record._sale)}
                   style={{ padding: 12, borderRadius: 10, border: "1px solid #f0f0f0", cursor: "pointer" }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
@@ -1824,6 +1865,11 @@ export function PosOrdersPage() {
                     <Text type="secondary">{record.quantity} × {record.unitPriceDisplay}</Text>
                     <Text strong style={{ color: "#1677ff" }}>{record.lineTotalDisplay}</Text>
                   </div>
+                  {(record._sale?.tags || []).length ? (
+                    <div style={{ marginTop: 6 }}>
+                      {(record._sale.tags || []).map((t) => <Tag key={t} color="purple" style={{ marginInlineEnd: 4 }}>{t}</Tag>)}
+                    </div>
+                  ) : null}
                 </div>
               ))}
               {flatRows.length > 100 ? <Text type="secondary" style={{ fontSize: 12 }}>İlk 100 satır gösteriliyor.</Text> : null}
@@ -1858,6 +1904,22 @@ export function PosOrdersPage() {
               <Descriptions.Item label="Ödeme">{detailSale.paymentMethod || "-"}</Descriptions.Item>
               <Descriptions.Item label="Genel Toplam"><Text strong>{detailSale.grandTotalDisplay}</Text></Descriptions.Item>
             </Descriptions>
+
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <Text strong>Etiketler</Text>
+                <Button size="small" type="primary" loading={tagSaving} onClick={() => void handleSaveTags()}>Kaydet</Button>
+              </div>
+              <Select
+                mode="tags"
+                style={{ width: "100%" }}
+                placeholder="Etiket ekleyin veya seçin"
+                value={tagDraft}
+                onChange={setTagDraft}
+                options={allTagOptions}
+                tokenSeparators={[","]}
+              />
+            </div>
             <Table
               rowKey="id"
               size="small"
@@ -1913,6 +1975,20 @@ export function PosOrdersPage() {
                   onChange={(v) => handleFilterChange("paymentMethod", v)}
                   options={paymentOptions}
                   allowClear
+                  style={{ width: "100%" }}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item label="Etiket">
+                <Select
+                  placeholder="Tümü"
+                  value={filters.tag}
+                  onChange={(v) => handleFilterChange("tag", v)}
+                  options={allTagOptions}
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
                   style={{ width: "100%" }}
                 />
               </Form.Item>

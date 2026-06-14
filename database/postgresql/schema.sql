@@ -247,6 +247,7 @@ CREATE TABLE IF NOT EXISTS pos_sales (
 );
 
 ALTER TABLE pos_sales ADD COLUMN IF NOT EXISTS stock_location_id TEXT REFERENCES stock_locations(id);
+ALTER TABLE pos_sales ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;
 
 CREATE TABLE IF NOT EXISTS pos_sale_lines (
   id TEXT PRIMARY KEY,
