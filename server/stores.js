@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { sqlExec, sqlMany, sqlOne } from "./db.js";
 import {
   getMainStockLocation,
-  rebuildStockBalancesFromMovements,
+  rebuildStockBalancesForLocationProducts,
   replaceStockMovementsForSource,
   withInventoryTransaction,
 } from "./inventory.js";
@@ -633,7 +633,13 @@ async function sendStoreShipment(shipmentId) {
       })),
       tx,
     );
-    await rebuildStockBalancesFromMovements(tx);
+    // Tüm bakiye tablosunu yeniden kurmak yerine yalnızca bu gönderinin
+    // etkilediği stok yeri + ürünleri yeniden hesapla (mobilde takılmayı önler)
+    await rebuildStockBalancesForLocationProducts(
+      store.stock_location_id,
+      (shipment.lines || []).map((line) => line.productId),
+      tx,
+    );
 
     const sentAt = nowIso();
     await tx.exec(

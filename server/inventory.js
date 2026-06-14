@@ -461,6 +461,61 @@ export async function rebuildStockBalancesForProducts(productIds, tx) {
   }
 }
 
+/**
+ * Belirli bir stok yeri + ürün kümesi için bakiyeleri yeniden hesaplar.
+ * Tüm tabloyu silip yeniden kuran rebuildStockBalancesFromMovements'a göre çok daha hızlıdır;
+ * gönderi/satış gibi tek lokasyonu etkileyen işlemlerde kullanılır.
+ * products.stock (ana depo yansıması) yalnızca lokasyon ana depo ise güncellenir.
+ */
+export async function rebuildStockBalancesForLocationProducts(stockLocationId, productIds, tx) {
+  const executor = createExecutor(tx);
+  const ids = [...new Set((productIds || []).filter(Boolean))];
+  if (!stockLocationId || !ids.length) {
+    return;
+  }
+
+  const mainLocation = await getMainStockLocation(executor);
+  const isMain = Boolean(mainLocation && mainLocation.id === stockLocationId);
+
+  for (const productId of ids) {
+    const result = await executor.one(
+      `
+        SELECT COALESCE(SUM(stock_delta), 0) AS quantity
+        FROM stock_movements
+        WHERE product_id = $1
+          AND stock_location_id = $2
+          AND affects_stock = TRUE
+      `,
+      [productId, stockLocationId],
+    );
+    const quantity = Number(result?.quantity || 0);
+
+    if (quantity !== 0) {
+      await executor.exec(
+        `
+          INSERT INTO stock_location_balances (stock_location_id, product_id, quantity, updated_at)
+          VALUES ($1, $2, $3, $4::timestamptz)
+          ON CONFLICT (stock_location_id, product_id)
+          DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = EXCLUDED.updated_at
+        `,
+        [stockLocationId, productId, quantity, nowIso()],
+      );
+    } else {
+      await executor.exec(
+        "DELETE FROM stock_location_balances WHERE stock_location_id = $1 AND product_id = $2",
+        [stockLocationId, productId],
+      );
+    }
+
+    if (isMain) {
+      await executor.exec(
+        "UPDATE products SET stock = $1 WHERE id = $2",
+        [Math.max(0, quantity), productId],
+      );
+    }
+  }
+}
+
 export async function listStockMovementRows() {
   const rows = await sqlMany(
     `
