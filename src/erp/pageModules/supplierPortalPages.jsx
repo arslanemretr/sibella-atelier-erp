@@ -2,7 +2,7 @@
 import dayjs from "dayjs";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AutoComplete, Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Grid, Input, InputNumber, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
-import { AppstoreOutlined, BarsOutlined, CheckOutlined, DeleteOutlined, DownloadOutlined, DownOutlined, EditOutlined, EyeOutlined, FilterOutlined, InboxOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
+import { AppstoreOutlined, ArrowLeftOutlined, BarsOutlined, CheckOutlined, DeleteOutlined, DownloadOutlined, DownOutlined, EditOutlined, EyeOutlined, FilterOutlined, InboxOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { getAuthUser } from "../../auth";
 import { listContractsFresh } from "../contractsData";
@@ -2627,8 +2627,15 @@ export function SupplierPortalDeliveryEditorPage() {
 
   return (
     <Space vertical size={16} style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <Title level={3} style={{ margin: 0 }}>{isAdminView ? "Teslimat Formu" : "Teslimat Olustur"}</Title>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Button
+            type="text"
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate(isAdminView ? "/supplier-portal/delivery-lists" : "/supplier/deliveries")}
+          />
+          <Title level={3} style={{ margin: 0 }}>{isAdminView ? "Teslimat Formu" : "Teslimat Olustur"}</Title>
+        </div>
         <div style={{ display: "flex", gap: 8, width: isMobile ? "100%" : "auto" }}>
           <Button
             icon={<DownloadOutlined />}
@@ -2640,14 +2647,14 @@ export function SupplierPortalDeliveryEditorPage() {
           </Button>
           {isAdminView ? (
             <>
-              <Button onClick={() => handleSave(form.getFieldValue("status") || currentStatus || "Taslak")} loading={loading} style={{ flex: isMobile ? 1 : undefined, minWidth: 0 }}>
+              <Button type="primary" onClick={() => handleSave(form.getFieldValue("status") || currentStatus || "Taslak")} loading={loading} style={{ flex: isMobile ? 1 : undefined, minWidth: 0 }}>
                 Guncelle
               </Button>
               <Button onClick={() => navigate("/supplier-portal/delivery-lists")} style={{ flex: isMobile ? 1 : undefined, minWidth: 0 }}>Listeye Don</Button>
             </>
           ) : (
             <>
-              <Button onClick={() => handleSave("Taslak")} loading={loading} disabled={isDeliveryLocked} style={{ flex: isMobile ? 1 : undefined, minWidth: 0 }}>
+              <Button type="primary" ghost onClick={() => handleSave("Taslak")} loading={loading} disabled={isDeliveryLocked} style={{ flex: isMobile ? 1 : undefined, minWidth: 0 }}>
                 Taslak Kaydet
               </Button>
               <Button type="primary" onClick={() => handleSave("Onay Bekleniyor")} loading={loading} disabled={isDeliveryLocked} style={{ flex: isMobile ? 1 : undefined, minWidth: 0 }}>
@@ -2825,9 +2832,13 @@ export function SupplierPortalDeliveryEditorPage() {
                       </div>
                     </div>
                   ))}
-                  <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", background: "#f6f8fb", borderRadius: 10 }}>
-                    <Text strong>Alt Toplam</Text>
-                    <Text strong>{new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(totalAmount)}</Text>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: "#fbeeea", borderRadius: 10 }}>
+                    <Text strong>Toplam</Text>
+                    <Text strong>
+                      {watchedLines.reduce((s, l) => s + Number(l.quantity || 0), 0)} adet
+                      {" · "}
+                      {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(totalAmount)}
+                    </Text>
                   </div>
                 </>
               )}
@@ -2901,16 +2912,15 @@ export function SupplierPortalDeliveryEditorPage() {
               },
               ]}
               summary={() => (
-                <Table
-          .Summary>
-                  <Table
-          .Summary.Row>
-                    <Table
-          .Summary.Cell index={0} colSpan={5}>
-                      <Text strong>Alt Toplam</Text>
+                <Table.Summary>
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={0} colSpan={4}>
+                      <Text strong>Toplam</Text>
                     </Table.Summary.Cell>
-                    <Table
-          .Summary.Cell index={5}>
+                    <Table.Summary.Cell index={4}>
+                      <Text strong>{watchedLines.reduce((s, l) => s + Number(l.quantity || 0), 0)}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={5}>
                       <Text strong>{new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(totalAmount)}</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={6} />
