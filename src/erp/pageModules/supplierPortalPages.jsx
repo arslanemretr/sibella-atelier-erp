@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AutoComplete, Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Grid, Input, InputNumber, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { AppstoreOutlined, ArrowLeftOutlined, BarsOutlined, CheckOutlined, DeleteOutlined, DownloadOutlined, DownOutlined, EditOutlined, EyeOutlined, FilterOutlined, InboxOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as RechartTooltip, XAxis, YAxis } from "recharts";
 import { getAuthUser } from "../../auth";
 import { listContractsFresh } from "../contractsData";
 import { completeDeliveryReceipt, createDeliveryPdf, deleteDeliveryList, getDeliveryListById, getDeliveryListByIdFresh, getNextDeliveryNoPreviewFresh, listDeliveryListsBySupplierFresh, listDeliveryListsFresh, updateDeliveryList } from "../deliveryListsData";
@@ -3317,6 +3318,31 @@ export function SupplierSalesReportPage() {
     totalAmount: rows.reduce((s, r) => s + r.salesAmount, 0),
   }), [rows]);
 
+  // Günlük satış trendi (tedarikçinin ürünleri, seçili tarih aralığı)
+  const salesTrend = React.useMemo(() => {
+    const [from, to] = dateRange || [];
+    const fromMs = from ? from.startOf("day").valueOf() : null;
+    const toMs = to ? to.endOf("day").valueOf() : null;
+    const byDay = new Map();
+    (sales || []).forEach((sale) => {
+      const t = dayjs(sale.soldAt);
+      const ms = t.valueOf();
+      if (fromMs && ms < fromMs) return;
+      if (toMs && ms > toMs) return;
+      let amount = 0;
+      (sale.lines || []).forEach((line) => {
+        if (!productMap.has(line.productId)) return;
+        amount += Number(line.lineTotal || (Number(line.quantity || 0) * Number(line.unitPrice || 0)));
+      });
+      if (amount <= 0) return;
+      const key = t.format("YYYY-MM-DD");
+      byDay.set(key, (byDay.get(key) || 0) + amount);
+    });
+    return Array.from(byDay.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([d, amount]) => ({ date: dayjs(d).format("DD.MM"), amount: Math.round(amount) }));
+  }, [sales, productMap, dateRange]);
+
   return (
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
       <Title level={4} style={{ margin: 0 }}>Satış Raporu</Title>
@@ -3369,6 +3395,28 @@ export function SupplierSalesReportPage() {
           <Col key={item.title} xs={12} sm={12} lg={6}><ReportSummaryCard {...item} /></Col>
         ))}
       </Row>
+
+      <Card size="small" title="Satış Trendi" loading={loading}>
+        {salesTrend.length === 0 ? (
+          <Text type="secondary">Seçili dönemde satış bulunmuyor.</Text>
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={salesTrend} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gradSupplierSales" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#d86d5b" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#d86d5b" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={20} />
+              <YAxis tick={{ fontSize: 11 }} width={44} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}K` : v)} />
+              <RechartTooltip formatter={(v) => formatDisplayMoney(v)} labelStyle={{ fontSize: 12 }} />
+              <Area type="monotone" dataKey="amount" name="Satış" stroke="#d86d5b" fill="url(#gradSupplierSales)" strokeWidth={2} dot={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </Card>
 
       <Card size="small" title="Ürün Bazlı Satış" loading={loading}>
         {isMobile ? (
