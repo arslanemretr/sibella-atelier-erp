@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Segmented, Select, Space, Switch, Table, Tabs, Tag, Tooltip, Typography, message } from "antd";
+import { Alert, Button, Card, Col, Descriptions, Drawer, Form, Grid, Input, InputNumber, Modal, Popconfirm, Radio, Row, Segmented, Select, Space, Switch, Table, Tabs, Tag, Tooltip, Typography, message } from "antd";
 import { AppstoreOutlined, BarsOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, FilterOutlined, LeftOutlined, PlusOutlined, RightOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { listMasterDataFresh } from "../masterData";
@@ -81,6 +81,8 @@ function StockBreakdownDrawer({ open, onClose, product, items, loading }) {
 
 export function ProductListPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const SAVED_FILTERS_KEY = "sibella.erp.productFilters.v1";
   const [viewMode, setViewMode] = React.useState("liste");
   const [kanbanImageMap, setKanbanImageMap] = React.useState({});
@@ -178,14 +180,14 @@ export function ProductListPage() {
   }, [refreshProducts]);
 
   React.useEffect(() => {
-    if (viewMode !== "kanban" || kanbanFetchedRef.current) return;
+    if ((viewMode !== "kanban" && !isMobile) || kanbanFetchedRef.current) return;
     kanbanFetchedRef.current = true;
     setKanbanImagesLoading(true);
     listProductImagesFresh()
       .then((imageMap) => setKanbanImageMap(imageMap))
       .catch(() => {})
       .finally(() => setKanbanImagesLoading(false));
-  }, [viewMode]);
+  }, [viewMode, isMobile]);
 
   const persistSavedFilters = (nextSavedFilters) => {
     setSavedFilters(nextSavedFilters);
@@ -545,58 +547,119 @@ export function ProductListPage() {
 
   return (
     <Space vertical size={20} style={{ width: "100%" }}>
-      <div className="erp-page-intro erp-page-intro-mobile-products erp-page-intro-product-mobile-only">
-        <div>
-          <Title level={3} style={{ marginBottom: 6 }}>Ürünlerim</Title>
-          <Text type="secondary">Yalnızca size ait ürün kayıtlarını görüntüleyebilirsiniz.</Text>
-        </div>
-        <Space wrap className="erp-page-intro-actions">
-          <Button onClick={() => void refreshProducts()}>Yenile</Button>
-          <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-        </Space>
-      </div>
-
-      <div className="erp-page-intro erp-page-intro-desktop-only">
-        <div>
-          <Title level={3} style={{ marginBottom: 6 }}>Urun Listesi</Title>
-          <Text type="secondary">Tum urunler kategori, koleksiyon, stok ve gorsel bilgileri ile listelenir.</Text>
-        </div>
-        <Space>
-          <Segmented
-            value={viewMode}
-            onChange={setViewMode}
-            options={[
-              { value: "kanban", icon: <AppstoreOutlined />, label: "Kanban" },
-              { value: "liste", icon: <BarsOutlined />, label: "Liste" },
-            ]}
-          />
-          <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/products/new")}>Urun Ekle</Button>
-        </Space>
-      </div>
-
-      <Card bordered={false} className="erp-list-toolbar-card erp-mobile-hide">
-        <div className="erp-list-toolbar erp-product-toolbar-single">
-          <Space wrap className="erp-product-toolbar-actions">
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/products/new")}>Yeni Urun</Button>
-            <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-            <Button onClick={() => setImportModalOpen(true)}>Excel'den Aktar</Button>
-          </Space>
-
-          <div className="erp-product-toolbar-search">
-            <Input
-              prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
-              placeholder="Urun Kodu"
-              value={filters.search}
-              onChange={(event) => handleFilterChange("search", event.target.value)}
-              allowClear
-            />
-            <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
+      {isMobile ? (
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <Title level={3} style={{ margin: 0 }}>Urun Listesi</Title>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/products/new")}>Yeni</Button>
           </div>
-        </div>
-      </Card>
+          <Card bordered={false} className="erp-list-toolbar-card">
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Button icon={<DownloadOutlined />} onClick={handleExport} style={{ flexShrink: 0 }} />
+              <Input
+                prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
+                placeholder="Urun kodu / adi"
+                value={filters.search}
+                onChange={(event) => handleFilterChange("search", event.target.value)}
+                allowClear
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} style={{ flexShrink: 0 }} />
+            </div>
+          </Card>
+        </>
+      ) : (
+        <>
+          <div className="erp-page-intro">
+            <div>
+              <Title level={3} style={{ marginBottom: 6 }}>Urun Listesi</Title>
+              <Text type="secondary">Tum urunler kategori, koleksiyon, stok ve gorsel bilgileri ile listelenir.</Text>
+            </div>
+            <Space>
+              <Segmented
+                value={viewMode}
+                onChange={setViewMode}
+                options={[
+                  { value: "kanban", icon: <AppstoreOutlined />, label: "Kanban" },
+                  { value: "liste", icon: <BarsOutlined />, label: "Liste" },
+                ]}
+              />
+              <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/products/new")}>Urun Ekle</Button>
+            </Space>
+          </div>
 
-      {viewMode === "liste" ? (
+          <Card bordered={false} className="erp-list-toolbar-card">
+            <div className="erp-list-toolbar erp-product-toolbar-single">
+              <Space wrap className="erp-product-toolbar-actions">
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/products/new")}>Yeni Urun</Button>
+                <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+                <Button onClick={() => setImportModalOpen(true)}>Excel'den Aktar</Button>
+              </Space>
+
+              <div className="erp-product-toolbar-search">
+                <Input
+                  prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
+                  placeholder="Urun Kodu"
+                  value={filters.search}
+                  onChange={(event) => handleFilterChange("search", event.target.value)}
+                  allowClear
+                />
+                <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
+              </div>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {isMobile ? (
+        <Card title={`Tum Urunler (${filteredProducts.length})`} className="erp-list-table-card" loading={tableLoading} styles={{ body: { padding: 12 } }}>
+          {filteredProducts.length === 0 ? (
+            <Text type="secondary">Urun bulunamadi.</Text>
+          ) : (
+            <Row gutter={[10, 10]}>
+              {filteredProducts.map((product) => (
+                <Col xs={12} key={product.id}>
+                  <Card
+                    hoverable
+                    styles={{ body: { padding: 0 } }}
+                    onClick={() => openDetailFromRow(setSelectedProduct, setDetailOpen, product)}
+                    style={{ overflow: "hidden", borderRadius: 12 }}
+                  >
+                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "#f5f0ee" }}>
+                      <img
+                        src={kanbanImageMap[product.id] || product.image || "/products/baroque-necklace.svg"}
+                        alt={product.name}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: Number(product.stock || 0) <= 0 ? 0.55 : 1 }}
+                        loading="lazy"
+                      />
+                      {Number(product.stock || 0) <= 0 ? (
+                        <div style={{ position: "absolute", top: 8, left: 8, background: "#cf1322", color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>
+                          STOKTA YOK
+                        </div>
+                      ) : null}
+                    </div>
+                    <div style={{ padding: 10 }}>
+                      <Text strong style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontSize: 13, lineHeight: "17px", minHeight: 34 }}>
+                        {product.name}
+                      </Text>
+                      <Text type="secondary" style={{ display: "block", fontSize: 11 }}>{product.code}</Text>
+                      <Text strong style={{ display: "block", color: "#d86d5b", fontSize: 15, marginTop: 4 }}>{product.priceDisplay}</Text>
+                      <div style={{ marginTop: 4, fontSize: 11 }}>
+                        {Number(product.stock || 0) <= 0 ? (
+                          <Text strong style={{ color: "#cf1322" }}>Stok: 0</Text>
+                        ) : (
+                          <Text type="secondary">Stok: {Number(product.stock || 0)}</Text>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          )}
+        </Card>
+      ) : viewMode === "liste" ? (
         <Card title="Tum Urunler" className="erp-list-table-card">
           <Table
           size="small"
@@ -669,7 +732,7 @@ export function ProductListPage() {
       <Drawer
         title="Urun Detayi"
         placement="right"
-        width={420}
+        width={isMobile ? "100%" : 420}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
       >
