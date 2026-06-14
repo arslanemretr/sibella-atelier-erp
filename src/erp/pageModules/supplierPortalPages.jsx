@@ -3036,7 +3036,7 @@ export function SupplierPortalDeliveryEditorPage() {
                 <Input.TextArea
                   rows={3}
                   value={editLine.description}
-                  disabled={editLineFieldsLocked}
+                  disabled={isDeliveryLocked && !isAdminView}
                   onChange={(e) => setEditLine((cur) => ({ ...cur, description: e.target.value }))}
                 />
               </Col>
