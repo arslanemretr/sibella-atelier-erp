@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm, Row, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { Button, Card, Col, Descriptions, Drawer, Form, Grid, Input, InputNumber, Popconfirm, Row, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import { createStore, deleteStore, listStoresFresh, updateStore } from "../storesData";
 
@@ -8,6 +8,8 @@ const { Title, Text } = Typography;
 
 export function StoreListPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [stores, setStores] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [detailOpen, setDetailOpen] = React.useState(false);
@@ -42,13 +44,44 @@ export function StoreListPage() {
     <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
-          <Title level={3} style={{ marginBottom: 6 }}>Magaza Listesi</Title>
-          <Text type="secondary">Konsinye urun gonderilen magaza kartlari bu alanda tutulur.</Text>
+          <Title level={3} style={{ margin: isMobile ? 0 : undefined, marginBottom: isMobile ? 0 : 6 }}>Magaza Listesi</Title>
+          {!isMobile ? <Text type="secondary">Konsinye urun gonderilen magaza kartlari bu alanda tutulur.</Text> : null}
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/stores/new")}>Magaza Tanimla</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/stores/new")}>{isMobile ? "Yeni" : "Magaza Tanimla"}</Button>
       </div>
 
-      <Card title="Tum Magazalar" className="erp-list-table-card" style={{ paddingBottom: 24 }}>
+      <Card title={`Tum Magazalar${isMobile ? ` (${stores.length})` : ""}`} className="erp-list-table-card" style={{ paddingBottom: isMobile ? 0 : 24 }} loading={isMobile ? loading : false} styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          stores.length === 0 ? (
+            <Text type="secondary">Magaza bulunamadi.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {stores.map((record) => (
+                <div
+                  key={record.id}
+                  onClick={() => navigate(`/stores/${record.id}`)}
+                  style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <Text strong style={{ fontSize: 15 }}>{record.name}</Text>
+                    <Text type="secondary" style={{ fontSize: 13 }}>{record.code}</Text>
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 13, display: "block", marginBottom: 8 }}>{record.stockLocationName || "-"}</Text>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <Tag color="blue">%{Number(record.commissionRate || 0).toFixed(2)} komisyon</Tag>
+                    {record.paymentDueDays !== null && record.paymentDueDays !== undefined ? <Tag>{record.paymentDueDays} gün vade</Tag> : null}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
+                    <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/stores/${record.id}`)}>Düzenle</Button>
+                    <Popconfirm title="Magaza silinsin mi?" okText="Sil" cancelText="Vazgec" onConfirm={() => void handleDelete(record.id)}>
+                      <Button size="small" danger icon={<DeleteOutlined />}>Sil</Button>
+                    </Popconfirm>
+                  </div>
+                </div>
+              ))}
+            </Space>
+          )
+        ) : (
         <Table
           size="small"
           rowKey="id"
@@ -123,9 +156,10 @@ export function StoreListPage() {
           })}
           rowClassName={() => "erp-clickable-row"}
         />
+        )}
       </Card>
 
-      <Drawer title="Magaza Detayi" placement="right" styles={{ wrapper: { width: 440 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Magaza Detayi" placement="right" styles={{ wrapper: { width: isMobile ? "100%" : 440 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedStore ? (
           <>
             <Descriptions column={1} size="small" bordered>
@@ -155,6 +189,8 @@ export function StoreListPage() {
 
 export function StoreEditorPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const { storeId } = useParams();
   const isEditMode = Boolean(storeId);
   const [form] = Form.useForm();
@@ -230,11 +266,11 @@ export function StoreEditorPage() {
     <Space vertical size={20} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
         <div>
-          <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Magaza Duzenle" : "Magaza Tanimla"}</Title>
-          <Text type="secondary">Magaza karti ve bagli stok yeri bilgisi birlikte kaydedilir.</Text>
+          <Title level={3} style={{ margin: isMobile ? 0 : undefined, marginBottom: isMobile ? 0 : 6 }}>{isEditMode ? "Magaza Duzenle" : "Magaza Tanimla"}</Title>
+          {!isMobile ? <Text type="secondary">Magaza karti ve bagli stok yeri bilgisi birlikte kaydedilir.</Text> : null}
         </div>
         <Space>
-          <Button onClick={() => navigate("/stores/list")}>Listeye Don</Button>
+          <Button onClick={() => navigate("/stores/list")}>{isMobile ? "Geri" : "Listeye Don"}</Button>
           <Button type="primary" loading={loading} onClick={handleSubmit}>Kaydet</Button>
         </Space>
       </div>
