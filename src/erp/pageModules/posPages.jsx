@@ -1174,20 +1174,12 @@ export function PosScreenPage() {
               onChange={(event) => setSearch(event.target.value)}
               className="erp-pos-search"
             />
-            <Input
-              prefix={<BarcodeOutlined />}
-              placeholder="Barkod"
-              value={barcodeValue}
-              onChange={(event) => setBarcodeValue(event.target.value)}
-              onPressEnter={handleBarcodeSubmit}
-              className="erp-pos-barcode"
-            />
             <Dropdown menu={actionMenu} trigger={["click"]} placement="bottomRight">
               <Button icon={<MenuOutlined />} className="erp-pos-menu-btn" />
             </Dropdown>
           </div>
 
-          <div className="erp-pos-category-row">
+          <div className="erp-pos-category-row" style={{ marginBottom: 14 }}>
             {posCategoryStateOptions.map((category) => (
               <button
                 key={category.id}
