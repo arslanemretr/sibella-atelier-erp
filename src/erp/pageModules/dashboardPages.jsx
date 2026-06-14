@@ -12,6 +12,7 @@ import {
   Drawer,
   Empty,
   Grid,
+  Input,
   Row,
   Space,
   Statistic,
@@ -304,12 +305,16 @@ export function DashboardPage() {
         </div>
         {isMobile ? (
           <div style={{ display: "flex", gap: 8, width: "100%" }}>
-            <DatePicker.RangePicker
-              value={dateRange}
-              allowClear={false}
-              format="DD.MM"
-              inputReadOnly
-              onChange={(v) => { if (v?.[0] && v?.[1]) setDateRange(v); }}
+            <Input
+              type="date"
+              value={dateRange?.[0]?.format("YYYY-MM-DD") || ""}
+              onChange={(e) => { if (e.target.value) setDateRange([dayjs(e.target.value), dateRange?.[1] || dayjs()]); }}
+              style={{ flex: 1, minWidth: 0 }}
+            />
+            <Input
+              type="date"
+              value={dateRange?.[1]?.format("YYYY-MM-DD") || ""}
+              onChange={(e) => { if (e.target.value) setDateRange([dateRange?.[0] || dayjs().subtract(29, "day"), dayjs(e.target.value)]); }}
               style={{ flex: 1, minWidth: 0 }}
             />
             <Button type="primary" loading={loading} icon={<ReloadOutlined />} onClick={() => void refresh()} style={{ flexShrink: 0 }} />

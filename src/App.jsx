@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { Spin } from "antd";
+import { Grid, Spin } from "antd";
 import AppLayout from "./components/layout/AppLayout";
 import { getAuthUser, hasAuthLoaded, isAuthenticated, onAuthChange, restoreAuthSession } from "./auth";
 import { BrandingProvider } from "./erp/BrandingContext";
@@ -62,6 +62,12 @@ function PageFallback() {
       <Spin size="large" />
     </div>
   );
+}
+
+// Mobilde mobil editör, masaüstünde normal editör — tek giriş noktası
+function ShipmentEditorResponsive() {
+  const screens = Grid.useBreakpoint();
+  return !screens.md ? <StoreShipmentMobileEditorPage /> : <StoreShipmentEditorPage />;
 }
 
 function withLazyPage(element) {
@@ -179,10 +185,8 @@ function ProtectedApp() {
         <Route path="/stores/new" element={withRolePage(<StoreEditorPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/stores/:storeId" element={withRolePage(<StoreEditorPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/stores/shipments" element={withRolePage(<StoreShipmentListPage />, authUser, "Yonetici", "Muhasebe")} />
-        <Route path="/stores/shipments/new" element={withRolePage(<StoreShipmentEditorPage />, authUser, "Yonetici", "Muhasebe")} />
-        <Route path="/stores/shipments/new-mobil" element={withRolePage(<StoreShipmentMobileEditorPage />, authUser, "Yonetici", "Muhasebe")} />
-        <Route path="/stores/shipments/:shipmentId/mobil" element={withRolePage(<StoreShipmentMobileEditorPage />, authUser, "Yonetici", "Muhasebe")} />
-        <Route path="/stores/shipments/:shipmentId" element={withRolePage(<StoreShipmentEditorPage />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/stores/shipments/new" element={withRolePage(<ShipmentEditorResponsive />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/stores/shipments/:shipmentId" element={withRolePage(<ShipmentEditorResponsive />, authUser, "Yonetici", "Muhasebe")} />
 
         <Route path="/stock/entry" element={withLazyPage(<StockEntryListPage />)} />
         <Route path="/stock/entry/new" element={withLazyPage(<StockEntryEditorPage />)} />

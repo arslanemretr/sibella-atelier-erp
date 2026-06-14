@@ -178,13 +178,11 @@ export function StoreShipmentListPage() {
             >
               {activeFilterCount > 0 ? `Filtre (${activeFilterCount})` : "Filtre"}
             </Button>
-          ) : (
-            <Button onClick={() => navigate("/stores/shipments/new-mobil")}>Mobil</Button>
-          )}
+          ) : null}
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => navigate(isMobile ? "/stores/shipments/new-mobil" : "/stores/shipments/new")}
+            onClick={() => navigate("/stores/shipments/new")}
           >
             Gonderi Olustur
           </Button>
@@ -200,7 +198,7 @@ export function StoreShipmentListPage() {
               {filteredShipments.map((record) => (
                 <div
                   key={record.id}
-                  onClick={() => navigate(`/stores/shipments/${record.id}/mobil`)}
+                  onClick={() => navigate(`/stores/shipments/${record.id}`)}
                   style={{
                     padding: 14,
                     borderRadius: 12,
