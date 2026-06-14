@@ -362,16 +362,16 @@ function UserManagementPage() {
                 <Space direction="vertical" size={10} style={{ width: "100%" }}>
                   {users.map((record) => (
                     <div key={record.id} style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                        <button type="button" className="erp-link-button" style={{ fontWeight: 600, fontSize: 15 }} onClick={() => openEditUser(record)}>{record.fullName}</button>
-                        <Tag color={record.status === "Aktif" ? "green" : "default"} style={{ marginInlineEnd: 0 }}>{record.status}</Tag>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <button type="button" className="erp-link-button" style={{ fontWeight: 600, fontSize: 15 }} onClick={() => openEditUser(record)}>{record.fullName}</button>
+                          {record.supplierId ? (
+                            <Text type="secondary" style={{ fontSize: 12 }}> · {supplierOptions.find((s) => s.value === record.supplierId)?.label || record.supplierId}</Text>
+                          ) : null}
+                        </div>
+                        <Tag color={record.status === "Aktif" ? "green" : "default"} style={{ marginInlineEnd: 0, flexShrink: 0 }}>{record.status}</Tag>
                       </div>
                       <Text type="secondary" style={{ fontSize: 13, display: "block" }}>{record.email}</Text>
-                      {record.supplierId ? (
-                        <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 2 }}>
-                          Firma: {supplierOptions.find((s) => s.value === record.supplierId)?.label || record.supplierId}
-                        </Text>
-                      ) : null}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
                         <Tag>{record.role}</Tag>
                         <Space size={4}>
