@@ -2600,11 +2600,23 @@ export function SupplierPortalDeliveryEditorPage() {
         savedRecord = savedRecord?.item || savedRecord;
       }
 
-      if (shouldDownloadPdf || status === "Onay Bekleniyor") {
+      // PDF yalnizca PDF butonuyla uretilir (onaya gonderince degil)
+      if (shouldDownloadPdf) {
         await createDeliveryPdf(savedRecord, supplier);
       }
       message.success(status === "Onay Bekleniyor" ? "Teslimat onaya gonderildi." : "Teslimat kaydedildi.");
-      navigate(isAdminView ? `/supplier-portal/delivery-lists/${savedRecord.id}` : `/supplier/deliveries/${savedRecord.id}`);
+      if (shouldDownloadPdf) {
+        // PDF indirildi: editorde kal (yeni kayitsa id'yi ayarla)
+        if (!isEditMode) {
+          setDeliveryId(savedRecord.id);
+          navigate(isAdminView ? `/supplier-portal/delivery-lists/${savedRecord.id}` : `/supplier/deliveries/${savedRecord.id}`, { replace: true });
+        }
+      } else if (isAdminView) {
+        navigate(`/supplier-portal/delivery-lists/${savedRecord.id}`);
+      } else {
+        // Tedarikci: kaydet / onaya gonder sonrasi liste ekranina don
+        navigate("/supplier/deliveries");
+      }
     } catch (error) {
       if (error?.errorFields) return;
       message.error(error?.message || "Teslimat kaydedilirken hata olustu.");
