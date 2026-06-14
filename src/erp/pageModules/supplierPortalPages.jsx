@@ -1115,13 +1115,18 @@ export function SupplierPortalProductListPage() {
                     onClick={() => navigate(`/supplier/products/${product.id}`)}
                     style={{ overflow: "hidden", borderRadius: 12 }}
                   >
-                    <div style={{ width: "100%", aspectRatio: "1 / 1", background: "#f5f0ee" }}>
+                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "#f5f0ee" }}>
                       <img
                         src={kanbanImageMap[product.id] || product.image || "/products/baroque-necklace.svg"}
                         alt={product.name}
-                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: Number(product.stock || 0) <= 0 ? 0.55 : 1 }}
                         loading="lazy"
                       />
+                      {Number(product.stock || 0) <= 0 ? (
+                        <div style={{ position: "absolute", top: 8, left: 8, background: "#cf1322", color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>
+                          STOKTA YOK
+                        </div>
+                      ) : null}
                     </div>
                     <div style={{ padding: 10 }}>
                       <Text strong style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontSize: 13, lineHeight: "17px", minHeight: 34 }}>
@@ -1130,7 +1135,11 @@ export function SupplierPortalProductListPage() {
                       <Text type="secondary" style={{ display: "block", fontSize: 11 }}>{product.code}</Text>
                       <Text strong style={{ display: "block", color: "#d86d5b", fontSize: 15, marginTop: 4 }}>{product.priceDisplay}</Text>
                       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 11 }}>
-                        <Text type="secondary">Stok: {Number(product.stock || 0)}</Text>
+                        {Number(product.stock || 0) <= 0 ? (
+                          <Text strong style={{ color: "#cf1322" }}>Stok: 0</Text>
+                        ) : (
+                          <Text type="secondary">Stok: {Number(product.stock || 0)}</Text>
+                        )}
                         <Text type="secondary">Satış: {Number(product.soldQuantity || 0)}</Text>
                       </div>
                     </div>
