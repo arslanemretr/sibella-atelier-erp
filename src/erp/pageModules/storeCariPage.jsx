@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Card, Col, DatePicker, Form, Input, Modal, Popconfirm, Row, Select, Space, Statistic, Table, Tag, Tooltip, Typography, message } from "antd";
+import { Button, Card, Col, DatePicker, Form, Grid, Input, Modal, Popconfirm, Row, Select, Space, Statistic, Table, Tag, Tooltip, Typography, message } from "antd";
 import { CheckCircleOutlined, ReloadOutlined, RollbackOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { requestJson } from "../apiClient";
@@ -60,6 +60,8 @@ const STATUS_META = {
 };
 
 export default function StoreCariPage() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [invoices, setInvoices]     = React.useState([]);
   const [stores, setStores]         = React.useState([]);
   const [loading, setLoading]       = React.useState(false);
@@ -226,24 +228,24 @@ export default function StoreCariPage() {
 
       {/* Filtreler */}
       <Card bordered={false} className="erp-list-toolbar-card">
-        <Space wrap size={12}>
-          <Select placeholder="Tüm Mağazalar" allowClear style={{ width: 200 }}
+        <Space wrap size={isMobile ? 8 : 12} style={{ width: "100%" }}>
+          <Select placeholder="Tüm Mağazalar" allowClear style={{ width: isMobile ? "100%" : 200 }}
             options={storeOptions} value={filters.storeId || undefined}
             onChange={(v) => setFilters((p) => ({ ...p, storeId: v || undefined }))}
             showSearch optionFilterProp="label" />
-          <Select placeholder="Başlangıç Dönemi" allowClear style={{ width: 160 }}
+          <Select placeholder="Başlangıç Dönemi" allowClear style={{ width: isMobile ? "calc(50% - 4px)" : 160 }}
             options={PERIOD_OPTIONS} value={filters.periodFrom}
             onChange={(v) => setFilters((p) => ({ ...p, periodFrom: v }))}
             showSearch optionFilterProp="label" />
-          <Text type="secondary">—</Text>
-          <Select placeholder="Bitiş Dönemi" allowClear style={{ width: 160 }}
+          {!isMobile ? <Text type="secondary">—</Text> : null}
+          <Select placeholder="Bitiş Dönemi" allowClear style={{ width: isMobile ? "calc(50% - 4px)" : 160 }}
             options={PERIOD_OPTIONS} value={filters.periodTo}
             onChange={(v) => setFilters((p) => ({ ...p, periodTo: v }))}
             showSearch optionFilterProp="label" />
-          <Select placeholder="Durum" style={{ width: 150 }}
+          <Select placeholder="Durum" style={{ width: isMobile ? "calc(50% - 4px)" : 150 }}
             options={STATUS_FILTER_OPTIONS} value={filters.statusFilter}
             onChange={(v) => setFilters((p) => ({ ...p, statusFilter: v || "" }))} />
-          <Button onClick={() => setFilters({ storeId: undefined, periodFrom: undefined, periodTo: undefined, statusFilter: "" })}>
+          <Button onClick={() => setFilters({ storeId: undefined, periodFrom: undefined, periodTo: undefined, statusFilter: "" })} block={isMobile} style={isMobile ? undefined : undefined}>
             Temizle
           </Button>
         </Space>
@@ -268,7 +270,36 @@ export default function StoreCariPage() {
 
       {/* Fatura Tablosu */}
       <Card title={`Fatura Listesi (${displayedInvoices.length} kayıt)`}
-        bordered={false} className="erp-list-table-card erp-card-logo-divider">
+        bordered={false} className="erp-list-table-card erp-card-logo-divider" styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          displayedInvoices.length === 0 ? (
+            <Text type="secondary">Kayıt bulunamadı.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {displayedInvoices.map((r) => {
+                const s = resolveStatus(r);
+                const meta = STATUS_META[s];
+                return (
+                  <div
+                    key={r.id}
+                    onClick={() => openPaymentModal(r)}
+                    style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <Text strong style={{ fontSize: 15 }}>{r.invoiceNo}</Text>
+                      <Tag color={meta.color} style={{ marginInlineEnd: 0 }}>{meta.icon} {meta.label}</Tag>
+                    </div>
+                    <Text style={{ display: "block" }}>{r.storeName}</Text>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                      <Text type="secondary" style={{ fontSize: 13 }}>{periodLabel ? periodLabel(r.periodKey) : r.periodKey} · Vade {fmtDate(r.dueDate)}</Text>
+                      <Text strong style={{ color: "#1677ff" }}>{fmt(r.totalAmount)}</Text>
+                    </div>
+                  </div>
+                );
+              })}
+            </Space>
+          )
+        ) : (
         <Table size="small" rowKey="id" loading={loading} columns={columns}
           dataSource={displayedInvoices} scroll={{ x: "max-content" }}
           pagination={{ pageSize: 50, showTotal: (t, r) => `${r[0]}–${r[1]} / ${t}` }}
@@ -289,6 +320,7 @@ export default function StoreCariPage() {
             );
           }}
         />
+        )}
       </Card>
 
       {/* Mağaza Özet */}

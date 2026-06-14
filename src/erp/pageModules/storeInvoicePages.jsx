@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Grid, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { requestJson } from "../apiClient";
@@ -64,6 +64,8 @@ const FILTER_PERIOD_OPTIONS = (() => {
 })();
 
 export function StoreInvoiceListPage() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [invoices, setInvoices]     = React.useState([]);
   const [stores, setStores]         = React.useState([]);
   const [loading, setLoading]       = React.useState(false);
@@ -267,11 +269,11 @@ export function StoreInvoiceListPage() {
       </div>
 
       <Card bordered={false} className="erp-list-toolbar-card">
-        <Space wrap size={12}>
+        <Space wrap size={isMobile ? 8 : 12} style={{ width: "100%" }}>
           <Select
             placeholder="Tüm Mağazalar"
             allowClear
-            style={{ width: 200 }}
+            style={{ width: isMobile ? "100%" : 200 }}
             options={storeOptions}
             value={filters.storeId || undefined}
             onChange={(v) => setFilters((p) => ({ ...p, storeId: v || undefined }))}
@@ -281,18 +283,18 @@ export function StoreInvoiceListPage() {
           <Select
             placeholder="Başlangıç Dönemi"
             allowClear
-            style={{ width: 165 }}
+            style={{ width: isMobile ? "calc(50% - 4px)" : 165 }}
             options={FILTER_PERIOD_OPTIONS}
             value={filters.periodFrom}
             onChange={(v) => setFilters((p) => ({ ...p, periodFrom: v }))}
             showSearch
             optionFilterProp="label"
           />
-          <Text type="secondary">—</Text>
+          {!isMobile ? <Text type="secondary">—</Text> : null}
           <Select
             placeholder="Bitiş Dönemi"
             allowClear
-            style={{ width: 165 }}
+            style={{ width: isMobile ? "calc(50% - 4px)" : 165 }}
             options={FILTER_PERIOD_OPTIONS}
             value={filters.periodTo}
             onChange={(v) => setFilters((p) => ({ ...p, periodTo: v }))}
@@ -302,13 +304,39 @@ export function StoreInvoiceListPage() {
           <Button
             onClick={() => setFilters({ storeId: undefined, periodFrom: undefined, periodTo: undefined })}
             disabled={!filters.storeId && !filters.periodFrom && !filters.periodTo}
+            block={isMobile}
           >
             Temizle
           </Button>
         </Space>
       </Card>
 
-      <Card bordered={false} className="erp-list-table-card erp-card-logo-divider">
+      <Card bordered={false} className="erp-list-table-card erp-card-logo-divider" styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          invoices.length === 0 ? (
+            <Text type="secondary">Henüz fatura kaydı bulunmuyor.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {invoices.map((r) => (
+                <div
+                  key={r.id}
+                  onClick={() => { setSelected(r); setDetailOpen(true); }}
+                  style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <Text strong style={{ fontSize: 15 }}>{r.invoiceNo}</Text>
+                    <Text type="secondary" style={{ fontSize: 13 }}>{formatDate(r.invoiceDate)}</Text>
+                  </div>
+                  <Text style={{ display: "block", marginBottom: 8 }}>{r.storeName}</Text>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>{periodLabel(r.periodKey)}</Text>
+                    <Text strong style={{ color: "#1677ff" }}>{formatMoney(r.totalAmount)}</Text>
+                  </div>
+                </div>
+              ))}
+            </Space>
+          )
+        ) : (
         <Table
           size="small"
           rowKey="id"
@@ -321,10 +349,11 @@ export function StoreInvoiceListPage() {
           onRow={(r) => ({ onClick: () => { setSelected(r); setDetailOpen(true); } })}
           rowClassName={() => "erp-clickable-row"}
         />
+        )}
       </Card>
 
       {/* Detay Drawer */}
-      <Drawer title="Fatura Detayı" placement="right" styles={{ wrapper: { width: 460 } }}
+      <Drawer title="Fatura Detayı" placement="right" styles={{ wrapper: { width: isMobile ? "100%" : 460 } }}
         open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selected ? (
           <>
