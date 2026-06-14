@@ -1050,21 +1050,36 @@ export function SupplierPortalProductListPage() {
       </div>
 
       <Card bordered={false} className="erp-list-toolbar-card">
-        <div className="erp-list-toolbar erp-product-toolbar-single">
-          <Space wrap className="erp-product-toolbar-actions">
-            <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
-          </Space>
-          <div className="erp-product-toolbar-search">
+        {isMobile ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Button icon={<DownloadOutlined />} onClick={handleExport} style={{ flexShrink: 0 }} />
             <Input
               prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
               placeholder="Ürün kodu veya adı"
               value={filters.search}
               onChange={(event) => handleFilterChange("search", event.target.value)}
               allowClear
+              style={{ flex: 1, minWidth: 0 }}
             />
-            <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
+            <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} style={{ flexShrink: 0 }} />
           </div>
-        </div>
+        ) : (
+          <div className="erp-list-toolbar erp-product-toolbar-single">
+            <Space wrap className="erp-product-toolbar-actions">
+              <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel'e Aktar</Button>
+            </Space>
+            <div className="erp-product-toolbar-search">
+              <Input
+                prefix={<SearchOutlined style={{ color: "#9aa0a6" }} />}
+                placeholder="Ürün kodu veya adı"
+                value={filters.search}
+                onChange={(event) => handleFilterChange("search", event.target.value)}
+                allowClear
+              />
+              <Button icon={<FilterOutlined />} onClick={() => setFilterModalOpen(true)} />
+            </div>
+          </div>
+        )}
       </Card>
 
       {viewMode === "liste" && !isMobile ? (
@@ -1088,31 +1103,63 @@ export function SupplierPortalProductListPage() {
           </div>
         </Card>
       ) : (
-        <Card title={isMobile ? "Ürün Listesi" : "Kanban Görünümü"} className="erp-card-logo-divider">
-          <Row gutter={[16, 16]}>
+        <Card title={isMobile ? "Ürün Listesi" : "Kanban Görünümü"} className="erp-card-logo-divider" styles={isMobile ? { body: { padding: 12 } } : undefined}>
+          <Row gutter={isMobile ? [10, 10] : [16, 16]}>
             {filteredProducts.map((product) => (
-              <Col xs={24} sm={12} xl={8} key={product.id}>
-                <Card
-                  hoverable
-                  className="erp-product-kanban-card"
-                  styles={{ body: { padding: 14 } }}
-                  loading={kanbanImagesLoading}
-                  onClick={() => navigate(`/supplier/products/${product.id}`)}
-                >
-                  <div className="erp-product-kanban-row">
-                    <div className="erp-product-kanban-content">
-                      <Text strong className="erp-product-kanban-title">{product.name}</Text>
-                      <Text type="secondary" className="erp-product-kanban-code">[{product.code}]</Text>
-                      <Text className="erp-product-kanban-line">Fiyat: {product.priceDisplay}</Text>
-                      <Text className="erp-product-kanban-line">Kalan Stok: {Number(product.stock || 0)}</Text>
-                      <Text className="erp-product-kanban-line">Satis Adet: {Number(product.soldQuantity || 0)}</Text>
+              isMobile ? (
+                <Col xs={12} key={product.id}>
+                  <Card
+                    hoverable
+                    styles={{ body: { padding: 0 } }}
+                    loading={kanbanImagesLoading}
+                    onClick={() => navigate(`/supplier/products/${product.id}`)}
+                    style={{ overflow: "hidden", borderRadius: 12 }}
+                  >
+                    <div style={{ width: "100%", aspectRatio: "1 / 1", background: "#f5f0ee" }}>
+                      <img
+                        src={kanbanImageMap[product.id] || product.image || "/products/baroque-necklace.svg"}
+                        alt={product.name}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        loading="lazy"
+                      />
                     </div>
-                    <div className="erp-product-kanban-thumb">
-                      <img src={kanbanImageMap[product.id] || product.image || "/products/baroque-necklace.svg"} alt={product.name} className="erp-product-image-small" loading="lazy" />
+                    <div style={{ padding: 10 }}>
+                      <Text strong style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontSize: 13, lineHeight: "17px", minHeight: 34 }}>
+                        {product.name}
+                      </Text>
+                      <Text type="secondary" style={{ display: "block", fontSize: 11 }}>{product.code}</Text>
+                      <Text strong style={{ display: "block", color: "#d86d5b", fontSize: 15, marginTop: 4 }}>{product.priceDisplay}</Text>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 11 }}>
+                        <Text type="secondary">Stok: {Number(product.stock || 0)}</Text>
+                        <Text type="secondary">Satış: {Number(product.soldQuantity || 0)}</Text>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              </Col>
+                  </Card>
+                </Col>
+              ) : (
+                <Col xs={24} sm={12} xl={8} key={product.id}>
+                  <Card
+                    hoverable
+                    className="erp-product-kanban-card"
+                    styles={{ body: { padding: 14 } }}
+                    loading={kanbanImagesLoading}
+                    onClick={() => navigate(`/supplier/products/${product.id}`)}
+                  >
+                    <div className="erp-product-kanban-row">
+                      <div className="erp-product-kanban-content">
+                        <Text strong className="erp-product-kanban-title">{product.name}</Text>
+                        <Text type="secondary" className="erp-product-kanban-code">[{product.code}]</Text>
+                        <Text className="erp-product-kanban-line">Fiyat: {product.priceDisplay}</Text>
+                        <Text className="erp-product-kanban-line">Kalan Stok: {Number(product.stock || 0)}</Text>
+                        <Text className="erp-product-kanban-line">Satis Adet: {Number(product.soldQuantity || 0)}</Text>
+                      </div>
+                      <div className="erp-product-kanban-thumb">
+                        <img src={kanbanImageMap[product.id] || product.image || "/products/baroque-necklace.svg"} alt={product.name} className="erp-product-image-small" loading="lazy" />
+                      </div>
+                    </div>
+                  </Card>
+                </Col>
+              )
             ))}
           </Row>
         </Card>
