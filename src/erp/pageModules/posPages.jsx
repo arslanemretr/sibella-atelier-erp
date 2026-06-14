@@ -1569,6 +1569,8 @@ const EMPTY_POS_FILTERS = {
 
 export function PosOrdersPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [sales, setSales] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
   const [filterModalOpen, setFilterModalOpen] = React.useState(false);
@@ -1813,6 +1815,31 @@ export function PosOrdersPage() {
         title={`Satış Listesi${activeFilterCount > 0 ? ` (${flatRows.length} satır / ${filteredSales.length} fiş)` : ` (${flatRows.length} satır)`}`}
         className="erp-list-table-card"
       >
+        {isMobile ? (
+          flatRows.length === 0 ? (
+            <Text type="secondary">Satış bulunamadı.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {flatRows.slice(0, 100).map((record) => (
+                <div
+                  key={record.key}
+                  onClick={() => { setDetailSale(record._sale); setDetailOpen(true); }}
+                  style={{ padding: 12, borderRadius: 10, border: "1px solid #f0f0f0", cursor: "pointer" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <Text strong style={{ fontSize: 13 }}>{record.productCode} - {record.productName}</Text>
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 12, display: "block" }}>{record.receiptNo} · {record.paymentMethod || "-"}</Text>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 13 }}>
+                    <Text type="secondary">{record.quantity} × {record.unitPriceDisplay}</Text>
+                    <Text strong style={{ color: "#1677ff" }}>{record.lineTotalDisplay}</Text>
+                  </div>
+                </div>
+              ))}
+              {flatRows.length > 100 ? <Text type="secondary" style={{ fontSize: 12 }}>İlk 100 satır gösteriliyor.</Text> : null}
+            </Space>
+          )
+        ) : (
         <Table
           loading={loading}
           columns={columns}
@@ -1821,13 +1848,14 @@ export function PosOrdersPage() {
           scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (total, range) => `${range[0]}-${range[1]} / ${total}` }}
         />
+        )}
       </Card>
 
       {/* Satış Detay Drawer */}
       <Drawer
         title={detailSale ? `Fiş: ${detailSale.receiptNo} — ${detailSale.customerName || "Misafir"}` : "Satış Detayı"}
         placement="right"
-        styles={{ wrapper: { width: 480 } }}
+        styles={{ wrapper: { width: isMobile ? "100%" : 480 } }}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
       >
@@ -2143,6 +2171,8 @@ const EMPTY_RETURN_FILTERS = {
 };
 
 export function PosReturnListPage() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [returns, setReturns] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
   const [filterModalOpen, setFilterModalOpen] = React.useState(false);
@@ -2328,6 +2358,27 @@ export function PosReturnListPage() {
         title={`İade Listesi${activeFilterCount > 0 ? ` (${flatRows.length} / ${returns.reduce((s, r) => s + (r.lines || []).length, 0)})` : ` (${flatRows.length} satır)`}`}
         className="erp-list-table-card"
       >
+        {isMobile ? (
+          flatRows.length === 0 ? (
+            <Text type="secondary">İade bulunamadı.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {flatRows.slice(0, 100).map((record) => (
+                <div key={record.key} style={{ padding: 12, borderRadius: 10, border: "1px solid #f0f0f0" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <Text strong style={{ fontSize: 13 }}>{record.productCode} - {record.productName}</Text>
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 12, display: "block" }}>İade {record.returnNo} · Fiş {record.receiptNo}</Text>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 13 }}>
+                    <Text type="secondary">{record.quantity} adet</Text>
+                    <Text strong style={{ color: "#cf1322" }}>{formatMovementMoney(record.lineTotal)}</Text>
+                  </div>
+                </div>
+              ))}
+              {flatRows.length > 100 ? <Text type="secondary" style={{ fontSize: 12 }}>İlk 100 satır gösteriliyor.</Text> : null}
+            </Space>
+          )
+        ) : (
         <Table
           size="small"
           loading={loading}
@@ -2336,6 +2387,7 @@ export function PosReturnListPage() {
           scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 50, showSizeChanger: true, showTotal: (total, range) => `${range[0]}-${range[1]} / ${total}` }}
         />
+        )}
       </Card>
 
       {/* Gelişmiş Filtreler Modal */}
