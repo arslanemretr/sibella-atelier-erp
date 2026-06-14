@@ -383,24 +383,14 @@ export function StoreShipmentMobileEditorPage() {
                 />
               </Form.Item>
 
-              <div style={{ display: "flex", gap: 12 }}>
-                <Form.Item
-                  name="date"
-                  label="Tarih"
-                  rules={[{ required: true, message: "Tarih zorunludur." }]}
-                  style={{ flex: 1, minWidth: 0, marginBottom: 16 }}
-                >
-                  <Input type="date" size="large" disabled={isLocked} style={{ width: "100%" }} />
-                </Form.Item>
-                <Form.Item name="shippingMethod" label="Gonderim" style={{ flex: 1, minWidth: 0, marginBottom: 16 }}>
-                  <Select
-                    size="large"
-                    disabled={isLocked}
-                    style={{ width: "100%" }}
-                    options={["Kargo", "Elden Teslim"].map((v) => ({ value: v, label: v }))}
-                  />
-                </Form.Item>
-              </div>
+              <Form.Item
+                name="date"
+                label="Tarih"
+                rules={[{ required: true, message: "Tarih zorunludur." }]}
+                style={{ marginBottom: 16 }}
+              >
+                <Input type="date" size="large" disabled={isLocked} style={{ width: "100%" }} />
+              </Form.Item>
 
               <Form.Item name="note" label="Not" style={{ marginBottom: 8 }}>
                 <Input.TextArea rows={2} disabled={isLocked} placeholder="Takip no vb. ek bilgiler buraya yazilabilir" />

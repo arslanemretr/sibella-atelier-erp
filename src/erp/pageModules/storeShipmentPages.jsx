@@ -826,9 +826,8 @@ export function StoreShipmentEditorPage() {
           <Row gutter={[16, 16]}>
             <Col xs={24} md={12}><Form.Item name="shipmentNo" label="Gonderi No"><Input disabled /></Form.Item></Col>
             <Col xs={24} md={12}><Form.Item name="storeId" label="Magaza" rules={[{ required: true, message: "Magaza seciniz." }]}><Select disabled={isLocked} options={stores.map((item) => ({ value: item.id, label: item.isCenter ? `${item.name} (Merkez)` : item.name }))} /></Form.Item></Col>
-            <Col xs={24} md={12}><Form.Item name="date" label="Tarih" rules={[{ required: true, message: "Tarih zorunludur." }]}><Input type="date" disabled={isLocked} /></Form.Item></Col>
+            <Col xs={24}><Form.Item name="date" label="Tarih" rules={[{ required: true, message: "Tarih zorunludur." }]}><Input type="date" disabled={isLocked} /></Form.Item></Col>
             <Col xs={24} md={12}><Form.Item name="status" label="Durum"><Select disabled options={["Taslak", "Hazirlandi", "Gonderildi"].map((value) => ({ value, label: value }))} /></Form.Item></Col>
-            <Col xs={24} md={12}><Form.Item name="shippingMethod" label="Gonderim Sekli"><Select disabled={isLocked} options={["Kargo", "Elden Teslim"].map((value) => ({ value, label: value }))} /></Form.Item></Col>
             <Col xs={24} md={12}><Form.Item name="trackingNo" label="Takip No"><Input disabled={isLocked} /></Form.Item></Col>
             <Col xs={24}><Form.Item name="note" label="Not"><Input.TextArea rows={3} disabled={isLocked} /></Form.Item></Col>
           </Row>
