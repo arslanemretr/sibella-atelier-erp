@@ -514,25 +514,25 @@ export default function SupplierEarningsReportPage() {
         </Row>
 
         <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <Card bordered={false} style={{ background: "#fff8ea", border: "1px solid #f5dfb4" }}>
               <Text type="secondary" style={{ fontSize: 13 }}>Brut Satis</Text>
               <div style={{ fontSize: 24, fontWeight: 700, marginTop: 6 }}>{formatSupplierReportMoney(currentSummary.grossTotal)}</div>
             </Card>
           </Col>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <Card bordered={false} style={{ background: "#eef6ff", border: "1px solid #cde1f8" }}>
               <Text type="secondary" style={{ fontSize: 13 }}>Net Satis</Text>
               <div style={{ fontSize: 24, fontWeight: 700, marginTop: 6 }}>{formatSupplierReportMoney(currentSummary.netSalesTotal)}</div>
             </Card>
           </Col>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <Card bordered={false} style={{ background: "#fff4ef", border: "1px solid #f5d2c8" }}>
               <Text type="secondary" style={{ fontSize: 13 }}>Komisyon</Text>
               <div style={{ fontSize: 24, fontWeight: 700, marginTop: 6 }}>{formatSupplierReportMoney(currentSummary.commissionTotal)}</div>
             </Card>
           </Col>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <Card bordered={false} style={{ background: "#edf8ef", border: "1px solid #cde7d1" }}>
               <Text type="secondary" style={{ fontSize: 13 }}>Toplam Hakedis</Text>
               <div style={{ fontSize: 24, fontWeight: 700, marginTop: 6 }}>{formatSupplierReportMoney(currentSummary.earningsTotal)}</div>

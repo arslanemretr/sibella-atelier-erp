@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Card, Col, Row, Select, Space, Statistic, Tag, Typography } from "antd";
+import { Button, Card, Col, Grid, Row, Select, Space, Statistic, Tag, Typography } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend,
@@ -67,6 +67,8 @@ const ROLE_OPTIONS = [
 ];
 
 export default function ActivityReportPage() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [data, setData]       = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [days, setDays]       = React.useState(30);
@@ -118,12 +120,12 @@ export default function ActivityReportPage() {
         <div>
           <Title level={3} style={{ marginBottom: 6 }}>Aktivite Raporu</Title>
         </div>
-        <Space wrap className="erp-page-intro-actions">
+        <Space wrap className="erp-page-intro-actions" style={isMobile ? { width: "100%" } : undefined}>
           <Select
             value={days}
             onChange={(v) => { setDays(v); setUserId(undefined); }}
             options={DAY_OPTIONS}
-            style={{ width: 140 }}
+            style={{ width: isMobile ? "calc(50% - 4px)" : 140 }}
           />
           <Select
             placeholder="Kullanıcı Rolü"
@@ -131,7 +133,7 @@ export default function ActivityReportPage() {
             value={userRole}
             onChange={(v) => { setUserRole(v); setUserId(undefined); }}
             options={ROLE_OPTIONS}
-            style={{ width: 150 }}
+            style={{ width: isMobile ? "calc(50% - 4px)" : 150 }}
           />
           <Select
             placeholder="Kullanıcı"
@@ -139,7 +141,7 @@ export default function ActivityReportPage() {
             value={userId}
             onChange={(v) => setUserId(v)}
             options={userOptions}
-            style={{ width: 220 }}
+            style={{ width: isMobile ? "100%" : 220 }}
             showSearch
             optionFilterProp="label"
             disabled={!userOptions.length}

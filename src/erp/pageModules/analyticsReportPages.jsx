@@ -1,6 +1,6 @@
 import React from "react";
 import dayjs from "dayjs";
-import { Button, Card, Col, DatePicker, Row, Select, Space, Table, Tag, Typography, message } from "antd";
+import { Button, Card, Col, DatePicker, Grid, Input, Row, Select, Space, Table, Tag, Typography, message } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import { requestCollection } from "../apiClient";
 
@@ -29,6 +29,8 @@ function SummaryCard({ title, value, color }) {
 // ─────────────────────────────────────────────────────────────────
 
 export function SalesReportPage() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [loading, setLoading] = React.useState(false);
   const [sales, setSales] = React.useState([]);
   const [products, setProducts] = React.useState([]);
@@ -144,7 +146,17 @@ export function SalesReportPage() {
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
       <Title level={4} style={{ margin: 0 }}>Satış Raporu</Title>
 
-      <Card size="small">
+      <Card size="small" styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Input type="date" value={dateRange?.[0]?.format("YYYY-MM-DD") || ""} onChange={(e) => { if (e.target.value) setDateRange([dayjs(e.target.value), dateRange?.[1] || dayjs()]); }} style={{ flex: 1 }} />
+              <Input type="date" value={dateRange?.[1]?.format("YYYY-MM-DD") || ""} onChange={(e) => { if (e.target.value) setDateRange([dateRange?.[0] || dayjs().startOf("month"), dayjs(e.target.value)]); }} style={{ flex: 1 }} />
+            </div>
+            <Select placeholder="Tüm Tedarikçiler" allowClear style={{ width: "100%" }} value={supplierFilter} onChange={setSupplierFilter} options={suppliers.map((s) => ({ value: s.id, label: s.company }))} />
+            <Button icon={<ReloadOutlined />} onClick={load} loading={loading} block>Yenile</Button>
+          </div>
+        ) : (
         <Space wrap>
           <DatePicker.RangePicker
             value={dateRange}
@@ -162,6 +174,7 @@ export function SalesReportPage() {
           />
           <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Yenile</Button>
         </Space>
+        )}
       </Card>
 
       <Row gutter={[16, 16]}>
@@ -171,7 +184,7 @@ export function SalesReportPage() {
           { title: "Ortalama Sepet", value: money(summary.avg), color: "#722ed1" },
           { title: "Toplam İndirim", value: money(summary.discount), color: "#d46b08" },
         ].map((item) => (
-          <Col key={item.title} xs={24} sm={12} lg={6}>
+          <Col key={item.title} xs={12} sm={12} lg={6}>
             <SummaryCard {...item} />
           </Col>
         ))}
@@ -184,6 +197,7 @@ export function SalesReportPage() {
           loading={loading}
           dataSource={supplierRows}
           pagination={false}
+          scroll={{ x: "max-content" }}
           locale={{ emptyText: "Veri bulunamadi." }}
           columns={[
             { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 200,
@@ -219,6 +233,7 @@ export function SalesReportPage() {
           loading={loading}
           dataSource={productRows}
           pagination={{ pageSize: 20, showSizeChanger: false }}
+          scroll={{ x: "max-content" }}
           locale={{ emptyText: "Veri bulunamadi." }}
           columns={[
             { title: "Kod", dataIndex: "code", key: "code", width: 110,
@@ -243,6 +258,7 @@ export function SalesReportPage() {
           loading={loading}
           dataSource={paymentRows}
           pagination={false}
+          scroll={{ x: "max-content" }}
           locale={{ emptyText: "Veri bulunamadi." }}
           columns={[
             { title: "Ödeme Yöntemi", dataIndex: "method", key: "method", width: 160,
@@ -270,6 +286,8 @@ function stockStatusTag(status) {
 }
 
 export function StockReportPage() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [loading, setLoading] = React.useState(false);
   const [products, setProducts] = React.useState([]);
   const [suppliers, setSuppliers] = React.useState([]);
@@ -342,12 +360,12 @@ export function StockReportPage() {
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
       <Title level={4} style={{ margin: 0 }}>Stok Raporu</Title>
 
-      <Card size="small">
-        <Space wrap>
+      <Card size="small" styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        <Space wrap style={isMobile ? { width: "100%" } : undefined}>
           <Select
             placeholder="Tüm Tedarikçiler"
             allowClear
-            style={{ width: 220 }}
+            style={{ width: isMobile ? "100%" : 220 }}
             value={supplierFilter}
             onChange={setSupplierFilter}
             options={suppliers.map((s) => ({ value: s.id, label: s.company }))}
@@ -355,7 +373,7 @@ export function StockReportPage() {
           <Select
             value={statusFilter}
             onChange={setStatusFilter}
-            style={{ width: 180 }}
+            style={{ width: isMobile ? "calc(60% - 4px)" : 180 }}
             options={[
               { value: "all", label: "Tüm Ürünler" },
               { value: "critical", label: "Kritik ve Stoksuz" },
@@ -368,12 +386,12 @@ export function StockReportPage() {
 
       <Row gutter={[16, 16]}>
         {[
-          { title: "Toplam SKU (Aktif)", value: summary.totalSku, color: "#1677ff" },
+          { title: "Toplam Ürün (Aktif)", value: summary.totalSku, color: "#1677ff" },
           { title: "Toplam Stok Adedi", value: summary.totalStock, color: "#389e0d" },
           { title: "Stok Değeri", value: money(summary.totalValue), color: "#722ed1" },
           { title: "Kritik / Stoksuz", value: summary.criticalCount, color: "#d4380d" },
         ].map((item) => (
-          <Col key={item.title} xs={24} sm={12} lg={6}>
+          <Col key={item.title} xs={12} sm={12} lg={6}>
             <SummaryCard {...item} />
           </Col>
         ))}
@@ -386,6 +404,7 @@ export function StockReportPage() {
           loading={loading}
           dataSource={sortedProducts}
           pagination={{ pageSize: 50, showSizeChanger: false }}
+          scroll={{ x: "max-content" }}
           locale={{ emptyText: "Filtrelere uygun urun bulunamadi." }}
           columns={[
             { title: "Kod", dataIndex: "code", key: "code", width: 110,

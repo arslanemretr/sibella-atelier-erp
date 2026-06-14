@@ -304,6 +304,7 @@ export default function ConsolidatedSalesReportPage() {
                 columns={storeCols}
                 pagination={false}
                 size="small"
+                scroll={{ x: "max-content" }}
                 loading={loading}
                 summary={(rows) => {
                   const t = rows.reduce((acc, r) => ({
@@ -353,6 +354,7 @@ export default function ConsolidatedSalesReportPage() {
                 columns={supplierCols}
                 pagination={false}
                 size="small"
+                scroll={{ x: "max-content" }}
                 loading={loading}
                 summary={(rows) => {
                   const t = rows.reduce((acc, r) => ({
@@ -404,6 +406,7 @@ export default function ConsolidatedSalesReportPage() {
             columns={catCols}
             pagination={{ pageSize: 20, showSizeChanger: false }}
             size="small"
+            scroll={{ x: "max-content" }}
             loading={loading}
             summary={(rows) => {
               const t = rows.reduce((acc, r) => ({

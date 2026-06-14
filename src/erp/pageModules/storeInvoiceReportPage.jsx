@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Card, Col, Row, Select, Space, Statistic, Table, Tag, Typography } from "antd";
+import { Button, Card, Col, Grid, Row, Select, Space, Statistic, Table, Tag, Typography } from "antd";
 import { DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell,
@@ -41,6 +41,8 @@ function buildPeriodOptions() {
 const PERIOD_OPTIONS = buildPeriodOptions();
 
 export default function StoreInvoiceReportPage() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [invoices, setInvoices]   = React.useState([]);
   const [stores, setStores]       = React.useState([]);
   const [loading, setLoading]     = React.useState(false);
@@ -168,12 +170,12 @@ export default function StoreInvoiceReportPage() {
       </div>
 
       {/* Filtreler */}
-      <Card bordered={false} className="erp-list-toolbar-card">
-        <Space wrap size={12}>
+      <Card bordered={false} className="erp-list-toolbar-card" styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        <Space wrap size={isMobile ? 8 : 12} style={isMobile ? { width: "100%" } : undefined}>
           <Select
             placeholder="Tüm Mağazalar"
             allowClear
-            style={{ width: 200 }}
+            style={{ width: isMobile ? "100%" : 200 }}
             options={storeOptions}
             value={filters.storeId || undefined}
             onChange={(v) => setFilters((p) => ({ ...p, storeId: v || undefined }))}
@@ -182,23 +184,23 @@ export default function StoreInvoiceReportPage() {
           <Select
             placeholder="Başlangıç Dönemi"
             allowClear
-            style={{ width: 170 }}
+            style={{ width: isMobile ? "calc(50% - 4px)" : 170 }}
             options={PERIOD_OPTIONS}
             value={filters.periodFrom}
             onChange={(v) => setFilters((p) => ({ ...p, periodFrom: v }))}
             showSearch optionFilterProp="label"
           />
-          <Text type="secondary">—</Text>
+          {!isMobile ? <Text type="secondary">—</Text> : null}
           <Select
             placeholder="Bitiş Dönemi"
             allowClear
-            style={{ width: 170 }}
+            style={{ width: isMobile ? "calc(50% - 4px)" : 170 }}
             options={PERIOD_OPTIONS}
             value={filters.periodTo}
             onChange={(v) => setFilters((p) => ({ ...p, periodTo: v }))}
             showSearch optionFilterProp="label"
           />
-          <Button onClick={() => setFilters({ storeId: undefined, periodFrom: undefined, periodTo: undefined })}>
+          <Button onClick={() => setFilters({ storeId: undefined, periodFrom: undefined, periodTo: undefined })} block={isMobile}>
             Temizle
           </Button>
         </Space>

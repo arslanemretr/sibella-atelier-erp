@@ -444,28 +444,28 @@ export default function ConsolidatedEarningsReportPage() {
         </Row>
 
         <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <Card bordered={false} style={{ background: "#fff7e6", border: "1px solid #ffd591" }}>
               <Text type="secondary" style={{ fontSize: 13 }}>Toplam Satis</Text>
               <div style={{ fontSize: 24, fontWeight: 700, marginTop: 6 }}>{formatMoney(totals.grossTotal)}</div>
               <Text type="secondary" style={{ fontSize: 12 }}>{formatPeriodLabel(previewPeriodKey)} donemi</Text>
             </Card>
           </Col>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <Card bordered={false} style={{ background: "#f0f5ff", border: "1px solid #adc6ff" }}>
               <Text type="secondary" style={{ fontSize: 13 }}>Net Satis</Text>
               <div style={{ fontSize: 24, fontWeight: 700, marginTop: 6 }}>{formatMoney(totals.netTotal)}</div>
               <Text type="secondary" style={{ fontSize: 12 }}>Iade dusulmus toplam</Text>
             </Card>
           </Col>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <Card bordered={false} style={{ background: "#fff1f0", border: "1px solid #ffa39e" }}>
               <Text type="secondary" style={{ fontSize: 13 }}>Komisyon</Text>
               <div style={{ fontSize: 24, fontWeight: 700, marginTop: 6 }}>{formatMoney(totals.commissionTotal)}</div>
               <Text type="secondary" style={{ fontSize: 12 }}>Kesilecek toplam tutar</Text>
             </Card>
           </Col>
-          <Col xs={24} sm={12} xl={6}>
+          <Col xs={12} sm={12} xl={6}>
             <Card bordered={false} style={{ background: "#f6ffed", border: "1px solid #b7eb8f" }}>
               <Text type="secondary" style={{ fontSize: 13 }}>Toplam Hakedis</Text>
               <div style={{ fontSize: 24, fontWeight: 700, marginTop: 6 }}>{formatMoney(totals.earningsTotal)}</div>
