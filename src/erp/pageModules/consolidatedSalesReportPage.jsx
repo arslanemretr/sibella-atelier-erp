@@ -117,9 +117,10 @@ export default function ConsolidatedSalesReportPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
       ["Gösterge", "Tutar"],
-      ["Şarköy Toplam Satış",    s.posTotal],
+      ["Şarköy Net Satış",       s.posTotal],
       ["  — Sibella Satış",      s.sibellaPosTotal],
       ["  — Tedarikçi Satış",    s.tedarikciPosTotal],
+      ["  — İade",               -(s.posReturnTotal || 0)],
       ["Mağazalar Toplam Satış", s.grossStoreTotal],
       ["  — Sibella Hakediş",    s.invoiceTotal],
       ["  — Mağaza Komisyon",    s.storeCommission],
@@ -135,9 +136,11 @@ export default function ConsolidatedSalesReportPage() {
       ...(data.storeBreakdown || []).map((r) => [r.storeName, r.commissionRate, r.grossStoreSales, r.invoiceTotal, r.commissionAmount]),
     ]), "Mağaza");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ["Tedarikçi", "Komisyon %", "Brüt Satış", "Sibella Payı", "Tedarikçi Payı"],
+      ["Tedarikçi", "Komisyon %", "Brüt Satış", "İade", "Net Satış", "Sibella Payı", "Tedarikçi Payı"],
       ...(data.posSupplierBreakdown || []).map((r) => [
         r.supplierName, r.isSibella ? 100 : r.commissionRate,
+        r.salesAmount,
+        r.returnAmount,
         r.totalAmount,
         r.isSibella ? r.totalAmount : r.sibellaCommission,
         r.isSibella ? 0 : r.totalAmount - r.sibellaCommission,
@@ -175,7 +178,13 @@ export default function ConsolidatedSalesReportPage() {
       render: (_, r) => r.isSibella
         ? <Tag color="blue">%100</Tag>
         : <Tag color="orange">%{r.commissionRate}</Tag> },
-    { title: "Brüt Satış",     dataIndex: "totalAmount",        key: "p3", align: "right",
+    { title: "Brüt Satış",     dataIndex: "salesAmount",        key: "p3", align: "right",
+      sorter: (a, b) => (a.salesAmount || 0) - (b.salesAmount || 0),
+      render: (v) => fmt(v) },
+    { title: "İade",           dataIndex: "returnAmount",       key: "p3r", align: "right",
+      sorter: (a, b) => (a.returnAmount || 0) - (b.returnAmount || 0),
+      render: (v) => v > 0 ? <Text style={{ color: "#cf1322" }}>-{fmt(v)}</Text> : <Text type="secondary">-</Text> },
+    { title: "Net Satış",      dataIndex: "totalAmount",        key: "p3n", align: "right",
       sorter: (a, b) => a.totalAmount - b.totalAmount,
       render: (v) => <Text strong>{fmt(v)}</Text> },
     { title: "Sibella Payı",   key: "p4", align: "right",
@@ -237,8 +246,8 @@ export default function ConsolidatedSalesReportPage() {
       {/* ── Özet Kartlar ── */}
       <Row gutter={[16, 16]}>
         {[
-          { title: "Şarköy Toplam Satış",    value: s.posTotal,         color: "#1677ff",
-            sub: [["Sibella Satış", s.sibellaPosTotal], ["Tedarikçi Satış", s.tedarikciPosTotal]] },
+          { title: "Şarköy Net Satış",       value: s.posTotal,         color: "#1677ff",
+            sub: [["Sibella Satış", s.sibellaPosTotal], ["Tedarikçi Satış", s.tedarikciPosTotal], ["İade", -(s.posReturnTotal || 0)]] },
           { title: "Mağazalar Toplam Satış", value: s.grossStoreTotal,  color: "#d86d5b",
             sub: [["Sibella Hakediş", s.invoiceTotal], ["Mağaza Komisyon", s.storeCommission]] },
           { title: "Toplam Ciro",            value: s.totalCiro,        color: "#722ed1",

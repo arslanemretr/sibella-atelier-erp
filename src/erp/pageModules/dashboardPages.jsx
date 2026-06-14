@@ -303,23 +303,37 @@ export function DashboardPage() {
           <Title level={3} style={{ marginBottom: 2 }}>Dashboard</Title>
         </div>
         {isMobile ? (
-          <div style={{ display: "flex", gap: 8, width: "100%" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
             <Input
-              type="date"
-              value={dateRange?.[0]?.format("YYYY-MM-DD") || ""}
-              onChange={(e) => { if (e.target.value) setDateRange([dayjs(e.target.value), dateRange?.[1] || dayjs()]); }}
-              style={{ flex: 1, minWidth: 0 }}
+              type="month"
+              onChange={(e) => { if (e.target.value) { const m = dayjs(`${e.target.value}-01`); const r = [m.startOf("month"), m.endOf("month")]; setDateRange(r); void refresh(r); } }}
+              style={{ width: "100%" }}
+              placeholder="Ay seç"
             />
-            <Input
-              type="date"
-              value={dateRange?.[1]?.format("YYYY-MM-DD") || ""}
-              onChange={(e) => { if (e.target.value) setDateRange([dateRange?.[0] || dayjs().subtract(29, "day"), dayjs(e.target.value)]); }}
-              style={{ flex: 1, minWidth: 0 }}
-            />
-            <Button type="primary" loading={loading} icon={<ReloadOutlined />} onClick={() => void refresh()} style={{ flexShrink: 0 }} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <Input
+                type="date"
+                value={dateRange?.[0]?.format("YYYY-MM-DD") || ""}
+                onChange={(e) => { if (e.target.value) setDateRange([dayjs(e.target.value), dateRange?.[1] || dayjs()]); }}
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              <Input
+                type="date"
+                value={dateRange?.[1]?.format("YYYY-MM-DD") || ""}
+                onChange={(e) => { if (e.target.value) setDateRange([dateRange?.[0] || dayjs().subtract(29, "day"), dayjs(e.target.value)]); }}
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              <Button type="primary" loading={loading} icon={<ReloadOutlined />} onClick={() => void refresh()} style={{ flexShrink: 0 }} />
+            </div>
           </div>
         ) : (
           <Space wrap>
+            <DatePicker
+              picker="month"
+              placeholder="Ay seç"
+              format="MMMM YYYY"
+              onChange={(v) => { if (v) { const r = [v.startOf("month"), v.endOf("month")]; setDateRange(r); void refresh(r); } }}
+            />
             <DatePicker.RangePicker
               value={dateRange}
               allowClear={false}
@@ -378,9 +392,9 @@ export function DashboardPage() {
           <Col xs={12} sm={12} xl={6}>
             <KpiCard
               loading={loading}
-              title="Dönem Ciro"
-              value={formatMoney(stats.totalSalesAmount)}
-              description={`${data?.filters?.startDate || ""} – ${data?.filters?.endDate || ""}`}
+              title="Dönemsel Net Ciro"
+              value={formatMoney(Number(stats.totalSalesAmount || 0) - Number(stats.totalReturnAmount || 0))}
+              description={`İade düşülmüş · ${data?.filters?.startDate || ""} – ${data?.filters?.endDate || ""}`}
               icon={<DollarOutlined />}
               color="#1f9d66"
               onClick={() => navigate("/pos/orders")}

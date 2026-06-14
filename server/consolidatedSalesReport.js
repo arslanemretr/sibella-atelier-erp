@@ -68,15 +68,36 @@ export async function handleConsolidatedSalesReport(req, res) {
         WHERE ps.sold_at >= $1::timestamptz
           AND ps.sold_at <  $2::timestamptz
         GROUP BY period_key
+      ),
+      return_totals AS (
+        SELECT
+          TO_CHAR(pr.return_date AT TIME ZONE 'Europe/Istanbul', 'YYYY-MM') AS period_key,
+          COALESCE(SUM(prl.line_total), 0) AS return_total,
+          COALESCE(SUM(
+            CASE WHEN p.supplier_id IS NULL OR p.supplier_id = ANY($3::text[])
+              THEN prl.line_total ELSE 0 END
+          ), 0) AS ret_sibella,
+          COALESCE(SUM(
+            CASE WHEN p.supplier_id IS NOT NULL AND NOT (p.supplier_id = ANY($3::text[]))
+              THEN prl.line_total ELSE 0 END
+          ), 0) AS ret_tedarikci
+        FROM pos_returns pr
+        LEFT JOIN pos_return_lines prl ON prl.return_id = pr.id
+        LEFT JOIN products         p   ON p.id = prl.product_id
+        WHERE pr.return_date >= $1::timestamptz
+          AND pr.return_date <  $2::timestamptz
+        GROUP BY period_key
       )
       SELECT
         st.period_key,
         st.sale_count,
-        st.pos_total,
-        COALESCE(lt.sibella_amount,   0) AS sibella_amount,
-        COALESCE(lt.tedarikci_amount, 0) AS tedarikci_amount
+        GREATEST(st.pos_total - COALESCE(rt.return_total, 0), 0)            AS pos_total,
+        COALESCE(rt.return_total, 0)                                        AS return_total,
+        (COALESCE(lt.sibella_amount,   0) - COALESCE(rt.ret_sibella,   0))  AS sibella_amount,
+        (COALESCE(lt.tedarikci_amount, 0) - COALESCE(rt.ret_tedarikci, 0))  AS tedarikci_amount
       FROM sale_totals  st
-      LEFT JOIN line_totals lt ON lt.period_key = st.period_key
+      LEFT JOIN line_totals  lt ON lt.period_key = st.period_key
+      LEFT JOIN return_totals rt ON rt.period_key = st.period_key
       ORDER BY st.period_key
       `,
       [dateFrom, dateTo, sibellaSupplierIds],
@@ -93,29 +114,53 @@ export async function handleConsolidatedSalesReport(req, res) {
           commission_rate
         FROM consignment_contracts
         ORDER BY supplier_id, COALESCE(start_date, '2000-01-01') DESC
+      ),
+      sales_by_supplier AS (
+        SELECT
+          p.supplier_id,
+          COALESCE(SUM(psl.line_total), 0) AS sales_amount,
+          COALESCE(SUM(psl.quantity),   0) AS sales_quantity
+        FROM pos_sales ps
+        JOIN pos_sale_lines psl ON psl.sale_id = ps.id
+        LEFT JOIN products  p   ON p.id = psl.product_id
+        WHERE ps.sold_at >= $1::timestamptz AND ps.sold_at < $2::timestamptz
+        GROUP BY p.supplier_id
+      ),
+      returns_by_supplier AS (
+        SELECT
+          p.supplier_id,
+          COALESCE(SUM(prl.line_total), 0) AS return_amount,
+          COALESCE(SUM(prl.quantity),   0) AS return_quantity
+        FROM pos_returns pr
+        JOIN pos_return_lines prl ON prl.return_id = pr.id
+        LEFT JOIN products    p   ON p.id = prl.product_id
+        WHERE pr.return_date >= $1::timestamptz AND pr.return_date < $2::timestamptz
+        GROUP BY p.supplier_id
+      ),
+      keys AS (
+        SELECT supplier_id FROM sales_by_supplier
+        UNION
+        SELECT supplier_id FROM returns_by_supplier
       )
       SELECT
         COALESCE(sup.company, 'Tanımsız')                           AS supplier_name,
-        p.supplier_id,
-        CASE WHEN p.supplier_id = ANY($3::text[]) THEN true ELSE false END AS is_sibella,
-        COALESCE(SUM(psl.line_total), 0)                            AS total_amount,
-        COALESCE(SUM(psl.quantity),   0)                            AS total_quantity,
-        COALESCE(MAX(lc.commission_rate), 0)                        AS commission_rate,
-        COALESCE(SUM(
-          CASE
-            WHEN p.supplier_id IS NOT NULL AND NOT (p.supplier_id = ANY($3::text[]))
-              THEN psl.line_total * COALESCE(lc.commission_rate, 0) / 100.0
-            ELSE 0
-          END
-        ), 0)                                                       AS sibella_commission
-      FROM pos_sales ps
-      JOIN pos_sale_lines psl ON psl.sale_id = ps.id
-      LEFT JOIN products        p   ON p.id = psl.product_id
-      LEFT JOIN suppliers       sup ON sup.id = p.supplier_id
-      LEFT JOIN latest_contracts lc  ON lc.supplier_id = p.supplier_id
-      WHERE ps.sold_at >= $1::timestamptz
-        AND ps.sold_at <  $2::timestamptz
-      GROUP BY sup.company, p.supplier_id
+        k.supplier_id,
+        CASE WHEN k.supplier_id = ANY($3::text[]) THEN true ELSE false END AS is_sibella,
+        COALESCE(sbs.sales_amount, 0)                              AS sales_amount,
+        COALESCE(rbs.return_amount, 0)                             AS return_amount,
+        GREATEST(COALESCE(sbs.sales_amount,0) - COALESCE(rbs.return_amount,0), 0) AS total_amount,
+        (COALESCE(sbs.sales_quantity,0) - COALESCE(rbs.return_quantity,0)) AS total_quantity,
+        COALESCE(lc.commission_rate, 0)                            AS commission_rate,
+        CASE
+          WHEN k.supplier_id IS NOT NULL AND NOT (k.supplier_id = ANY($3::text[]))
+            THEN GREATEST(COALESCE(sbs.sales_amount,0) - COALESCE(rbs.return_amount,0), 0) * COALESCE(lc.commission_rate, 0) / 100.0
+          ELSE 0
+        END                                                        AS sibella_commission
+      FROM keys k
+      LEFT JOIN sales_by_supplier   sbs ON sbs.supplier_id = k.supplier_id
+      LEFT JOIN returns_by_supplier rbs ON rbs.supplier_id = k.supplier_id
+      LEFT JOIN suppliers           sup ON sup.id = k.supplier_id
+      LEFT JOIN latest_contracts    lc  ON lc.supplier_id = k.supplier_id
       ORDER BY total_amount DESC
       `,
       [dateFrom, dateTo, sibellaSupplierIds],
@@ -198,6 +243,7 @@ export async function handleConsolidatedSalesReport(req, res) {
 
     // ── Scalar summary ────────────────────────────────────────────────────────
     const posTotal              = posMonthly.reduce((s, r) => s + Number(r.pos_total),        0);
+    const posReturnTotal        = posMonthly.reduce((s, r) => s + Number(r.return_total || 0), 0);
     const sibellaPosTotal       = posMonthly.reduce((s, r) => s + Number(r.sibella_amount),   0);
     const tedarikciPosTotal     = posMonthly.reduce((s, r) => s + Number(r.tedarikci_amount), 0);
     const grossStoreTotal       = storeMonthly.reduce((s, r) => s + Number(r.gross_store_sales), 0);
@@ -217,6 +263,7 @@ export async function handleConsolidatedSalesReport(req, res) {
       ok: true,
       summary: {
         posTotal,
+        posReturnTotal,
         sibellaPosTotal,
         tedarikciPosTotal,
         tedarikciPosCommission,
@@ -232,6 +279,7 @@ export async function handleConsolidatedSalesReport(req, res) {
         periodKey:       r.period_key,
         saleCount:       r.sale_count,
         posTotal:        Number(r.pos_total),
+        returnTotal:     Number(r.return_total || 0),
         sibellaAmount:   Number(r.sibella_amount),
         tedarikciAmount: Number(r.tedarikci_amount),
       })),
@@ -257,6 +305,8 @@ export async function handleConsolidatedSalesReport(req, res) {
         supplierId:        r.supplier_id,
         supplierName:      r.supplier_name,
         isSibella:         r.is_sibella,
+        salesAmount:       Number(r.sales_amount),
+        returnAmount:      Number(r.return_amount),
         totalAmount:       Number(r.total_amount),
         totalQuantity:     Number(r.total_quantity),
         commissionRate:    Number(r.commission_rate),

@@ -33,6 +33,7 @@ export function SalesReportPage() {
   const isMobile = !screens.md;
   const [loading, setLoading] = React.useState(false);
   const [sales, setSales] = React.useState([]);
+  const [returns, setReturns] = React.useState([]);
   const [products, setProducts] = React.useState([]);
   const [suppliers, setSuppliers] = React.useState([]);
   const [dateRange, setDateRange] = React.useState([dayjs().startOf("month"), dayjs().endOf("day")]);
@@ -41,12 +42,14 @@ export function SalesReportPage() {
   const load = React.useCallback(async () => {
     try {
       setLoading(true);
-      const [salesData, productsData, suppliersData] = await Promise.all([
+      const [salesData, returnsData, productsData, suppliersData] = await Promise.all([
         requestCollection("/api/pos-sales", []),
+        requestCollection("/api/pos-returns", []),
         requestCollection("/api/products", []),
         requestCollection("/api/suppliers", []),
       ]);
       setSales(salesData);
+      setReturns(returnsData);
       setProducts(productsData);
       setSuppliers(suppliersData);
     } catch (err) {
@@ -79,56 +82,102 @@ export function SalesReportPage() {
     });
   }, [sales, dateRange, supplierFilter, productMap]);
 
+  const filteredReturns = React.useMemo(() => {
+    const [from, to] = dateRange || [];
+    return returns.filter((ret) => {
+      const t = dayjs(ret.returnDate).valueOf();
+      if (from && t < from.startOf("day").valueOf()) return false;
+      if (to && t > to.endOf("day").valueOf()) return false;
+      if (supplierFilter) {
+        const hasSupplier = (ret.lines || []).some(
+          (line) => productMap.get(line.productId)?.supplierId === supplierFilter,
+        );
+        if (!hasSupplier) return false;
+      }
+      return true;
+    });
+  }, [returns, dateRange, supplierFilter, productMap]);
+
+  const returnTotal = React.useMemo(
+    () => filteredReturns.reduce((s, ret) => s + (ret.lines || []).reduce((ls, l) => ls + Number(l.lineTotal || 0), 0), 0),
+    [filteredReturns],
+  );
+
   const summary = React.useMemo(() => {
-    const total = filteredSales.reduce((s, x) => s + Number(x.grandTotal || 0), 0);
+    const gross = filteredSales.reduce((s, x) => s + Number(x.grandTotal || 0), 0);
     const discount = filteredSales.reduce((s, x) => s + Number(x.discountAmount || 0), 0);
     const count = filteredSales.length;
-    const avg = count > 0 ? total / count : 0;
-    return { total, discount, count, avg };
-  }, [filteredSales]);
+    const total = gross - returnTotal; // net ciro
+    const avg = count > 0 ? gross / count : 0;
+    return { total, gross, discount, count, avg, returnTotal };
+  }, [filteredSales, returnTotal]);
 
   const supplierRows = React.useMemo(() => {
     const map = new Map();
+    const ensure = (sid) => {
+      const sname = suppliers.find((s) => s.id === sid)?.company || (sid === "__none__" ? "Tedarikci Yok" : sid);
+      const row = map.get(sid) || { supplierId: sid, supplierName: sname, qty: 0, gross: 0, ret: 0 };
+      map.set(sid, row);
+      return row;
+    };
     for (const sale of filteredSales) {
       for (const line of (sale.lines || [])) {
-        const product = productMap.get(line.productId);
-        const sid = product?.supplierId || "__none__";
-        const sname = suppliers.find((s) => s.id === sid)?.company || "Tedarikci Yok";
-        const row = map.get(sid) || { supplierId: sid, supplierName: sname, qty: 0, total: 0 };
+        const sid = productMap.get(line.productId)?.supplierId || "__none__";
+        const row = ensure(sid);
         row.qty += Number(line.quantity || 0);
-        row.total += Number(line.lineTotal || 0);
-        map.set(sid, row);
+        row.gross += Number(line.lineTotal || 0);
       }
     }
-    const rows = [...map.values()].sort((a, b) => b.total - a.total);
+    for (const ret of filteredReturns) {
+      for (const line of (ret.lines || [])) {
+        const sid = productMap.get(line.productId)?.supplierId || "__none__";
+        const row = ensure(sid);
+        row.qty -= Number(line.quantity || 0);
+        row.ret += Number(line.lineTotal || 0);
+      }
+    }
+    const rows = [...map.values()].map((r) => ({ ...r, total: r.gross - r.ret })).sort((a, b) => b.total - a.total);
     const grandTotal = rows.reduce((s, r) => s + r.total, 0);
     return rows.map((r) => ({
       ...r,
       share: grandTotal > 0 ? ((r.total / grandTotal) * 100).toFixed(1) : "0.0",
     }));
-  }, [filteredSales, productMap, suppliers]);
+  }, [filteredSales, filteredReturns, productMap, suppliers]);
 
   const productRows = React.useMemo(() => {
     const map = new Map();
+    const ensure = (line) => {
+      const product = productMap.get(line.productId);
+      const row = map.get(line.productId) || {
+        productId: line.productId,
+        code: product?.code || line.productCode || "-",
+        name: product?.name || line.productName || "-",
+        supplierName: suppliers.find((s) => s.id === product?.supplierId)?.company || "-",
+        qty: 0, gross: 0, ret: 0,
+      };
+      map.set(line.productId, row);
+      return row;
+    };
     for (const sale of filteredSales) {
       for (const line of (sale.lines || [])) {
         const product = productMap.get(line.productId);
         if (supplierFilter && product?.supplierId !== supplierFilter) continue;
-        const row = map.get(line.productId) || {
-          productId: line.productId,
-          code: product?.code || line.productCode || "-",
-          name: product?.name || line.productName || "-",
-          supplierName: suppliers.find((s) => s.id === product?.supplierId)?.company || "-",
-          qty: 0,
-          total: 0,
-        };
+        const row = ensure(line);
         row.qty += Number(line.quantity || 0);
-        row.total += Number(line.lineTotal || 0);
-        map.set(line.productId, row);
+        row.gross += Number(line.lineTotal || 0);
       }
     }
-    return [...map.values()].sort((a, b) => b.total - a.total);
-  }, [filteredSales, productMap, suppliers, supplierFilter]);
+    for (const ret of filteredReturns) {
+      for (const line of (ret.lines || [])) {
+        const product = productMap.get(line.productId);
+        if (supplierFilter && product?.supplierId !== supplierFilter) continue;
+        const row = ensure(line);
+        row.qty -= Number(line.quantity || 0);
+        row.ret += Number(line.lineTotal || 0);
+      }
+    }
+    return [...map.values()].map((r) => ({ ...r, total: r.gross - r.ret })).sort((a, b) => b.total - a.total);
+  }, [filteredSales, filteredReturns, productMap, suppliers, supplierFilter]);
 
   const paymentRows = React.useMemo(() => {
     const map = new Map();
@@ -179,10 +228,10 @@ export function SalesReportPage() {
 
       <Row gutter={[16, 16]}>
         {[
-          { title: "Toplam Ciro", value: money(summary.total), color: "#389e0d" },
+          { title: "Net Ciro", value: money(summary.total), color: "#389e0d" },
           { title: "Satış Adedi", value: summary.count, color: "#1677ff" },
+          { title: "İade Tutarı", value: money(summary.returnTotal), color: "#cf1322" },
           { title: "Ortalama Sepet", value: money(summary.avg), color: "#722ed1" },
-          { title: "Toplam İndirim", value: money(summary.discount), color: "#d46b08" },
         ].map((item) => (
           <Col key={item.title} xs={12} sm={12} lg={6}>
             <SummaryCard {...item} />
@@ -202,9 +251,12 @@ export function SalesReportPage() {
           columns={[
             { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 200,
               sorter: (a, b) => String(a.supplierName || "").localeCompare(String(b.supplierName || ""), "tr") },
-            { title: "Satılan Adet", dataIndex: "qty", key: "qty", align: "right", width: 120,
+            { title: "Net Adet", dataIndex: "qty", key: "qty", align: "right", width: 100,
               sorter: (a, b) => Number(a.qty || 0) - Number(b.qty || 0) },
-            { title: "Toplam Tutar", dataIndex: "total", key: "total", align: "right", width: 150,
+            { title: "İade", dataIndex: "ret", key: "ret", align: "right", width: 110,
+              sorter: (a, b) => Number(a.ret || 0) - Number(b.ret || 0),
+              render: (v) => v > 0 ? <Text style={{ color: "#cf1322" }}>-{money(v)}</Text> : <Text type="secondary">-</Text> },
+            { title: "Net Tutar", dataIndex: "total", key: "total", align: "right", width: 150,
               sorter: (a, b) => Number(a.total || 0) - Number(b.total || 0),
               render: (v) => money(v) },
             { title: "% Pay", dataIndex: "share", key: "share", align: "right", width: 80,
@@ -213,13 +265,15 @@ export function SalesReportPage() {
           ]}
           summary={(data) => {
             const totalQty = data.reduce((s, r) => s + r.qty, 0);
+            const totalRet = data.reduce((s, r) => s + (r.ret || 0), 0);
             const totalAmt = data.reduce((s, r) => s + r.total, 0);
             return (
               <Table.Summary.Row>
                 <Table.Summary.Cell index={0}><Text strong>Toplam</Text></Table.Summary.Cell>
                 <Table.Summary.Cell index={1} align="right"><Text strong>{totalQty}</Text></Table.Summary.Cell>
-                <Table.Summary.Cell index={2} align="right"><Text strong>{money(totalAmt)}</Text></Table.Summary.Cell>
-                <Table.Summary.Cell index={3} align="right"><Text strong>%100</Text></Table.Summary.Cell>
+                <Table.Summary.Cell index={2} align="right"><Text strong style={{ color: totalRet > 0 ? "#cf1322" : undefined }}>{totalRet > 0 ? `-${money(totalRet)}` : "-"}</Text></Table.Summary.Cell>
+                <Table.Summary.Cell index={3} align="right"><Text strong>{money(totalAmt)}</Text></Table.Summary.Cell>
+                <Table.Summary.Cell index={4} align="right"><Text strong>%100</Text></Table.Summary.Cell>
               </Table.Summary.Row>
             );
           }}
@@ -242,9 +296,12 @@ export function SalesReportPage() {
               sorter: (a, b) => String(a.name || "").localeCompare(String(b.name || ""), "tr") },
             { title: "Tedarikçi", dataIndex: "supplierName", key: "supplierName", width: 180,
               sorter: (a, b) => String(a.supplierName || "").localeCompare(String(b.supplierName || ""), "tr") },
-            { title: "Satılan Adet", dataIndex: "qty", key: "qty", align: "right", width: 110,
+            { title: "Net Adet", dataIndex: "qty", key: "qty", align: "right", width: 100,
               sorter: (a, b) => Number(a.qty || 0) - Number(b.qty || 0) },
-            { title: "Toplam Tutar", dataIndex: "total", key: "total", align: "right", width: 140,
+            { title: "İade", dataIndex: "ret", key: "ret", align: "right", width: 110,
+              sorter: (a, b) => Number(a.ret || 0) - Number(b.ret || 0),
+              render: (v) => v > 0 ? <Text style={{ color: "#cf1322" }}>-{money(v)}</Text> : <Text type="secondary">-</Text> },
+            { title: "Net Tutar", dataIndex: "total", key: "total", align: "right", width: 140,
               sorter: (a, b) => Number(a.total || 0) - Number(b.total || 0),
               render: (v) => money(v) },
           ]}
