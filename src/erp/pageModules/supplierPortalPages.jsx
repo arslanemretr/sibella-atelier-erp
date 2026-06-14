@@ -2963,7 +2963,7 @@ export function SupplierPortalDeliveryEditorPage() {
                 event.target.value = "";
               }}
             />
-            <Button size="small" onClick={() => editImageInputRef.current?.click()} disabled={editLineFieldsLocked}>Gorsel Degistir</Button>
+            <Button size="small" onClick={() => editImageInputRef.current?.click()} disabled={isDeliveryLocked && !isAdminView}>Gorsel Degistir</Button>
 
             <Row gutter={[12, 8]}>
               <Col span={24}>
