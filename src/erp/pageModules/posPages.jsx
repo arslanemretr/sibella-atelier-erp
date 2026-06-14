@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Popconfirm, Radio, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
+import { Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Grid, Input, InputNumber, Modal, Popconfirm, Radio, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { BarcodeOutlined, CloseCircleOutlined, CloseOutlined, DeleteOutlined, EditOutlined, FilterOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { requestJson } from "../apiClient";
@@ -24,6 +24,8 @@ function formatMovementMoney(value) {
 }
 export function PosSessionsPage() {
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedSession, setSelectedSession] = React.useState(null);
   const [sessions, setSessions] = React.useState([]);
@@ -183,7 +185,46 @@ export function PosSessionsPage() {
         </Space>
       </div>
 
-      <Card title="POS Oturum Listesi" className="erp-list-table-card">
+      <Card title={`POS Oturum Listesi${isMobile ? ` (${sessions.length})` : ""}`} className="erp-list-table-card" loading={isMobile ? tableLoading : false} styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          sessions.length === 0 ? (
+            <Text type="secondary">POS oturumu bulunmuyor.</Text>
+          ) : (
+            <Space direction="vertical" size={10} style={{ width: "100%" }}>
+              {sessions.map((record) => (
+                <div
+                  key={record.id}
+                  onClick={() => openSessionDetail(record)}
+                  style={{ padding: 14, borderRadius: 12, border: "1px solid #f0f0f0", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", cursor: "pointer" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <Text strong style={{ fontSize: 15 }}>{record.sessionNo}</Text>
+                    <Tag color={record.status === "Açık" ? "green" : "default"} style={{ marginInlineEnd: 0 }}>{record.status}</Tag>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>{stockLocationMap.get(record.stockLocationId) || "-"} · {record.cashierName || "-"}</Text>
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
+                    {record.openedAt ? new Date(record.openedAt).toLocaleString("tr-TR") : "-"}
+                  </Text>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>{record.salesCount} fiş</Text>
+                    <Text strong style={{ color: "#1677ff" }}>{record.totalSalesDisplay}</Text>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
+                    <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/pos/store?session=${record.id}`)}>Oturuma Gir</Button>
+                    {record.status === "Açık" ? (
+                      <Popconfirm title="Oturum kapatılsın mı?" okText="Kapat" cancelText="Vazgeç" onConfirm={() => handleCloseSession(record.id)}>
+                        <Button size="small" danger icon={<CloseCircleOutlined />}>Kapat</Button>
+                      </Popconfirm>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </Space>
+          )
+        ) : (
+        <>
         <Table
           size="small"
           loading={tableLoading}
@@ -206,9 +247,11 @@ export function PosSessionsPage() {
             <span>Sayfa 1 / 1</span>
           </Space>
         </div>
+        </>
+        )}
       </Card>
 
-      <Drawer title="Oturum Detayı" placement="right" styles={{ wrapper: { width: 520 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
+      <Drawer title="Oturum Detayı" placement="right" styles={{ wrapper: { width: isMobile ? "100%" : 520 } }} open={detailOpen} onClose={() => setDetailOpen(false)}>
         {selectedSession ? (
           <Space vertical size={16} style={{ width: "100%" }}>
             <Descriptions column={1} size="small" bordered>
