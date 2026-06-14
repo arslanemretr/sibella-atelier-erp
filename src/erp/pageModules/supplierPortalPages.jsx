@@ -2616,32 +2616,34 @@ export function SupplierPortalDeliveryEditorPage() {
   return (
     <Space vertical size={16} style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <Title level={3} style={{ marginBottom: 6 }}>{isAdminView ? "Teslimat Formu" : "Teslimat Olustur"}</Title>
-          <Text type="secondary">{isAdminView ? "Tedarikciden gelen teslimat satirlarini inceleyin, yeni urun adaylarini urun kartina donusturun." : "Teslimat genel bilgilerini doldurun, urunleri ekleyin ve hazir oldugunda satin alma birimine gonderin."}</Text>
-        </div>
-        <Space wrap>
-          <Button icon={<DownloadOutlined />} onClick={() => handleSave(form.getFieldValue("status") || "Taslak", true)} loading={loading}>
-            PDF Olarak Indir
+        <Title level={3} style={{ margin: 0 }}>{isAdminView ? "Teslimat Formu" : "Teslimat Olustur"}</Title>
+        <div style={{ display: "flex", gap: 8, width: isMobile ? "100%" : "auto" }}>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={() => handleSave(form.getFieldValue("status") || "Taslak", true)}
+            loading={loading}
+            style={{ flex: isMobile ? 1 : undefined, minWidth: 0 }}
+          >
+            PDF
           </Button>
           {isAdminView ? (
             <>
-              <Button onClick={() => handleSave(form.getFieldValue("status") || currentStatus || "Taslak")} loading={loading}>
+              <Button onClick={() => handleSave(form.getFieldValue("status") || currentStatus || "Taslak")} loading={loading} style={{ flex: isMobile ? 1 : undefined, minWidth: 0 }}>
                 Guncelle
               </Button>
-              <Button onClick={() => navigate("/supplier-portal/delivery-lists")}>Listeye Don</Button>
+              <Button onClick={() => navigate("/supplier-portal/delivery-lists")} style={{ flex: isMobile ? 1 : undefined, minWidth: 0 }}>Listeye Don</Button>
             </>
           ) : (
             <>
-              <Button onClick={() => handleSave("Taslak")} loading={loading} disabled={isDeliveryLocked}>
+              <Button onClick={() => handleSave("Taslak")} loading={loading} disabled={isDeliveryLocked} style={{ flex: isMobile ? 1 : undefined, minWidth: 0 }}>
                 Taslak Kaydet
               </Button>
-              <Button type="primary" onClick={() => handleSave("Onay Bekleniyor")} loading={loading} disabled={isDeliveryLocked}>
+              <Button type="primary" onClick={() => handleSave("Onay Bekleniyor")} loading={loading} disabled={isDeliveryLocked} style={{ flex: isMobile ? 1 : undefined, minWidth: 0 }}>
                 Onaya Gonder
               </Button>
             </>
           )}
-        </Space>
+        </div>
       </div>
 
       {!isAdminView && isDeliveryLocked ? (
