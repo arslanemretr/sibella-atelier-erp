@@ -3321,16 +3321,42 @@ export function SupplierSalesReportPage() {
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
       <Title level={4} style={{ margin: 0 }}>Satış Raporu</Title>
 
-      <Card size="small">
-        <Space wrap>
-          <DatePicker.RangePicker
-            value={dateRange}
-            onChange={(v) => setDateRange(v || [dayjs().startOf("month"), dayjs().endOf("day")])}
-            allowClear={false}
-            style={{ width: isMobile ? "100%" : 290 }}
-          />
-          <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Yenile</Button>
-        </Space>
+      <Card size="small" styles={isMobile ? { body: { padding: 12 } } : undefined}>
+        {isMobile ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>Başlangıç</Text>
+                <Input
+                  type="date"
+                  value={dateRange?.[0]?.format("YYYY-MM-DD") || ""}
+                  onChange={(e) => setDateRange([e.target.value ? dayjs(e.target.value).startOf("day") : dayjs().startOf("month"), dateRange?.[1] || dayjs().endOf("day")])}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>Bitiş</Text>
+                <Input
+                  type="date"
+                  value={dateRange?.[1]?.format("YYYY-MM-DD") || ""}
+                  onChange={(e) => setDateRange([dateRange?.[0] || dayjs().startOf("month"), e.target.value ? dayjs(e.target.value).endOf("day") : dayjs().endOf("day")])}
+                  style={{ width: "100%" }}
+                />
+              </div>
+            </div>
+            <Button icon={<ReloadOutlined />} onClick={load} loading={loading} block>Yenile</Button>
+          </div>
+        ) : (
+          <Space wrap>
+            <DatePicker.RangePicker
+              value={dateRange}
+              onChange={(v) => setDateRange(v || [dayjs().startOf("month"), dayjs().endOf("day")])}
+              allowClear={false}
+              style={{ width: 290 }}
+            />
+            <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Yenile</Button>
+          </Space>
+        )}
       </Card>
 
       <Row gutter={[16, 16]}>
