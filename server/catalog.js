@@ -845,39 +845,63 @@ export async function handleNextProductCode(_req, res) {
   }
 }
 
+// Tek ürünü oluşturur (hem tekil hem toplu uçta yeniden kullanılır)
+async function createProductRecord(body, authUser) {
+  const item = normalizeProduct(body || {});
+  // Tedarikci kendi supplierId'si dışında ürün oluşturamaz
+  if (authUser?.role === "Tedarikci") {
+    const authSupplierId = authUser.supplierId;
+    if (!authSupplierId) throw new Error("Tedarikci eslesmesi bulunamadi.");
+    item.supplierId = authSupplierId;
+  }
+  // autoCode: kod boş ise SBSE sayacindan atomik olarak sonraki kod atanir
+  if (body?.autoCode && !item.code) {
+    item.code = await reserveNextSbseCode();
+  }
+  await sqlExec(`
+    INSERT INTO products (
+      id, code, name, sale_price, sale_currency, cost, cost_currency, category_id, collection_id, pos_category_id,
+      supplier_id, barcode, supplier_code, min_stock, supplier_lead_time, stock, product_type, sales_tax, image,
+      is_for_sale, is_for_purchase, use_in_pos, track_inventory, status, workflow_status, created_by, notes,
+      barcode_standard_id, created_at, updated_at
+    )
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29::timestamptz,$30::timestamptz)
+  `, [
+    item.id, item.code, item.name, item.salePrice, item.saleCurrency, item.cost, item.costCurrency,
+    item.categoryId, item.collectionId, item.posCategoryId, item.supplierId, item.barcode, item.supplierCode,
+    item.minStock, item.supplierLeadTime, item.stock, item.productType, item.salesTax, item.image,
+    item.isForSale, item.isForPurchase, item.useInPos, item.trackInventory, item.status, item.workflowStatus,
+    item.createdBy, item.notes, item.barcodeStandardId, item.createdAt, item.updatedAt,
+  ]);
+  await replaceProductFeatures(item.id, item.features);
+  await syncMainBalanceWithProductStock(item.id);
+  return getProductRow(item.id);
+}
+
 export async function handleProductsCreate(req, res) {
   try {
-    const item = normalizeProduct(req.body || {});
-    // Tedarikci kendi supplierId'si dışında ürün oluşturamaz
-    if (req.authUser?.role === "Tedarikci") {
-      const authSupplierId = req.authUser.supplierId;
-      if (!authSupplierId) return httpError(res, 403, "Tedarikci eslesmesi bulunamadi.");
-      item.supplierId = authSupplierId;
-    }
-    // autoCode: kod boş ise SBSE sayacindan atomik olarak sonraki kod atanir
-    if (req.body?.autoCode && !item.code) {
-      item.code = await reserveNextSbseCode();
-    }
-    await sqlExec(`
-      INSERT INTO products (
-        id, code, name, sale_price, sale_currency, cost, cost_currency, category_id, collection_id, pos_category_id,
-        supplier_id, barcode, supplier_code, min_stock, supplier_lead_time, stock, product_type, sales_tax, image,
-        is_for_sale, is_for_purchase, use_in_pos, track_inventory, status, workflow_status, created_by, notes,
-        barcode_standard_id, created_at, updated_at
-      )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29::timestamptz,$30::timestamptz)
-    `, [
-      item.id, item.code, item.name, item.salePrice, item.saleCurrency, item.cost, item.costCurrency,
-      item.categoryId, item.collectionId, item.posCategoryId, item.supplierId, item.barcode, item.supplierCode,
-      item.minStock, item.supplierLeadTime, item.stock, item.productType, item.salesTax, item.image,
-      item.isForSale, item.isForPurchase, item.useInPos, item.trackInventory, item.status, item.workflowStatus,
-      item.createdBy, item.notes, item.barcodeStandardId, item.createdAt, item.updatedAt,
-    ]);
-    await replaceProductFeatures(item.id, item.features);
-    await syncMainBalanceWithProductStock(item.id);
-    return res.status(201).json({ ok: true, item: await getProductRow(item.id) });
+    const item = await createProductRecord(req.body || {}, req.authUser);
+    return res.status(201).json({ ok: true, item });
   } catch (error) {
     return httpError(res, 400, error?.message || "Urun olusturulamadi.");
+  }
+}
+
+// Toplu oluşturma: tek istekte birden çok ürün (mobil gönderi gönderiminde N round-trip yerine 1)
+export async function handleProductsBatchCreate(req, res) {
+  const items = Array.isArray(req.body?.items) ? req.body.items : [];
+  if (!items.length) {
+    return httpError(res, 400, "Olusturulacak urun bulunamadi.");
+  }
+  try {
+    const created = [];
+    // Sırayla oluşturulur; SBSE kodları gönderim sırasına göre atanır
+    for (const body of items) {
+      created.push(await createProductRecord(body, req.authUser));
+    }
+    return res.status(201).json({ ok: true, items: created });
+  } catch (error) {
+    return httpError(res, 400, error?.message || "Urunler olusturulamadi.");
   }
 }
 

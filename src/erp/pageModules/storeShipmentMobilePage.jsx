@@ -4,6 +4,7 @@ import { AutoComplete, Button, Card, Drawer, Form, Input, InputNumber, Select, S
 import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, FilePdfOutlined, MinusOutlined, PlusOutlined, SaveOutlined, SendOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
+import { compressImageFile } from "../imageCompress";
 import { getNextProductCodeFresh, listProductsCatalogFresh } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh } from "../storeShipmentsData";
@@ -198,42 +199,37 @@ export function StoreShipmentMobileEditorPage() {
     setLines((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Manuel satir icin SBSE kodlu urun karti olusturur, satira baglar
-  const createProductForManualLine = async (line) => {
-    const response = await requestJson("POST", "/api/products", {
-      autoCode: true,
-      code: "",
-      supplierId: sbseSupplierId || null,
-      name: line.name,
-      salePrice: Number(line.salePrice || 0),
-      saleCurrency: line.saleCurrency || "TRY",
-      cost: 0,
-      costCurrency: "TRY",
-      categoryId: null,
-      collectionId: null,
-      posCategoryId: null,
-      barcode: "",
-      supplierCode: "",
-      minStock: 0,
-      supplierLeadTime: 0,
-      stock: 0,
-      productType: "kendi",
-      salesTax: "%20",
-      image: line.image || "/products/baroque-necklace.svg",
-      isForSale: true,
-      isForPurchase: true,
-      useInPos: true,
-      trackInventory: true,
-      status: "Aktif",
-      workflowStatus: "Taslak",
-      createdBy: authUser?.id || null,
-      notes: "",
-      features: [],
-    });
-    const saved = response?.item || response;
-    if (!saved?.id) throw new Error("Urun karti olusturulamadi.");
-    return saved;
-  };
+  // Manuel satir icin SBSE kodlu urun karti payload'i (toplu oluşturmada kullanılır)
+  const buildManualProductPayload = (line) => ({
+    autoCode: true,
+    code: "",
+    supplierId: sbseSupplierId || null,
+    name: line.name,
+    salePrice: Number(line.salePrice || 0),
+    saleCurrency: line.saleCurrency || "TRY",
+    cost: 0,
+    costCurrency: "TRY",
+    categoryId: null,
+    collectionId: null,
+    posCategoryId: null,
+    barcode: "",
+    supplierCode: "",
+    minStock: 0,
+    supplierLeadTime: 0,
+    stock: 0,
+    productType: "kendi",
+    salesTax: "%20",
+    image: line.image || "/products/baroque-necklace.svg",
+    isForSale: true,
+    isForPurchase: true,
+    useInPos: true,
+    trackInventory: true,
+    status: "Aktif",
+    workflowStatus: "Taslak",
+    createdBy: authUser?.id || null,
+    notes: "",
+    features: [],
+  });
 
   // Gonderi kaydeder (edit modunda PUT, yeni kayitta POST) ve kaydi doner
   const saveShipment = async (status, shipmentLines) => {
@@ -266,21 +262,30 @@ export function StoreShipmentMobileEditorPage() {
       await form.validateFields();
       if (!lines.length) throw new Error("En az bir satir eklenmelidir.");
 
-      // Manuel satirlar icin urun karti olustur, productId bagla
-      const preparedLines = [];
-      for (const line of lines) {
-        if (line.productId) {
-          preparedLines.push(line);
-          continue;
+      // Manuel satirlar icin urun kartlari TEK istekte (toplu) olusturulur,
+      // sonra donen id/kodlar satirlara sirasiyla eslenir
+      const manualLines = lines.filter((line) => !line.productId);
+      let createdProducts = [];
+      if (manualLines.length) {
+        const response = await requestJson("POST", "/api/products/batch", {
+          items: manualLines.map((line) => buildManualProductPayload(line)),
+        });
+        createdProducts = response?.items || [];
+        if (createdProducts.length !== manualLines.length) {
+          throw new Error("Urun kartlari olusturulamadi.");
         }
-        const created = await createProductForManualLine(line);
-        preparedLines.push({
+      }
+      let createdIndex = 0;
+      const preparedLines = lines.map((line) => {
+        if (line.productId) return line;
+        const created = createdProducts[createdIndex++];
+        return {
           ...line,
           productId: created.id,
           code: created.code || line.code,
           isManualProduct: false,
-        });
-      }
+        };
+      });
 
       const saved = await saveShipment("Hazirlandi", preparedLines);
       await requestJson("POST", `/api/store-shipments/${encodeURIComponent(saved.id)}/send`, {});
@@ -624,10 +629,9 @@ export function StoreShipmentMobileEditorPage() {
                   showUploadList={false}
                   maxCount={1}
                   beforeUpload={(file) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) =>
-                      setDraft((prev) => ({ ...prev, image: e.target.result }));
-                    reader.readAsDataURL(file);
+                    compressImageFile(file)
+                      .then((dataUrl) => setDraft((prev) => ({ ...prev, image: dataUrl })))
+                      .catch((err) => message.error(err?.message || "Gorsel islenemedi."));
                     return false;
                   }}
                 >

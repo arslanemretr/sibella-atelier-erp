@@ -28,6 +28,7 @@ import {
   handleMasterDataList,
   handleMasterDataUpdate,
   handleProductsCreate,
+  handleProductsBatchCreate,
   handleProductsDelete,
   handleProductsGet,
   handleProductsList,
@@ -247,6 +248,7 @@ app.get("/api/products/next-code", requireRole("Yonetici", "Magaza", "Muhasebe",
 app.get("/api/products/:id", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleProductsGet);
 app.get("/api/products/:id/stock-locations", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleProductStockLocationBalances);
 app.post("/api/products", requireRole("Yonetici", "Tedarikci"), handleProductsCreate);
+app.post("/api/products/batch", requireRole("Yonetici", "Tedarikci"), handleProductsBatchCreate);
 app.put("/api/products/:id", requireRole("Yonetici", "Tedarikci"), handleProductsUpdate);
 app.delete("/api/products/:id", requireRole("Yonetici"), handleProductsDelete);
 app.get("/api/purchases", requireRole("Yonetici", "Muhasebe"), handlePurchasesList);
