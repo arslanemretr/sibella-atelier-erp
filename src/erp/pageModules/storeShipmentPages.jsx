@@ -7,7 +7,7 @@ import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
 import { listProductsRawFresh } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
-import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, listStoreShipmentsFresh } from "../storeShipmentsData";
+import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh, listStoreShipmentsFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
 
 const { Title, Text } = Typography;
@@ -486,44 +486,67 @@ export function StoreShipmentEditorPage() {
     const loadEditor = async () => {
       try {
         setPageLoading(true);
-        const [storeRows, productRows, categoryRows, collectionRows, supplierRows, shipmentRows] = await Promise.all([
+
+        const loadLookupData = async () => {
+          const [productRows, categoryRows, collectionRows, supplierRows] = await Promise.all([
+            listProductsRawFresh({ productType: "kendi" }),
+            listMasterDataFresh("categories"),
+            listMasterDataFresh("collections"),
+            listSuppliersFresh({ slim: true }),
+          ]);
+          if (cancelled) {
+            return;
+          }
+          setProducts(productRows);
+          setCategories(categoryRows);
+          setCollections(collectionRows);
+          setSuppliers(supplierRows);
+        };
+
+        if (isEditMode) {
+          const [storeRows, existing] = await Promise.all([
+            listStoresFresh(),
+            getStoreShipmentFresh(shipmentId),
+          ]);
+          if (cancelled) {
+            return;
+          }
+          setStores(storeRows);
+
+          if (!existing) {
+            message.error("Gonderi kaydi bulunamadi.");
+            navigate("/stores/shipments");
+            return;
+          }
+
+          form.setFieldsValue(existing);
+          setShipmentLines(existing.lines || []);
+          void loadLookupData().catch((error) => {
+            if (!cancelled) {
+              message.error(error?.message || "Gonderi yardimci verileri yuklenemedi.");
+            }
+          });
+          return;
+        }
+
+        const [storeRows] = await Promise.all([
           listStoresFresh(),
-          listProductsRawFresh({ productType: "kendi" }),
-          listMasterDataFresh("categories"),
-          listMasterDataFresh("collections"),
-          listSuppliersFresh({ slim: true }),
-          isEditMode ? listStoreShipmentsFresh() : Promise.resolve([]),
+          loadLookupData(),
         ]);
         if (cancelled) {
           return;
         }
         setStores(storeRows);
-        setProducts(productRows);
-        setCategories(categoryRows);
-        setCollections(collectionRows);
-        setSuppliers(supplierRows);
 
-        if (!isEditMode) {
-          form.setFieldsValue({
-            shipmentNo: "",
-            storeId: undefined,
-            date: new Date().toISOString().slice(0, 10),
-            shippingMethod: "Kargo",
-            trackingNo: "",
-            note: "",
-            status: "Taslak",
-          });
-          return;
-        }
-
-        const existing = shipmentRows.find((item) => item.id === shipmentId);
-        if (!existing) {
-          message.error("Gonderi kaydi bulunamadi.");
-          navigate("/stores/shipments");
-          return;
-        }
-        form.setFieldsValue(existing);
-        setShipmentLines(existing.lines || []);
+        form.setFieldsValue({
+          shipmentNo: "",
+          storeId: undefined,
+          date: new Date().toISOString().slice(0, 10),
+          shippingMethod: "Kargo",
+          trackingNo: "",
+          note: "",
+          status: "Taslak",
+        });
       } catch (error) {
         if (!cancelled) {
           message.error(error?.message || "Gonderi verileri yuklenemedi.");
