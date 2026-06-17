@@ -5,7 +5,7 @@ import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, FilePdfOutlined, Min
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
 import { compressImageFile } from "../imageCompress";
-import { getNextProductCodeFresh, listProductsCatalogFresh, updateProductPrice } from "../productsData";
+import { getNextProductCodeFresh, getProductByIdFresh, listProductsRawFresh, updateProductPrice } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
@@ -68,7 +68,7 @@ export function StoreShipmentMobileEditorPage() {
         setPageLoading(true);
         const [storeRows, productRows, supplierRows, nextCode, existing] = await Promise.all([
           listStoresFresh(),
-          listProductsCatalogFresh({ productType: "kendi" }),
+          listProductsRawFresh({ productType: "kendi" }),
           listSuppliersFresh({ slim: true }),
           getNextProductCodeFresh(),
           isEditMode ? getStoreShipmentFresh(shipmentId) : Promise.resolve(null),
@@ -147,7 +147,7 @@ export function StoreShipmentMobileEditorPage() {
 
   const previewSbseCode = nextSeq !== null ? formatSbse(nextSeq + manualCount) : "";
 
-  const handleProductSelect = (productId) => {
+  const handleProductSelect = async (productId) => {
     const p = products.find((item) => item.id === productId);
     if (!p) return;
     setDraft({
@@ -162,6 +162,16 @@ export function StoreShipmentMobileEditorPage() {
       saleCurrency: p.saleCurrency || "TRY",
       quantity: 1,
     });
+    // Slim listede gorsel yok; yalnizca secilen urunun gorseli tek tek cekilir
+    // (tum katalogu base64 ile indirmek yerine — 138MB sorununun cozumu)
+    if (!p.image) {
+      try {
+        const full = await getProductByIdFresh(productId);
+        if (full?.image) {
+          setDraft((prev) => (prev.productId === productId ? { ...prev, image: full.image } : prev));
+        }
+      } catch { /* yoksay */ }
+    }
   };
 
   const handleManualNameChange = (value) => {
