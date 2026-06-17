@@ -5,7 +5,7 @@ import { CheckOutlined, DeleteOutlined, EditOutlined, FilePdfOutlined, FilterOut
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
-import { listProductsRawFresh } from "../productsData";
+import { listProductsRawFresh, updateProductPrice } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh, listStoreShipmentsFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
@@ -36,7 +36,9 @@ function buildDraftFromProduct(product) {
     image: product.image || "",
     name: product.name || "",
     code: product.code || "",
-    salePrice: Number(product.salePrice || 0),
+    // Gonderi satiri MAGAZA fiyatindan beslenir; merkez fiyati referans
+    salePrice: Number(product.storePrice ?? product.salePrice ?? 0),
+    merkezPrice: Number(product.salePrice || 0),
     saleCurrency: product.saleCurrency || "TRY",
     quantity: 1,
     description: "",
@@ -803,12 +805,26 @@ export function StoreShipmentEditorPage() {
     }
   };
 
+  // Magaza fiyati gonderi sirasinda revize edildiyse urun master fiyatina yansit + gecmise yaz
+  const syncStorePrices = async (referenceId) => {
+    for (const line of shipmentLines) {
+      if (!line.productId || line.isManualProduct) continue;
+      const product = products.find((p) => p.id === line.productId);
+      if (!product) continue;
+      const currentStore = Number(product.storePrice ?? product.salePrice ?? 0);
+      if (Number(line.salePrice || 0) !== currentStore) {
+        await updateProductPrice(line.productId, { storePrice: Number(line.salePrice || 0), source: "gonderi", referenceId: referenceId || null });
+      }
+    }
+  };
+
   const handleSend = async () => {
     try {
       setLoading(true);
       if (!isEditMode) {
         const values = await validateBeforeSave();
         const created = await saveStoreShipmentPayload(null, { ...values, status: "Hazirlandi" });
+        await syncStorePrices(created.id);
         const sent = await sendStoreShipmentPayload(created.id);
         message.success("Gonderi magazaya aktarildi.");
         navigate(`/stores/shipments/${sent.id}`);
@@ -817,6 +833,7 @@ export function StoreShipmentEditorPage() {
 
       const values = await validateBeforeSave();
       await saveStoreShipmentPayload(shipmentId, { ...values, status: "Hazirlandi" });
+      await syncStorePrices(shipmentId);
       const sent = await sendStoreShipmentPayload(shipmentId);
       message.success("Gonderi magazaya aktarildi.");
       navigate(`/stores/shipments/${sent.id}`);
@@ -891,8 +908,9 @@ export function StoreShipmentEditorPage() {
                   <Input value={lineDraft.code} disabled={Boolean(lineDraft.productId)} onChange={(event) => setLineDraft((current) => ({ ...current, code: event.target.value }))} />
                 </Col>
                 <Col xs={12} xl={3}>
-                  <Text strong>Satis Fiyati</Text>
+                  <Text strong>Magaza Fiyati</Text>
                   <InputNumber style={{ width: "100%" }} min={0} value={lineDraft.salePrice} onChange={(value) => setLineDraft((current) => ({ ...current, salePrice: value || 0 }))} addonAfter="TRY" />
+                  {lineDraft.productId ? <Text type="secondary" style={{ fontSize: 11 }}>Merkez: {Number(lineDraft.merkezPrice || 0).toLocaleString("tr-TR")} TRY</Text> : null}
                 </Col>
                 <Col xs={12} xl={2}>
                   <Text strong>Adet</Text>
@@ -1056,8 +1074,9 @@ export function StoreShipmentEditorPage() {
             </div>
             <Row gutter={12}>
               <Col span={12}>
-                <Text strong>Satis Fiyati</Text>
+                <Text strong>Magaza Fiyati</Text>
                 <InputNumber style={{ width: "100%" }} min={0} value={editLine.salePrice} onChange={(value) => setEditLine((current) => ({ ...current, salePrice: value || 0 }))} addonAfter="TRY" />
+                {editLine.productId ? <Text type="secondary" style={{ fontSize: 11 }}>Merkez: {Number(editLine.merkezPrice || 0).toLocaleString("tr-TR")} TRY</Text> : null}
               </Col>
               <Col span={12}>
                 <Text strong>Adet</Text>

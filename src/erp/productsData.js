@@ -238,6 +238,29 @@ export function deleteProduct(productId) {
   }
 }
 
+// Iki fiyatli yapi — fiyat revizyonu + gecmis + toplu fiyat
+// payload: { merkezPrice?, storePrice?, source?, referenceId? }
+export async function updateProductPrice(productId, payload) {
+  const data = await requestJson("PATCH", `/api/products/${encodeURIComponent(productId)}/price`, payload);
+  return data?.item || null;
+}
+
+export async function listProductPriceHistoryFresh(params = {}) {
+  const query = new URLSearchParams();
+  if (params.productId) query.set("productId", params.productId);
+  if (params.type) query.set("type", params.type);
+  if (params.dateFrom) query.set("dateFrom", params.dateFrom);
+  if (params.dateTo) query.set("dateTo", params.dateTo);
+  const qs = query.toString();
+  return requestCollection(`/api/products/price-history${qs ? `?${qs}` : ""}`, []);
+}
+
+// payload: { productIds:[], mode:'percent'|'fixed', target:'merkez'|'magaza'|'ikisi', value }
+export async function bulkUpdateProductPrices(payload) {
+  const data = await requestJson("POST", "/api/products/prices/bulk", payload);
+  return data || { ok: false };
+}
+
 export function importProducts(rows) {
   const currentStore = loadStore();
   const storeByCode = new Map(currentStore.map((item) => [item.code, item]));

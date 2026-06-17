@@ -5,7 +5,7 @@ import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, FilePdfOutlined, Min
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
 import { compressImageFile } from "../imageCompress";
-import { getNextProductCodeFresh, listProductsCatalogFresh } from "../productsData";
+import { getNextProductCodeFresh, listProductsCatalogFresh, updateProductPrice } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
@@ -19,6 +19,7 @@ const EMPTY_DRAFT = {
   name: "",
   code: "",
   salePrice: 0,
+  merkezPrice: 0,
   saleCurrency: "TRY",
   quantity: 1,
 };
@@ -95,7 +96,12 @@ export function StoreShipmentMobileEditorPage() {
           });
           const loadedLines = (existing.lines || []).map((line, index) => {
             lineSeqRef.current = index + 1;
-            return { ...line, id: line.id || `line-${index + 1}` };
+            const prod = productRows.find((p) => p.id === line.productId);
+            return {
+              ...line,
+              id: line.id || `line-${index + 1}`,
+              merkezPrice: prod ? Number(prod.salePrice || 0) : (line.merkezPrice ?? line.salePrice),
+            };
           });
           setLines(loadedLines);
         } else {
@@ -150,7 +156,9 @@ export function StoreShipmentMobileEditorPage() {
       image: p.image || "",
       name: p.name || "",
       code: p.code || "",
-      salePrice: Number(p.salePrice || 0),
+      // Gonderi satiri MAGAZA fiyatindan beslenir; merkez fiyati referans gosterilir
+      salePrice: Number(p.storePrice ?? p.salePrice ?? 0),
+      merkezPrice: Number(p.salePrice || 0),
       saleCurrency: p.saleCurrency || "TRY",
       quantity: 1,
     });
@@ -185,6 +193,10 @@ export function StoreShipmentMobileEditorPage() {
     ]);
     setDraft(EMPTY_DRAFT);
     setAddOpen(false);
+  };
+
+  const updateLinePrice = (index, value) => {
+    setLines((prev) => prev.map((item, i) => (i === index ? { ...item, salePrice: Math.max(0, Number(value || 0)) } : item)));
   };
 
   const updateLineQty = (index, delta) => {
@@ -288,6 +300,18 @@ export function StoreShipmentMobileEditorPage() {
       });
 
       const saved = await saveShipment("Hazirlandi", preparedLines);
+
+      // Mevcut urunlerde magaza fiyati degistiyse urun master fiyatina yansit + gecmise yaz
+      for (const line of preparedLines) {
+        if (line.isManualProduct) continue;
+        const product = products.find((p) => p.id === line.productId);
+        if (!product) continue;
+        const currentStore = Number(product.storePrice ?? product.salePrice ?? 0);
+        if (Number(line.salePrice || 0) !== currentStore) {
+          await updateProductPrice(line.productId, { storePrice: Number(line.salePrice || 0), source: "gonderi", referenceId: saved?.id || null });
+        }
+      }
+
       await requestJson("POST", `/api/store-shipments/${encodeURIComponent(saved.id)}/send`, {});
       message.success("Gonderi magazaya aktarildi.");
       navigate("/stores/shipments");
@@ -432,6 +456,25 @@ export function StoreShipmentMobileEditorPage() {
                     <Text type="secondary" style={{ fontSize: 12 }}>{line.code || "—"}</Text>
                     {line.isManualProduct ? <Tag color="gold" style={{ marginInlineEnd: 0, lineHeight: "16px" }}>Yeni</Tag> : null}
                   </Space>
+                  <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    {isLocked ? (
+                      <Text style={{ fontSize: 13 }}>Mağaza: {formatMoney(line.salePrice)}</Text>
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>Mağaza</Text>
+                        <InputNumber
+                          size="small"
+                          min={0}
+                          value={line.salePrice}
+                          onChange={(v) => updateLinePrice(index, v)}
+                          style={{ width: 110 }}
+                        />
+                      </div>
+                    )}
+                    {!line.isManualProduct ? (
+                      <Text type="secondary" style={{ fontSize: 12 }}>Merkez: {formatMoney(line.merkezPrice ?? line.salePrice)}</Text>
+                    ) : null}
+                  </div>
                   <div
                     style={{
                       display: "flex",
@@ -655,16 +698,20 @@ export function StoreShipmentMobileEditorPage() {
           ) : null}
 
           <div>
-            <Text strong style={{ display: "block", marginBottom: 6 }}>Satis Fiyati</Text>
+            <Text strong style={{ display: "block", marginBottom: 6 }}>Mağaza Fiyatı</Text>
             <InputNumber
               size="large"
               style={{ width: "100%" }}
               min={0}
               value={draft.salePrice}
-              disabled={Boolean(draft.productId)}
               addonAfter="TRY"
               onChange={(val) => setDraft((prev) => ({ ...prev, salePrice: val || 0 }))}
             />
+            {draft.productId ? (
+              <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 4 }}>
+                Merkez (POS) fiyatı: {formatMoney(draft.merkezPrice ?? 0)}
+              </Text>
+            ) : null}
           </div>
 
           <div>

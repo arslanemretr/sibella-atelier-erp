@@ -751,7 +751,8 @@ export function ProductListPage() {
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label="Urun Kodu">{selectedProduct.code}</Descriptions.Item>
               <Descriptions.Item label="Urun Adi">{selectedProduct.name}</Descriptions.Item>
-              <Descriptions.Item label="Satis Fiyati">{selectedProduct.priceDisplay}</Descriptions.Item>
+              <Descriptions.Item label="Merkez (POS) Fiyati">{selectedProduct.priceDisplay}</Descriptions.Item>
+              <Descriptions.Item label="Magaza Fiyati">{new Intl.NumberFormat("tr-TR", { style: "currency", currency: selectedProduct.saleCurrency || "TRY" }).format(Number(selectedProduct.storePrice ?? selectedProduct.salePrice ?? 0))}</Descriptions.Item>
               <Descriptions.Item label="Maliyet">{selectedProduct.costDisplay}</Descriptions.Item>
               <Descriptions.Item label="Kategori">{selectedProduct.categoryLabel}</Descriptions.Item>
               <Descriptions.Item label="Koleksiyon">{selectedProduct.collectionLabel}</Descriptions.Item>
@@ -984,6 +985,7 @@ export function ProductEditorPage() {
       image: "/products/baroque-necklace.svg",
       productType: "kendi",
       salePrice: 0,
+      storePrice: 0,
       saleCurrency: "TRY",
       cost: 0,
       costCurrency: "TRY",
@@ -1299,8 +1301,13 @@ export function ProductEditorPage() {
 
               <Card title="Fiyat Bilgileri" loading={pageLoading}>
                 <Row gutter={[16, 16]}>
-                  <Col xs={24}>
-                    <Form.Item name="salePrice" label="Satis Fiyati">
+                  <Col xs={24} md={12}>
+                    <Form.Item name="salePrice" label="Merkez (POS) Fiyati">
+                      <InputNumber style={{ width: "100%" }} min={0} placeholder="0,00" addonAfter={priceInputAddon} />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} md={12}>
+                    <Form.Item name="storePrice" label="Magaza Fiyati">
                       <InputNumber style={{ width: "100%" }} min={0} placeholder="0,00" addonAfter={priceInputAddon} />
                     </Form.Item>
                   </Col>
@@ -1408,7 +1415,12 @@ export function ProductEditorPage() {
                     children: (
                       <Row gutter={[16, 16]}>
                         <Col xs={24} md={12}>
-                          <Form.Item name="salePrice" label="Satis Fiyati">
+                          <Form.Item name="salePrice" label="Merkez (POS) Fiyati">
+                            <InputNumber style={{ width: "100%" }} min={0} placeholder="0,00" addonAfter={priceInputAddon} />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item name="storePrice" label="Magaza Fiyati">
                             <InputNumber style={{ width: "100%" }} min={0} placeholder="0,00" addonAfter={priceInputAddon} />
                           </Form.Item>
                         </Col>
