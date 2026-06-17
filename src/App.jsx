@@ -161,7 +161,7 @@ function ProtectedApp() {
         <Route path="/dashboard" element={withLazyPage(<DashboardPage />)} />
 
         <Route path="/products/list" element={withLazyPage(<ProductListPage />)} />
-        <Route path="/products/price-history" element={withRolePage(<PriceHistoryPage />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/products/price-history" element={withRolePage(<PriceHistoryPage />, authUser, "Yonetici")} />
         <Route path="/products/new" element={withLazyPage(<ProductEditorPage />)} />
         <Route path="/products/:productId" element={withLazyPage(<ProductEditorPage />)} />
 

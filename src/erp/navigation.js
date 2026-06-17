@@ -6,7 +6,7 @@ export const mainMenuItems = [
     children: [
       { key: "/products/list", label: "Urun Listesi", permissionKey: "products_list" },
       { key: "/products/new", label: "Urun Ekle", permissionKey: "products_list", permissionWrite: true },
-      { key: "/products/price-history", label: "Fiyat Gecmisi / Toplu Fiyat", permissionKey: "products_list" },
+      { key: "/products/price-history", label: "Fiyat Gecmisi / Toplu Fiyat", permissionKey: "products_price_history" },
     ],
   },
   {

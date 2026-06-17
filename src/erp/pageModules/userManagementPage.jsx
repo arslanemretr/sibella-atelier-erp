@@ -28,6 +28,7 @@ const { Title, Text } = Typography;
 const SCREEN_PERMISSIONS = [
   { key: "dashboard", label: "Dashboard" },
   { key: "products_list", label: "Ürün Listesi" },
+  { key: "products_price_history", label: "Ürünler — Fiyat Geçmişi / Toplu Fiyat" },
   { key: "pos_sessions", label: "POS — Oturumlar" },
   { key: "pos_store", label: "POS — Satış Ekranı" },
   { key: "pos_orders", label: "POS — Siparişler" },
