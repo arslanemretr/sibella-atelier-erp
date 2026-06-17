@@ -872,6 +872,31 @@ export async function handleProductsGet(req, res) {
   return res.json({ ok: true, item });
 }
 
+// Urun gorselini ayri, onbelleklenebilir uctan dondurur (base64'u JSON listelerinden cikarmak icin)
+export async function handleProductImage(req, res) {
+  const row = await sqlOne("SELECT image, updated_at FROM products WHERE id = $1", [req.params.id]);
+  const image = row?.image || "";
+  // data URL: base64'u binary olarak servis et (ETag + onbellek)
+  const match = /^data:([^;]+);base64,(.*)$/s.exec(image);
+  if (match) {
+    const contentType = match[1] || "image/jpeg";
+    const buffer = Buffer.from(match[2], "base64");
+    const etag = `"${req.params.id}-${row?.updated_at ? new Date(row.updated_at).getTime() : 0}"`;
+    if (req.headers["if-none-match"] === etag) {
+      return res.status(304).end();
+    }
+    res.set("Content-Type", contentType);
+    res.set("Cache-Control", "private, max-age=86400");
+    res.set("ETag", etag);
+    return res.end(buffer);
+  }
+  // Dosya yolu ( or. /products/x.svg) → statik varliga yonlendir
+  if (image && image.startsWith("/")) {
+    return res.redirect(image);
+  }
+  return res.status(404).end();
+}
+
 export async function handleNextProductCode(_req, res) {
   try {
     const result = await peekNextSbseCode();

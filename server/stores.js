@@ -49,6 +49,8 @@ function mapShipmentLineRow(row) {
     productId: row.product_id || null,
     isManualProduct: Boolean(row.is_manual_product),
     image: row.image || "",
+    // Urune bagli satirlar gorseli onbelleklenebilir uctan alir (base64 JSON'da gonderilmez)
+    imageUrl: row.product_id ? `/api/products/${row.product_id}/image` : "",
     name: row.name || "",
     code: row.code || "",
     salePrice: Number(row.sale_price || 0),
@@ -392,7 +394,7 @@ async function listStoreShipmentRows() {
 }
 
 // Tek kayıt için: satırlarla birlikte çek (detay/editör için)
-async function getStoreShipmentRow(shipmentId) {
+async function getStoreShipmentRow(shipmentId, { withImages = true } = {}) {
   const row = await sqlOne(
     "SELECT *, to_char(date, 'YYYY-MM-DD') AS date_str FROM store_shipments WHERE id = $1",
     [shipmentId],
@@ -402,7 +404,11 @@ async function getStoreShipmentRow(shipmentId) {
     "SELECT * FROM store_shipment_lines WHERE shipment_id = $1 ORDER BY sort_order ASC, id ASC",
     [shipmentId],
   );
-  const lines = lineRows.map(mapShipmentLineRow);
+  // withImages=false: urune bagli satirlarda agir base64 gorsel cikarilir (editor hizli acilir);
+  // gorsel imageUrl uzerinden onbellekten yuklenir. PDF/tam veri icin withImages=true kullanilir.
+  const lines = lineRows.map(mapShipmentLineRow).map((line) =>
+    (!withImages && line.imageUrl) ? { ...line, image: "" } : line,
+  );
   const totalQuantity = lines.reduce((sum, l) => sum + Number(l.quantity || 0), 0);
   const totalAmount   = lines.reduce((sum, l) => sum + (Number(l.quantity || 0) * Number(l.salePrice || 0)), 0);
   return {
@@ -710,7 +716,8 @@ export async function handleStoreShipmentsList(_req, res) {
 }
 
 export async function handleStoreShipmentsGet(req, res) {
-  const item = await getStoreShipmentRow(req.params.id);
+  const withImages = req.query.images !== "false";
+  const item = await getStoreShipmentRow(req.params.id, { withImages });
   if (!item) {
     return httpError(res, 404, "Gonderi kaydi bulunamadi.");
   }

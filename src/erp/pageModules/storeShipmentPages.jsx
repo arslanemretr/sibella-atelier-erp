@@ -508,7 +508,7 @@ export function StoreShipmentEditorPage() {
         if (isEditMode) {
           const [storeRows, existing] = await Promise.all([
             listStoresFresh(),
-            getStoreShipmentFresh(shipmentId),
+            getStoreShipmentFresh(shipmentId, { withImages: false }),
           ]);
           if (cancelled) {
             return;
@@ -783,6 +783,11 @@ export function StoreShipmentEditorPage() {
   const handleDownloadPdf = async () => {
     try {
       setLoading(true);
+      // Kayitli gonderide PDF tam gorselli veriyi id ile ceker (editor gorselsiz yuklenir)
+      if (isEditMode && shipmentId) {
+        await createStoreShipmentPdf(shipmentId);
+        return;
+      }
       const values = form.getFieldsValue();
       const record = {
         ...values,
@@ -973,10 +978,11 @@ export function StoreShipmentEditorPage() {
                 dataIndex: "image",
                 key: "image",
                 width: 52,
-                render: (value) => (
+                render: (value, record) => (
                   <img
-                    src={value || "/products/baroque-necklace.svg"}
+                    src={value || record.imageUrl || "/products/baroque-necklace.svg"}
                     alt=""
+                    loading="lazy"
                     style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 4 }}
                   />
                 ),
@@ -1052,9 +1058,9 @@ export function StoreShipmentEditorPage() {
                     return false;
                   }}
                 >
-                  {editLine.image ? (
+                  {(editLine.image || editLine.imageUrl) ? (
                     <img
-                      src={editLine.image}
+                      src={editLine.image || editLine.imageUrl}
                       alt="gorsel"
                       style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 6, cursor: editLine.productId ? "default" : "pointer", border: "1px solid #d9d9d9" }}
                     />

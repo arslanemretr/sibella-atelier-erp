@@ -30,6 +30,7 @@ import {
   handleMasterDataUpdate,
   handleProductsCreate,
   handleProductsBatchCreate,
+  handleProductImage,
   handleProductPriceUpdate,
   handleProductPriceHistory,
   handleProductsBulkPrice,
@@ -253,6 +254,7 @@ app.get("/api/products/next-code", requireRole("Yonetici", "Magaza", "Muhasebe",
 app.get("/api/products/price-history", requireRole("Yonetici"), handleProductPriceHistory);
 app.get("/api/products/:id", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleProductsGet);
 app.get("/api/products/:id/stock-locations", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleProductStockLocationBalances);
+app.get("/api/products/:id/image", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleProductImage);
 app.post("/api/products", requireRole("Yonetici", "Tedarikci"), handleProductsCreate);
 app.post("/api/products/batch", requireRole("Yonetici", "Tedarikci"), handleProductsBatchCreate);
 app.post("/api/products/prices/bulk", requireRole("Yonetici"), handleProductsBulkPrice);

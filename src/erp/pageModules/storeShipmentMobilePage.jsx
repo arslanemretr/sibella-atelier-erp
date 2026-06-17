@@ -71,7 +71,7 @@ export function StoreShipmentMobileEditorPage() {
           listProductsRawFresh({ productType: "kendi" }),
           listSuppliersFresh({ slim: true }),
           getNextProductCodeFresh(),
-          isEditMode ? getStoreShipmentFresh(shipmentId) : Promise.resolve(null),
+          isEditMode ? getStoreShipmentFresh(shipmentId, { withImages: false }) : Promise.resolve(null),
         ]);
         if (cancelled) return;
         setStores(storeRows);
@@ -335,6 +335,11 @@ export function StoreShipmentMobileEditorPage() {
   const handleDownloadPdf = async () => {
     try {
       setPdfLoading(true);
+      // Kayitli gonderide PDF, tam gorselli veriyi id ile ceker (editor gorselsiz yuklendigi icin)
+      if (isEditMode && shipmentId) {
+        await createStoreShipmentPdf(shipmentId);
+        return;
+      }
       const values = form.getFieldsValue();
       const pdfTotal = lines.reduce((sum, l) => sum + Number(l.quantity || 0) * Number(l.salePrice || 0), 0);
       await createStoreShipmentPdf({
@@ -456,8 +461,9 @@ export function StoreShipmentMobileEditorPage() {
                 }}
               >
                 <img
-                  src={line.image || "/products/baroque-necklace.svg"}
+                  src={line.image || line.imageUrl || "/products/baroque-necklace.svg"}
                   alt=""
+                  loading="lazy"
                   style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, flexShrink: 0 }}
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>

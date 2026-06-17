@@ -101,8 +101,10 @@ export function getStoreShipmentById(shipmentId) {
   return shipment ? enrichShipment(shipment) : null;
 }
 
-export async function getStoreShipmentFresh(shipmentId) {
-  const payload = await requestJson("GET", `/api/store-shipments/${encodeURIComponent(shipmentId)}`);
+export async function getStoreShipmentFresh(shipmentId, { withImages = true } = {}) {
+  // withImages=false: editor hizli acilir (agir base64 satir gorselleri yerine imageUrl gelir)
+  const query = withImages ? "" : "?images=false";
+  const payload = await requestJson("GET", `/api/store-shipments/${encodeURIComponent(shipmentId)}${query}`);
   if (!payload?.item) return null;
   return enrichShipment(payload.item);
 }
@@ -124,7 +126,7 @@ export function sendStoreShipment(shipmentId) {
 export async function createStoreShipmentPdf(shipmentOrId) {
   const record =
     typeof shipmentOrId === "string"
-      ? enrichShipment(loadStore().find((s) => s.id === shipmentOrId) || {})
+      ? await getStoreShipmentFresh(shipmentOrId, { withImages: true })
       : enrichShipment(shipmentOrId);
 
   if (!record || !record.id) {
