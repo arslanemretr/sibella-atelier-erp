@@ -12,6 +12,7 @@ const DashboardPage = React.lazy(() => import("./erp/pageModules/dashboardPages"
 const SupplierDashboardPage = React.lazy(() => import("./erp/pageModules/dashboardPages").then((module) => ({ default: module.SupplierDashboardPage })));
 const ProductListPage = React.lazy(() => import("./erp/pageModules/productPages").then((module) => ({ default: module.ProductListPage })));
 const ProductEditorPage = React.lazy(() => import("./erp/pageModules/productPages").then((module) => ({ default: module.ProductEditorPage })));
+const PriceHistoryPage = React.lazy(() => import("./erp/pageModules/priceHistoryPages").then((module) => ({ default: module.PriceHistoryPage })));
 const SettingsDefinitionPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.SettingsDefinitionPage })));
 const BarcodeStandardsPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.BarcodeStandardsPage })));
 const ParametersPage = React.lazy(() => import("./erp/pageModules/settingsPages").then((module) => ({ default: module.ParametersPage })));
@@ -160,6 +161,7 @@ function ProtectedApp() {
         <Route path="/dashboard" element={withLazyPage(<DashboardPage />)} />
 
         <Route path="/products/list" element={withLazyPage(<ProductListPage />)} />
+        <Route path="/products/price-history" element={withRolePage(<PriceHistoryPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/products/new" element={withLazyPage(<ProductEditorPage />)} />
         <Route path="/products/:productId" element={withLazyPage(<ProductEditorPage />)} />
 
