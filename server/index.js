@@ -24,11 +24,15 @@ import {
 import {
   ensureBarcodeStandardsReady,
   ensureProductIndexes,
+  ensureProductPricingSchema,
   handleMasterDataCreate,
   handleMasterDataList,
   handleMasterDataUpdate,
   handleProductsCreate,
   handleProductsBatchCreate,
+  handleProductPriceUpdate,
+  handleProductPriceHistory,
+  handleProductsBulkPrice,
   handleProductsDelete,
   handleProductsGet,
   handleProductsList,
@@ -176,6 +180,7 @@ void ensureDatabaseReady()
   .then(() => ensurePosReturnsReady())
   .then(() => ensureBarcodeStandardsReady())
   .then(() => ensureProductIndexes())
+  .then(() => ensureProductPricingSchema())
   .then(() => ensureDeliveryIndexes())
   .then(() => ensurePosSalesIndexes())
   .then(() => ensureRolesTable())
@@ -245,10 +250,13 @@ app.put("/api/suppliers/:id", requireRole("Yonetici"), handleSuppliersUpdate);
 app.delete("/api/suppliers/:id", requireRole("Yonetici"), handleSuppliersDelete);
 app.get("/api/products", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleProductsList);
 app.get("/api/products/next-code", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleNextProductCode);
+app.get("/api/products/price-history", requireRole("Yonetici", "Muhasebe"), handleProductPriceHistory);
 app.get("/api/products/:id", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleProductsGet);
 app.get("/api/products/:id/stock-locations", requireRole("Yonetici", "Magaza", "Muhasebe", "Tedarikci"), handleProductStockLocationBalances);
 app.post("/api/products", requireRole("Yonetici", "Tedarikci"), handleProductsCreate);
 app.post("/api/products/batch", requireRole("Yonetici", "Tedarikci"), handleProductsBatchCreate);
+app.post("/api/products/prices/bulk", requireRole("Yonetici", "Muhasebe"), handleProductsBulkPrice);
+app.patch("/api/products/:id/price", requireRole("Yonetici", "Muhasebe", "Tedarikci"), handleProductPriceUpdate);
 app.put("/api/products/:id", requireRole("Yonetici", "Tedarikci"), handleProductsUpdate);
 app.delete("/api/products/:id", requireRole("Yonetici"), handleProductsDelete);
 app.get("/api/purchases", requireRole("Yonetici", "Muhasebe"), handlePurchasesList);

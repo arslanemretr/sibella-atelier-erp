@@ -31,6 +31,33 @@ export async function ensureProductIndexes() {
   await sqlExec("CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at DESC)");
 }
 
+// Iki fiyatli yapi: Merkez (mevcut sale_price) + Magaza (store_price) + fiyat gecmisi
+export async function ensureProductPricingSchema() {
+  // Magaza fiyati kolonu; mevcut urunlerde merkez fiyatindan baslatilir
+  await sqlExec("ALTER TABLE products ADD COLUMN IF NOT EXISTS store_price NUMERIC(14,2)");
+  await sqlExec("UPDATE products SET store_price = sale_price WHERE store_price IS NULL");
+
+  // Fiyat degisiklik gecmisi — her satir degisim sonrasi iki fiyatin da degerini tasir
+  await sqlExec(`
+    CREATE TABLE IF NOT EXISTS product_price_history (
+      id            TEXT PRIMARY KEY,
+      product_id    TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      merkez_price  NUMERIC(14,2),
+      store_price   NUMERIC(14,2),
+      changed_field TEXT,
+      old_value     NUMERIC(14,2),
+      new_value     NUMERIC(14,2),
+      currency      TEXT DEFAULT 'TRY',
+      source        TEXT,
+      reference_id  TEXT,
+      changed_by    TEXT,
+      changed_at    TIMESTAMPTZ
+    )
+  `);
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_price_history_product_id ON product_price_history(product_id)");
+  await sqlExec("CREATE INDEX IF NOT EXISTS idx_price_history_changed_at ON product_price_history(changed_at DESC)");
+}
+
 export async function ensureBarcodeStandardsReady() {
   await sqlExec("ALTER TABLE barcode_standards ADD COLUMN IF NOT EXISTS standard_prefix TEXT DEFAULT '111'");
   await sqlExec("ALTER TABLE barcode_standards ADD COLUMN IF NOT EXISTS supplier_id TEXT REFERENCES suppliers(id)");
@@ -395,13 +422,13 @@ async function getSupplierRow(supplierId) {
 async function listProductsRows({ slim = false, catalog = false, productType = null } = {}) {
   // catalog modu: slim + image + pos alanları (features/notes hariç)
   const selectCols = catalog
-    ? `p.id, p.code, p.name, p.sale_price, p.sale_currency, p.image,
+    ? `p.id, p.code, p.name, p.sale_price, p.store_price, p.sale_currency, p.image,
        p.category_id, p.collection_id, p.pos_category_id, p.supplier_id,
        p.barcode, p.supplier_code, p.stock, p.product_type, p.status, p.workflow_status,
        p.use_in_pos, p.is_for_sale, p.track_inventory, p.sales_tax,
        p.created_at, p.updated_at`
     : slim
-      ? `p.id, p.code, p.name, p.sale_price, p.sale_currency, p.cost, p.cost_currency,
+      ? `p.id, p.code, p.name, p.sale_price, p.store_price, p.sale_currency, p.cost, p.cost_currency,
          p.category_id, p.collection_id, p.pos_category_id, p.supplier_id,
          p.barcode, p.supplier_code, p.stock, p.product_type, p.status, p.workflow_status,
          p.created_at, p.updated_at`
@@ -449,6 +476,7 @@ async function listProductsRows({ slim = false, catalog = false, productType = n
     code: row.code || "",
     name: row.name || "",
     salePrice: Number(row.sale_price || 0),
+    storePrice: Number(row.store_price ?? row.sale_price ?? 0),
     saleCurrency: row.sale_currency || "TRY",
     cost: isReduced ? 0 : Number(row.cost || 0),
     costCurrency: isReduced ? "TRY" : (row.cost_currency || "TRY"),
@@ -521,6 +549,7 @@ async function getProductRow(productId) {
     code: row.code || "",
     name: row.name || "",
     salePrice: Number(row.sale_price || 0),
+    storePrice: Number(row.store_price ?? row.sale_price ?? 0),
     saleCurrency: row.sale_currency || "TRY",
     cost: Number(row.cost || 0),
     costCurrency: row.cost_currency || "TRY",
@@ -628,6 +657,13 @@ function normalizeProduct(values, existingRecord) {
     code: String(values.code || "").trim(),
     name: String(values.name || "").trim(),
     salePrice: Number(values.salePrice || 0),
+    // storePrice gonderilmediyse: guncellemede mevcut deger korunur (merkez'e esitlenmez),
+    // yeni kayitta merkez fiyatindan baslar
+    storePrice: values.storePrice !== undefined && values.storePrice !== null && values.storePrice !== ""
+      ? Number(values.storePrice)
+      : (existingRecord && existingRecord.storePrice !== undefined && existingRecord.storePrice !== null
+          ? Number(existingRecord.storePrice)
+          : Number(values.salePrice || 0)),
     saleCurrency: values.saleCurrency || "TRY",
     cost: Number(values.cost || 0),
     costCurrency: values.costCurrency || "TRY",
@@ -845,6 +881,31 @@ export async function handleNextProductCode(_req, res) {
   }
 }
 
+// Fiyat degisikligini gecmise yazar (merkez ve/veya magaza). Degisiklik yoksa yazmaz.
+async function recordPriceChange(productId, prices, meta = {}) {
+  const oldMerkez = Number(prices.oldMerkez || 0);
+  const oldStore = Number(prices.oldStore || 0);
+  const newMerkez = Number(prices.newMerkez || 0);
+  const newStore = Number(prices.newStore || 0);
+  const merkezChanged = oldMerkez !== newMerkez;
+  const storeChanged = oldStore !== newStore;
+  if (!merkezChanged && !storeChanged) return;
+
+  const changedField = merkezChanged && storeChanged ? "ikisi" : (merkezChanged ? "merkez" : "magaza");
+  const oldValue = changedField === "merkez" ? oldMerkez : (changedField === "magaza" ? oldStore : null);
+  const newValue = changedField === "merkez" ? newMerkez : (changedField === "magaza" ? newStore : null);
+
+  await sqlExec(
+    `INSERT INTO product_price_history
+       (id, product_id, merkez_price, store_price, changed_field, old_value, new_value, currency, source, reference_id, changed_by, changed_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::timestamptz)`,
+    [
+      createId("prchist"), productId, newMerkez, newStore, changedField, oldValue, newValue,
+      meta.currency || "TRY", meta.source || "urun-karti", meta.referenceId || null, meta.changedBy || null, nowIso(),
+    ],
+  );
+}
+
 // Tek ürünü oluşturur (hem tekil hem toplu uçta yeniden kullanılır)
 async function createProductRecord(body, authUser) {
   const item = normalizeProduct(body || {});
@@ -863,18 +924,27 @@ async function createProductRecord(body, authUser) {
       id, code, name, sale_price, sale_currency, cost, cost_currency, category_id, collection_id, pos_category_id,
       supplier_id, barcode, supplier_code, min_stock, supplier_lead_time, stock, product_type, sales_tax, image,
       is_for_sale, is_for_purchase, use_in_pos, track_inventory, status, workflow_status, created_by, notes,
-      barcode_standard_id, created_at, updated_at
+      barcode_standard_id, created_at, updated_at, store_price
     )
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29::timestamptz,$30::timestamptz)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29::timestamptz,$30::timestamptz,$31)
   `, [
     item.id, item.code, item.name, item.salePrice, item.saleCurrency, item.cost, item.costCurrency,
     item.categoryId, item.collectionId, item.posCategoryId, item.supplierId, item.barcode, item.supplierCode,
     item.minStock, item.supplierLeadTime, item.stock, item.productType, item.salesTax, item.image,
     item.isForSale, item.isForPurchase, item.useInPos, item.trackInventory, item.status, item.workflowStatus,
-    item.createdBy, item.notes, item.barcodeStandardId, item.createdAt, item.updatedAt,
+    item.createdBy, item.notes, item.barcodeStandardId, item.createdAt, item.updatedAt, item.storePrice,
   ]);
   await replaceProductFeatures(item.id, item.features);
   await syncMainBalanceWithProductStock(item.id);
+  // Baslangic fiyatlarini gecmise yaz
+  await recordPriceChange(item.id, {
+    oldMerkez: 0, oldStore: 0, newMerkez: item.salePrice, newStore: item.storePrice,
+  }, {
+    currency: item.saleCurrency,
+    source: body?.priceSource || "urun-karti",
+    referenceId: body?.priceReferenceId || null,
+    changedBy: item.createdBy || authUser?.id || null,
+  });
   return getProductRow(item.id);
 }
 
@@ -923,20 +993,151 @@ export async function handleProductsUpdate(req, res) {
           pos_category_id=$10, supplier_id=$11, barcode=$12, supplier_code=$13, min_stock=$14, supplier_lead_time=$15,
           stock=$16, product_type=$17, sales_tax=$18, image=$19, is_for_sale=$20, is_for_purchase=$21, use_in_pos=$22,
           track_inventory=$23, status=$24, workflow_status=$25, created_by=$26, notes=$27, barcode_standard_id=$28,
-          updated_at=$29::timestamptz
+          updated_at=$29::timestamptz, store_price=$30
       WHERE id=$1
     `, [
       item.id, item.code, item.name, item.salePrice, item.saleCurrency, item.cost, item.costCurrency,
       item.categoryId, item.collectionId, item.posCategoryId, item.supplierId, item.barcode, item.supplierCode,
       item.minStock, item.supplierLeadTime, item.stock, item.productType, item.salesTax, item.image,
       item.isForSale, item.isForPurchase, item.useInPos, item.trackInventory, item.status, item.workflowStatus,
-      item.createdBy, item.notes, item.barcodeStandardId, item.updatedAt,
+      item.createdBy, item.notes, item.barcodeStandardId, item.updatedAt, item.storePrice,
     ]);
     await replaceProductFeatures(item.id, item.features);
     await syncMainBalanceWithProductStock(item.id);
+    // Fiyat degisikligi gecmise yazilir (merkez ve/veya magaza)
+    await recordPriceChange(item.id, {
+      oldMerkez: existing.salePrice, oldStore: existing.storePrice,
+      newMerkez: item.salePrice, newStore: item.storePrice,
+    }, {
+      currency: item.saleCurrency,
+      source: req.body?.priceSource || "urun-karti",
+      referenceId: req.body?.priceReferenceId || null,
+      changedBy: req.authUser?.id || null,
+    });
     return res.json({ ok: true, item: await getProductRow(item.id) });
   } catch (error) {
     return httpError(res, 400, error?.message || "Urun guncellenemedi.");
+  }
+}
+
+// PATCH /api/products/:id/price — merkez ve/veya magaza fiyatini gunceller + gecmis
+export async function handleProductPriceUpdate(req, res) {
+  const existing = await getProductRow(req.params.id);
+  if (!existing) return httpError(res, 404, "Urun bulunamadi.");
+  if (req.authUser?.role === "Tedarikci") {
+    const authSupplierId = req.authUser.supplierId;
+    if (!authSupplierId || existing.supplierId !== authSupplierId) {
+      return httpError(res, 403, "Bu kaynaga erisim yetkiniz bulunmuyor.");
+    }
+  }
+  try {
+    const b = req.body || {};
+    const has = (v) => v !== undefined && v !== null && v !== "";
+    const newMerkez = has(b.merkezPrice) ? Number(b.merkezPrice) : existing.salePrice;
+    const newStore = has(b.storePrice) ? Number(b.storePrice) : existing.storePrice;
+    if (!Number.isFinite(newMerkez) || !Number.isFinite(newStore) || newMerkez < 0 || newStore < 0) {
+      return httpError(res, 400, "Gecersiz fiyat degeri.");
+    }
+    await sqlExec(
+      "UPDATE products SET sale_price=$2, store_price=$3, updated_at=$4::timestamptz WHERE id=$1",
+      [existing.id, newMerkez, newStore, nowIso()],
+    );
+    await recordPriceChange(existing.id, {
+      oldMerkez: existing.salePrice, oldStore: existing.storePrice, newMerkez, newStore,
+    }, {
+      currency: existing.saleCurrency,
+      source: b.source || "urun-karti",
+      referenceId: b.referenceId || null,
+      changedBy: req.authUser?.id || null,
+    });
+    return res.json({ ok: true, item: await getProductRow(existing.id) });
+  } catch (error) {
+    return httpError(res, 400, error?.message || "Fiyat guncellenemedi.");
+  }
+}
+
+// GET /api/products/price-history?productId=&type=&dateFrom=&dateTo=
+export async function handleProductPriceHistory(req, res) {
+  const { productId, type, dateFrom, dateTo, limit = "300" } = req.query;
+  const conds = [];
+  const params = [];
+  let i = 1;
+  if (productId) { conds.push(`h.product_id = $${i++}`); params.push(productId); }
+  if (type && type !== "all") { conds.push(`(h.changed_field = $${i++} OR h.changed_field = 'ikisi')`); params.push(type); }
+  if (dateFrom) { conds.push(`h.changed_at >= $${i++}::timestamptz`); params.push(dateFrom); }
+  if (dateTo) { conds.push(`h.changed_at <= $${i++}::timestamptz`); params.push(`${dateTo}T23:59:59Z`); }
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+  const lim = Math.min(Math.max(parseInt(limit, 10) || 300, 1), 2000);
+  const rows = await sqlMany(
+    `SELECT h.*, p.code AS product_code, p.name AS product_name, u.full_name AS changed_by_name
+     FROM product_price_history h
+     LEFT JOIN products p ON p.id = h.product_id
+     LEFT JOIN users u ON u.id = h.changed_by
+     ${where}
+     ORDER BY h.changed_at DESC
+     LIMIT ${lim}`,
+    params,
+  );
+  return res.json({
+    ok: true,
+    items: rows.map((r) => ({
+      id: r.id,
+      productId: r.product_id,
+      productCode: r.product_code || "",
+      productName: r.product_name || "",
+      merkezPrice: Number(r.merkez_price || 0),
+      storePrice: Number(r.store_price || 0),
+      changedField: r.changed_field || "",
+      oldValue: r.old_value !== null && r.old_value !== undefined ? Number(r.old_value) : null,
+      newValue: r.new_value !== null && r.new_value !== undefined ? Number(r.new_value) : null,
+      currency: r.currency || "TRY",
+      source: r.source || "",
+      referenceId: r.reference_id || null,
+      changedBy: r.changed_by || null,
+      changedByName: r.changed_by_name || "",
+      changedAt: r.changed_at || null,
+    })),
+  });
+}
+
+// POST /api/products/prices/bulk — secili urunlere toplu fiyat islemi (%zam/indirim veya sabit)
+export async function handleProductsBulkPrice(req, res) {
+  const { productIds, mode, target, value } = req.body || {};
+  const ids = Array.isArray(productIds) ? productIds.filter(Boolean) : [];
+  if (!ids.length) return httpError(res, 400, "Urun secilmedi.");
+  if (!["percent", "fixed"].includes(mode)) return httpError(res, 400, "Gecersiz islem turu.");
+  if (!["merkez", "magaza", "ikisi"].includes(target)) return httpError(res, 400, "Gecersiz fiyat hedefi.");
+  const val = Number(value);
+  if (!Number.isFinite(val)) return httpError(res, 400, "Gecersiz deger.");
+
+  const apply = (base) => {
+    const result = mode === "percent" ? base * (1 + val / 100) : val;
+    return Math.max(0, Math.round(result * 100) / 100);
+  };
+
+  try {
+    let updated = 0;
+    for (const id of ids) {
+      const existing = await getProductRow(id);
+      if (!existing) continue;
+      let newMerkez = existing.salePrice;
+      let newStore = existing.storePrice;
+      if (target === "merkez" || target === "ikisi") newMerkez = apply(existing.salePrice);
+      if (target === "magaza" || target === "ikisi") newStore = apply(existing.storePrice);
+      await sqlExec(
+        "UPDATE products SET sale_price=$2, store_price=$3, updated_at=$4::timestamptz WHERE id=$1",
+        [id, newMerkez, newStore, nowIso()],
+      );
+      await recordPriceChange(id, {
+        oldMerkez: existing.salePrice, oldStore: existing.storePrice, newMerkez, newStore,
+      }, {
+        currency: existing.saleCurrency, source: "toplu", changedBy: req.authUser?.id || null,
+      });
+      updated += 1;
+    }
+    return res.json({ ok: true, updated });
+  } catch (error) {
+    return httpError(res, 400, error?.message || "Toplu fiyat guncellenemedi.");
   }
 }
 

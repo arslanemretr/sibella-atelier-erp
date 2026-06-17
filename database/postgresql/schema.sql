@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS products (
   code TEXT,
   name TEXT,
   sale_price DOUBLE PRECISION,
+  store_price NUMERIC(14,2),
   sale_currency TEXT,
   cost DOUBLE PRECISION,
   cost_currency TEXT,
@@ -141,6 +142,22 @@ CREATE TABLE IF NOT EXISTS products (
 );
 
 ALTER TABLE products ADD COLUMN IF NOT EXISTS shopify_product_gid TEXT;
+
+-- Iki fiyatli yapi: fiyat degisiklik gecmisi (merkez + magaza)
+CREATE TABLE IF NOT EXISTS product_price_history (
+  id            TEXT PRIMARY KEY,
+  product_id    TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  merkez_price  NUMERIC(14,2),
+  store_price   NUMERIC(14,2),
+  changed_field TEXT,
+  old_value     NUMERIC(14,2),
+  new_value     NUMERIC(14,2),
+  currency      TEXT DEFAULT 'TRY',
+  source        TEXT,
+  reference_id  TEXT,
+  changed_by    TEXT,
+  changed_at    TIMESTAMPTZ
+);
 ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode_standard_id TEXT REFERENCES barcode_standards(id);
 
 CREATE UNIQUE INDEX IF NOT EXISTS products_shopify_product_gid_idx
