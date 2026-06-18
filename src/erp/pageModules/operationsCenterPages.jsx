@@ -126,7 +126,7 @@ export function OperationsCenterPage() {
       </div>
 
       {/* KPI kartlari */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0,1fr) minmax(0,1fr)" : "repeat(4, minmax(0,1fr))", gap: 16 }}>
         <KpiCard title="Net Ciro" value={money(netCiro)} hint={`İade düşülmüş · ${periodLabel}`} icon={<RiseOutlined />} tint={{ bg: "#fde9e4", fg: ACCENT }} />
         <KpiCard title="Satış Adedi" value={Number(stats.totalSalesCount || 0)} hint={`${Number(stats.totalSalesQty || 0)} ürün satıldı`} icon={<ShoppingOutlined />} tint={{ bg: "#e3f5f0", fg: "#1f9d8a" }} />
         <KpiCard title="Düşük Stok" value={Number(stats.lowStockCount || 0)} hint="min. stok altında" icon={<ExclamationCircleOutlined />} tint={{ bg: "#fdf3e3", fg: "#e7a93b" }} />
@@ -134,7 +134,7 @@ export function OperationsCenterPage() {
       </div>
 
       {/* Grafik + donut + hizli islemler */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1.2fr 0.9fr", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1.4fr) minmax(0,1.2fr) minmax(0,0.9fr)", gap: 16 }}>
         <Card bordered={false} title="Günlük Ciro Grafiği" styles={{ body: { padding: 12 } }}>
           <div style={{ height: 230 }}>
             {dailySales.length === 0 ? <div style={{ padding: 40, textAlign: "center", color: "#98a2b3" }}>Veri yok</div> : (
@@ -196,7 +196,7 @@ export function OperationsCenterPage() {
       </div>
 
       {/* Son islemler + POS durumu */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.7fr 0.9fr", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1.7fr) minmax(0,0.9fr)", gap: 16 }}>
         <Card bordered={false} title="Son İşlemler" styles={{ body: { padding: 0 } }}>
           <Table
             size="middle"
