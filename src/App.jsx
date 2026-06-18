@@ -8,7 +8,7 @@ import { resetOperationalDataIfNeeded } from "./erp/resetOperationalData";
 import LoginPage from "./erp/pageModules/loginPage";
 import UserManagementPage from "./erp/pageModules/userManagementPage";
 
-const DashboardPage = React.lazy(() => import("./erp/pageModules/dashboardPages").then((module) => ({ default: module.DashboardPage })));
+const DashboardPage = React.lazy(() => import("./erp/pageModules/operationsCenterPages").then((module) => ({ default: module.OperationsCenterPage })));
 const SupplierDashboardPage = React.lazy(() => import("./erp/pageModules/dashboardPages").then((module) => ({ default: module.SupplierDashboardPage })));
 const ProductListPage = React.lazy(() => import("./erp/pageModules/productPages").then((module) => ({ default: module.ProductListPage })));
 const ProductEditorPage = React.lazy(() => import("./erp/pageModules/productPages").then((module) => ({ default: module.ProductEditorPage })));
