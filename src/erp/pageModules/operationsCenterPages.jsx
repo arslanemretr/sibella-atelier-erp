@@ -7,6 +7,7 @@ import {
   DownloadOutlined, AppstoreAddOutlined, ShopOutlined, FileTextOutlined,
 } from "@ant-design/icons";
 import { Area, AreaChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from "recharts";
+import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { fetchDashboardSummary } from "../dashboardApi";
 import { listStoresFresh } from "../storesData";
@@ -50,31 +51,30 @@ export function OperationsCenterPage() {
 
   const [period, setPeriod] = React.useState("son30");
   const [storeId, setStoreId] = React.useState();
-  const [loading, setLoading] = React.useState(true);
-  const [data, setData] = React.useState(null);
-  const [stores, setStores] = React.useState([]);
-  const [sessions, setSessions] = React.useState([]);
 
-  const refresh = React.useCallback(async (p) => {
-    const range = PERIODS[p || period].range();
-    try {
-      setLoading(true);
+  // TanStack Query pilotu: tek queryKey ['dashboard', period].
+  // API fonksiyonlarina dokunulmaz; donem degisince key degisir, otomatik yenilenir.
+  const { data: bundle, isLoading, isFetching, error } = useQuery({
+    queryKey: ["dashboard", period],
+    queryFn: async () => {
+      const range = PERIODS[period].range();
       const [summary, storeRows, sessionRows] = await Promise.all([
         fetchDashboardSummary({ startDate: range[0].format("YYYY-MM-DD"), endDate: range[1].format("YYYY-MM-DD") }),
         listStoresFresh(),
         listPosSessionsFresh(),
       ]);
-      setData(summary);
-      setStores(storeRows);
-      setSessions(sessionRows);
-    } catch (err) {
-      message.error(err?.message || "Operasyon merkezi yuklenemedi.");
-    } finally {
-      setLoading(false);
-    }
-  }, [period]);
+      return { summary, storeRows, sessionRows };
+    },
+  });
 
-  React.useEffect(() => { void refresh("son30"); }, []); // eslint-disable-line
+  React.useEffect(() => {
+    if (error) message.error(error?.message || "Operasyon merkezi yuklenemedi.");
+  }, [error]);
+
+  const data = bundle?.summary || null;
+  const stores = bundle?.storeRows || [];
+  const sessions = bundle?.sessionRows || [];
+  const loading = isLoading || isFetching;
 
   const stats = data?.stats || {};
   const dailySales = data?.dailySales || [];
@@ -107,7 +107,7 @@ export function OperationsCenterPage() {
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <Select
           value={period}
-          onChange={(v) => { setPeriod(v); void refresh(v); }}
+          onChange={(v) => setPeriod(v)}
           style={{ minWidth: 150 }}
           options={Object.entries(PERIODS).map(([value, p]) => ({ value, label: p.label }))}
         />
