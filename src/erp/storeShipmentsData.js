@@ -14,20 +14,66 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+// jsPDF.addImage YALNIZCA JPEG/PNG cizebilir. Sistemde webp (or. SBSE1119) gibi
+// formatlar da saklaniyor; bunlar PDF'e dogrudan gomulemez -> bos kalir.
+// Bu yardimci, cizilemeyen formatlari canvas uzerinden JPEG'e yeniden kodlar.
+function isDrawableDataUrl(s) {
+  return (
+    typeof s === "string" &&
+    (s.startsWith("data:image/jpeg") ||
+      s.startsWith("data:image/jpg") ||
+      s.startsWith("data:image/png"))
+  );
+}
+
+async function reencodeToJpeg(dataUrl) {
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => reject(new Error("decode"));
+      im.src = dataUrl;
+    });
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    if (!w || !h) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.fillStyle = "#ffffff"; // saydamlik JPEG'de siyah olmasin
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return null;
+  }
+}
+
+// JPEG/PNG ise oldugu gibi, webp vb. ise JPEG'e cevirir; SVG/gecersiz ise null.
+async function toDrawableDataUrl(dataUrl) {
+  if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return null;
+  if (dataUrl.includes("svg")) return null;
+  if (isDrawableDataUrl(dataUrl)) return dataUrl;
+  return reencodeToJpeg(dataUrl);
+}
+
 // Bir gorsel URL'sini (or. /api/products/:id/image) PDF'e gomulebilecek data URL'e cevirir.
-// SVG (placeholder) atlanir; jsPDF SVG'yi addImage ile cizemez.
+// SVG (placeholder) atlanir; webp gibi formatlar JPEG'e yeniden kodlanir.
 async function fetchImageDataUrl(url) {
   try {
     const res = await fetch(url, { credentials: "same-origin" });
     if (!res.ok) return null;
     const blob = await res.blob();
     if (!blob || !String(blob.type || "").startsWith("image/") || String(blob.type).includes("svg")) return null;
-    return await new Promise((resolve) => {
+    const dataUrl = await new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(blob);
     });
+    return toDrawableDataUrl(dataUrl);
   } catch {
     return null;
   }
@@ -174,7 +220,10 @@ export async function createStoreShipmentPdf(shipmentOrId) {
 
   // Satir gorsellerini PDF oncesi data URL'e cozumle (base64 yoksa urun ucundan)
   const lineImages = await Promise.all((record.lines || []).map(async (line) => {
-    if (typeof line.image === "string" && line.image.startsWith("data:image") && !line.image.includes("svg")) return line.image;
+    if (typeof line.image === "string" && line.image.startsWith("data:image")) {
+      const drawable = await toDrawableDataUrl(line.image);
+      if (drawable) return drawable;
+    }
     const url = line.productId ? `/api/products/${line.productId}/image` : (line.imageUrl || "");
     return url ? fetchImageDataUrl(url) : null;
   }));
