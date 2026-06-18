@@ -194,7 +194,7 @@ export async function createStoreShipmentPdf(shipmentOrId) {
 
   // ---- Magaza karti ----
   let y = 44;
-  const cardH = 76;
+  const cardH = 84;
   setFill([252, 248, 246]);
   setDraw([241, 232, 227]);
   doc.setLineWidth(0.3);
@@ -215,21 +215,21 @@ export async function createStoreShipmentPdf(shipmentOrId) {
 
   // ---- Bilgi izgarasi (3 sutun x 3 satir) ----
   const colX = [M + 6, M + 64, M + 122];
-  const gridTop = y + 42;
-  const rowGap = 16;
+  const gridTop = y + 44;
+  const rowGap = 14;
   const infoItem = (cx, cy, label, value, highlight) => {
     if (highlight) {
       setFill(CORAL_HL);
-      doc.roundedRect(cx - 3, cy - 8, 56, 18, 3, 3, "F");
+      doc.roundedRect(cx - 4, cy - 6, 58, 14, 3, 3, "F");
     }
     setFill(CORAL);
-    doc.circle(cx + 2, cy - 1, 3.4, "F");
+    doc.circle(cx + 2, cy + 1, 3.2, "F");
     setText(GRAY);
     doc.setFontSize(7.5);
-    doc.text(String(label), cx + 9, cy - 2.5);
+    doc.text(String(label), cx + 9, cy - 1);
     setText(highlight ? CORAL : INK);
     doc.setFontSize(10);
-    doc.text(String(value), cx + 9, cy + 3.5);
+    doc.text(String(value), cx + 9, cy + 5);
   };
   const cur = record.saleCurrency || "TRY";
   const items = [
