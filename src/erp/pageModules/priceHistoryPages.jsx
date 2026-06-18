@@ -139,7 +139,7 @@ export function PriceHistoryPage() {
               <Text type="secondary" style={{ fontSize: 13 }}>Tüm ürünlere uygula ({products.length})</Text>
             </label>
           </Col>
-          <Col xs={12} md={5}>
+          <Col xs={24} md={5}>
             <Text strong style={{ display: "block", marginBottom: 4 }}>Hedef Fiyat</Text>
             <Segmented
               block
@@ -148,7 +148,7 @@ export function PriceHistoryPage() {
               options={[{ value: "magaza", label: "Mağaza" }, { value: "merkez", label: "Merkez" }, { value: "ikisi", label: "İkisi" }]}
             />
           </Col>
-          <Col xs={12} md={4}>
+          <Col xs={24} md={4}>
             <Text strong style={{ display: "block", marginBottom: 4 }}>İşlem</Text>
             <Segmented
               block
@@ -157,7 +157,7 @@ export function PriceHistoryPage() {
               options={[{ value: "percent", label: "% Zam/İnd." }, { value: "fixed", label: "Sabit" }]}
             />
           </Col>
-          <Col xs={12} md={4}>
+          <Col xs={24} md={4}>
             <Text strong style={{ display: "block", marginBottom: 4 }}>{bulkMode === "percent" ? "Yüzde (%)" : "Tutar"}</Text>
             <InputNumber
               style={{ width: "100%" }}
@@ -167,7 +167,7 @@ export function PriceHistoryPage() {
               placeholder={bulkMode === "percent" ? "örn: 10 veya -5" : "0,00"}
             />
           </Col>
-          <Col xs={12} md={3}>
+          <Col xs={24} md={3}>
             <Button type="primary" block loading={bulkSaving} onClick={() => void handleBulkApply()}>Uygula</Button>
           </Col>
         </Row>
@@ -180,13 +180,13 @@ export function PriceHistoryPage() {
       <Card
         title="Değişiklik Geçmişi"
         size="small"
-        extra={
+        extra={isMobile ? null : (
           <Space wrap>
             <Select
               allowClear
               showSearch
               placeholder="Ürün filtrele"
-              style={{ width: isMobile ? 160 : 220 }}
+              style={{ width: 220 }}
               value={filterProductId}
               onChange={setFilterProductId}
               options={productOptions}
@@ -198,8 +198,28 @@ export function PriceHistoryPage() {
               options={[{ value: "all", label: "Hepsi" }, { value: "magaza", label: "Mağaza" }, { value: "merkez", label: "Merkez" }]}
             />
           </Space>
-        }
+        )}
       >
+        {isMobile ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+            <Select
+              allowClear
+              showSearch
+              placeholder="Ürün filtrele"
+              style={{ width: "100%" }}
+              value={filterProductId}
+              onChange={setFilterProductId}
+              options={productOptions}
+              filterOption={(input, option) => (option?.label || "").toLowerCase().includes(input.toLowerCase())}
+            />
+            <Segmented
+              block
+              value={filterType}
+              onChange={setFilterType}
+              options={[{ value: "all", label: "Hepsi" }, { value: "magaza", label: "Mağaza" }, { value: "merkez", label: "Merkez" }]}
+            />
+          </div>
+        ) : null}
         {isMobile ? (
           history.length === 0 ? <Text type="secondary">Kayit bulunamadi.</Text> : (
             <Space direction="vertical" size={10} style={{ width: "100%" }}>
