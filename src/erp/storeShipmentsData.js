@@ -26,7 +26,10 @@ function isDrawableDataUrl(s) {
   );
 }
 
-async function reencodeToJpeg(dataUrl) {
+// Gorseli canvas uzerinden yeniden kodlar VE buyuk boyutlari kuculttur.
+// 3 MB'lik ham telefon fotograflari jsPDF.addImage'i (bellek/performans) bos
+// birakabiliyor; thumbnail kutucugu zaten ~12mm oldugu icin ~320px yeterli.
+async function reencodeToJpeg(dataUrl, maxDim = 320) {
   try {
     const img = await new Promise((resolve, reject) => {
       const im = new Image();
@@ -34,9 +37,13 @@ async function reencodeToJpeg(dataUrl) {
       im.onerror = () => reject(new Error("decode"));
       im.src = dataUrl;
     });
-    const w = img.naturalWidth || img.width;
-    const h = img.naturalHeight || img.height;
+    let w = img.naturalWidth || img.width;
+    let h = img.naturalHeight || img.height;
     if (!w || !h) return null;
+    if (w > maxDim || h > maxDim) {
+      if (w >= h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+      else { w = Math.round((w * maxDim) / h); h = maxDim; }
+    }
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
@@ -45,23 +52,26 @@ async function reencodeToJpeg(dataUrl) {
     ctx.fillStyle = "#ffffff"; // saydamlik JPEG'de siyah olmasin
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
-    return canvas.toDataURL("image/jpeg", 0.85);
+    return canvas.toDataURL("image/jpeg", 0.82);
   } catch {
     return null;
   }
 }
 
-// JPEG/PNG ise oldugu gibi, webp vb. ise JPEG'e cevirir; SVG/gecersiz ise null.
-async function toDrawableDataUrl(dataUrl) {
+// Tum gorselleri kucuk bir JPEG thumbnail'e indirir: hem webp/format sorununu
+// hem de ham yuksek cozunurluklu fotograflarin PDF'e gomulememesini cozer.
+async function toDrawableDataUrl(dataUrl, maxDim = 320) {
   if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return null;
   if (dataUrl.includes("svg")) return null;
-  if (isDrawableDataUrl(dataUrl)) return dataUrl;
-  return reencodeToJpeg(dataUrl);
+  const small = await reencodeToJpeg(dataUrl, maxDim);
+  if (small) return small;
+  // Yeniden kodlama basarisizsa, zaten cizilebilir formattaysa oldugu gibi dene
+  return isDrawableDataUrl(dataUrl) ? dataUrl : null;
 }
 
 // Bir gorsel URL'sini (or. /api/products/:id/image) PDF'e gomulebilecek data URL'e cevirir.
 // SVG (placeholder) atlanir; webp gibi formatlar JPEG'e yeniden kodlanir.
-async function fetchImageDataUrl(url) {
+async function fetchImageDataUrl(url, maxDim = 320) {
   try {
     const res = await fetch(url, { credentials: "same-origin" });
     if (!res.ok) return null;
@@ -73,7 +83,7 @@ async function fetchImageDataUrl(url) {
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(blob);
     });
-    return toDrawableDataUrl(dataUrl);
+    return toDrawableDataUrl(dataUrl, maxDim);
   } catch {
     return null;
   }
@@ -232,8 +242,8 @@ export async function createStoreShipmentPdf(shipmentOrId) {
 
   // ---- Baslik: sol logo (sistemden, dogru oran) + sag baslik ----
   let logo = null;
-  try { const b = await getBrandingFresh(); if (b?.logoUrl) logo = await fetchImageDataUrl(b.logoUrl); } catch { /* yoksay */ }
-  if (!logo) { try { logo = await fetchImageDataUrl("/pdf-logo.png"); } catch { logo = null; } }
+  try { const b = await getBrandingFresh(); if (b?.logoUrl) logo = await fetchImageDataUrl(b.logoUrl, 600); } catch { /* yoksay */ }
+  if (!logo) { try { logo = await fetchImageDataUrl("/pdf-logo.png", 600); } catch { logo = null; } }
   if (logo) {
     try {
       const props = doc.getImageProperties(logo);
