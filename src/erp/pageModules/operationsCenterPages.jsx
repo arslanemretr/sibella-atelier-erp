@@ -35,7 +35,7 @@ function KpiCard({ title, value, hint, icon, tint }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
         <div style={{ minWidth: 0 }}>
           <Text style={{ color: "#697586", fontSize: 13 }}>{title}</Text>
-          <div style={{ fontSize: 26, fontWeight: 700, marginTop: 6, color: "#1f2733", whiteSpace: "nowrap" }}>{value}</div>
+          <div className="erp-kpi-value">{value}</div>
           {hint ? <div style={{ marginTop: 10, fontSize: 12, color: "#98a2b3" }}>{hint}</div> : null}
         </div>
         <div style={{ width: 44, height: 44, borderRadius: 12, background: tint.bg, color: tint.fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{icon}</div>
@@ -108,7 +108,7 @@ export function OperationsCenterPage() {
         <Select
           value={period}
           onChange={(v) => setPeriod(v)}
-          style={{ minWidth: 150 }}
+          style={{ flex: isMobile ? "1 1 45%" : "0 0 auto", minWidth: isMobile ? 0 : 150 }}
           options={Object.entries(PERIODS).map(([value, p]) => ({ value, label: p.label }))}
         />
         <Select
@@ -116,12 +116,12 @@ export function OperationsCenterPage() {
           allowClear
           value={storeId}
           onChange={setStoreId}
-          style={{ minWidth: 180 }}
+          style={{ flex: isMobile ? "1 1 45%" : "0 0 auto", minWidth: isMobile ? 0 : 180 }}
           options={stores.map((s) => ({ value: s.id, label: s.name }))}
           suffixIcon={<ShopOutlined />}
         />
         <Tooltip title="Yakında">
-          <Button icon={<ControlOutlined />} style={{ marginLeft: "auto" }}>Paneli Yapılandır</Button>
+          <Button icon={<ControlOutlined />} style={{ marginLeft: isMobile ? 0 : "auto", width: isMobile ? "100%" : "auto" }}>Paneli Yapılandır</Button>
         </Tooltip>
       </div>
 

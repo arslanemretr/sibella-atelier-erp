@@ -4,7 +4,7 @@ import { Drawer, Input } from "antd";
 import {
   AppstoreOutlined, BarChartOutlined, CarOutlined, DesktopOutlined, DownloadOutlined,
   ExclamationCircleOutlined, FileTextOutlined, HomeOutlined, InboxOutlined, PlusOutlined,
-  RightOutlined, RollbackOutlined, SearchOutlined, ShoppingOutlined, SwapOutlined,
+  RightOutlined, RollbackOutlined, SearchOutlined, SendOutlined, ShoppingOutlined, SwapOutlined,
   TagOutlined, TeamOutlined, UnorderedListOutlined,
 } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
@@ -14,7 +14,7 @@ const TABS = [
   { key: "ana", label: "Ana", icon: <HomeOutlined />, route: "/dashboard" },
   { key: "products-group", label: "Ürünler", icon: <ShoppingOutlined /> },
   { key: "pos-group", label: "POS", icon: <DesktopOutlined /> },
-  { key: "stock-group", label: "Stok", icon: <InboxOutlined /> },
+  { key: "gonderi", label: "Gönderi", icon: <SendOutlined />, route: "/stores/shipments" },
   { key: "reports-group", label: "Rapor", icon: <BarChartOutlined /> },
 ];
 
@@ -63,9 +63,11 @@ export default function MobileTabBar() {
 
   const activeTab = React.useMemo(() => {
     const p = location.pathname;
-    if (p === "/dashboard" || p.startsWith("/dashboard/")) return "ana";
     for (const t of TABS) {
-      if (t.key === "ana") continue;
+      if (t.route) {
+        if (p === t.route || p.startsWith(`${t.route}/`)) return t.key;
+        continue;
+      }
       const g = groupFor(t.key);
       if (g?.children?.some((c) => p === c.key || p.startsWith(`${c.key}/`))) return t.key;
     }
@@ -96,8 +98,13 @@ export default function MobileTabBar() {
         open={!!sheet}
         onClose={() => setSheet(null)}
         height="auto"
+        zIndex={1100}
         title={sheetGroup?.label}
-        styles={{ body: { padding: "4px 16px 28px" }, content: { borderTopLeftRadius: 22, borderTopRightRadius: 22 }, header: { borderBottom: "none", paddingBottom: 4 } }}
+        styles={{
+          body: { padding: "4px 16px calc(28px + env(safe-area-inset-bottom, 0px))", maxHeight: "72vh", overflowY: "auto" },
+          content: { borderTopLeftRadius: 22, borderTopRightRadius: 22 },
+          header: { borderBottom: "none", paddingBottom: 4 },
+        }}
       >
         <Input
           size="large"
