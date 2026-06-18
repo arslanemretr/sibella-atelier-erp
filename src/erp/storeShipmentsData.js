@@ -1,5 +1,6 @@
 import { mutateResourceSync, requestCollection, requestCollectionSync, requestJson } from "./apiClient";
 import { getStoreById, listStoresFresh } from "./storesData";
+import { getBrandingFresh } from "./brandingData";
 import { jsPDF, ensurePdfFont, drawPdfLogo, drawShipmentTableHeader, formatPdfDate, formatPdfMoney } from "./pdfUtils";
 
 function createId(prefix) {
@@ -178,23 +179,33 @@ export async function createStoreShipmentPdf(shipmentOrId) {
     return url ? fetchImageDataUrl(url) : null;
   }));
 
-  // ---- Baslik: sol logo + sag baslik ----
-  const logo = await fetchImageDataUrl("/pdf-logo.png").catch(() => null);
+  const cur = record.saleCurrency || "TRY";
+
+  // ---- Baslik: sol logo (sistemden, dogru oran) + sag baslik ----
+  let logo = null;
+  try { const b = await getBrandingFresh(); if (b?.logoUrl) logo = await fetchImageDataUrl(b.logoUrl); } catch { /* yoksay */ }
+  if (!logo) { try { logo = await fetchImageDataUrl("/pdf-logo.png"); } catch { logo = null; } }
   if (logo) {
-    try { doc.addImage(logo, logo.includes("image/png") ? "PNG" : "JPEG", M, 13, 40, 16); } catch { /* yoksay */ }
+    try {
+      const props = doc.getImageProperties(logo);
+      const targetH = 17;
+      const ratio = props?.width && props?.height ? props.width / props.height : 2.4;
+      const w = Math.min(64, targetH * ratio);
+      doc.addImage(logo, props?.fileType || (logo.includes("image/png") ? "PNG" : "JPEG"), M, 10, w, targetH);
+    } catch { /* yoksay */ }
   }
   setText(INK);
-  doc.setFontSize(17);
-  doc.text("MAĞAZA GÖNDERİ FORMU", R, 24, { align: "right" });
+  doc.setFontSize(16);
+  doc.text("MAĞAZA GÖNDERİ FORMU", R, 21, { align: "right" });
   setDraw(CORAL);
   doc.setLineWidth(0.4);
-  doc.line(M, 36, R, 36);
+  doc.line(M, 30, R, 30);
   setFill(CORAL);
-  doc.circle(105, 36, 1.4, "F");
+  doc.circle(105, 30, 1.4, "F");
 
-  // ---- Magaza karti ----
-  let y = 44;
-  const cardH = 84;
+  // ---- Ust bilgi karti (daraltilmis) ----
+  let y = 36;
+  const cardH = 58;
   setFill([252, 248, 246]);
   setDraw([241, 232, 227]);
   doc.setLineWidth(0.3);
@@ -202,55 +213,52 @@ export async function createStoreShipmentPdf(shipmentOrId) {
 
   // Magaza ikon kutusu + ad
   setFill(CORAL);
-  doc.roundedRect(M + 6, y + 8, 22, 22, 4, 4, "F");
+  doc.roundedRect(M + 6, y + 7, 20, 20, 4, 4, "F");
   setFill([255, 255, 255]);
-  doc.rect(M + 11, y + 16, 12, 8, "F");
-  doc.triangle(M + 10, y + 16, M + 24, y + 16, M + 17, y + 12, "F");
+  doc.rect(M + 11, y + 15, 10, 7, "F");
+  doc.triangle(M + 9, y + 15, M + 23, y + 15, M + 16, y + 11, "F");
   setText(CORAL);
   doc.setFontSize(8);
-  doc.text("MAĞAZA BİLGİSİ", M + 34, y + 15);
+  doc.text("MAĞAZA", M + 32, y + 13);
   setText(INK);
-  doc.setFontSize(15);
-  doc.text(String(record.storeName || "-"), M + 34, y + 24);
+  doc.setFontSize(14);
+  doc.text(String(record.storeName || "-"), M + 32, y + 22);
 
-  // ---- Bilgi izgarasi (3 sutun x 3 satir) ----
-  const colX = [M + 6, M + 64, M + 122];
-  const gridTop = y + 44;
-  const rowGap = 14;
-  const infoItem = (cx, cy, label, value, highlight) => {
-    if (highlight) {
-      setFill(CORAL_HL);
-      doc.roundedRect(cx - 4, cy - 6, 58, 14, 3, 3, "F");
-    }
-    setFill(CORAL);
-    doc.circle(cx + 2, cy + 1, 3.2, "F");
-    setText(GRAY);
-    doc.setFontSize(7.5);
-    doc.text(String(label), cx + 9, cy - 1);
-    setText(highlight ? CORAL : INK);
-    doc.setFontSize(10);
-    doc.text(String(value), cx + 9, cy + 5);
-  };
-  const cur = record.saleCurrency || "TRY";
-  const items = [
-    ["Gönderi No", record.shipmentNo || "-"],
-    ["Tarih", formatPdfDate(record.date)],
-    ["Durum", record.status || "-"],
-    ["Gönderim Şekli", record.shippingMethod || "-"],
-    ["Kargo Takip No", record.trackingNo || "-"],
-    ["Not", record.note || "-"],
+  // Gonderi No + Tarih — magaza adinin sagindaki bosluga alt alta
+  const rx = M + W - 62;
+  setText(GRAY); doc.setFontSize(7.5);
+  doc.text("Gönderi No", rx, y + 11);
+  setText(INK); doc.setFontSize(10);
+  doc.text(String(record.shipmentNo || "-"), rx, y + 16);
+  setText(GRAY); doc.setFontSize(7.5);
+  doc.text("Tarih", rx, y + 23);
+  setText(INK); doc.setFontSize(10);
+  doc.text(formatPdfDate(record.date), rx, y + 28);
+
+  // 3 ozet kutusu (hepsi arka planli): Toplam Kalem / Adet / Tutar
+  const boxGap = 4;
+  const boxW = (W - 2 * boxGap) / 3;
+  const boxY = y + 34;
+  const boxH = 18;
+  const summary = [
     ["Toplam Kalem", String(record.lineCount || 0)],
     ["Toplam Adet", String(record.totalQuantity || 0)],
-    ["Toplam Tutar", record.totalAmountDisplay || "-", true],
+    ["Toplam Tutar", record.totalAmountDisplay || "-"],
   ];
-  items.forEach(([label, value, highlight], i) => {
-    const cx = colX[i % 3];
-    const cy = gridTop + Math.floor(i / 3) * rowGap;
-    infoItem(cx, cy, label, value, highlight);
+  summary.forEach(([label, value], i) => {
+    const bx = M + i * (boxW + boxGap);
+    setFill(CORAL_HL);
+    doc.roundedRect(bx, boxY, boxW, boxH, 3, 3, "F");
+    setFill(CORAL);
+    doc.circle(bx + 8, boxY + boxH / 2, 3, "F");
+    setText(GRAY); doc.setFontSize(7.5);
+    doc.text(label, bx + 14, boxY + 7);
+    setText(CORAL); doc.setFontSize(11);
+    doc.text(value, bx + 14, boxY + 14);
   });
 
   // ---- Urunler bolum basligi ----
-  y += cardH + 12;
+  y += cardH + 10;
   setFill(CORAL);
   doc.roundedRect(M, y - 5, 6, 6, 1.5, 1.5, "F");
   setText(CORAL);
