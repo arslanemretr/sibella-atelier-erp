@@ -89,6 +89,13 @@ export default function MobileTabBar() {
 
   const activeSheet = openKey ? tabs.find((t) => t.key === openKey)?.sheet : null;
 
+  // Odakli editor ekranlarinda alt sekme cubugu gizlenir (ekranin kendi alt aksiyon
+  // bari Gonder/Taslak butonlarini ortmesin). Or. gonderi olustur/duzenle.
+  const FOCUS_ROUTES = [/^\/stores\/shipments\/.+/];
+  if (FOCUS_ROUTES.some((re) => re.test(location.pathname))) {
+    return null;
+  }
+
   return (
     <>
       <nav className="erp-tabbar">
