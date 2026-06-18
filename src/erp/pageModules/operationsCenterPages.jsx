@@ -197,24 +197,51 @@ export function OperationsCenterPage() {
 
       {/* Son islemler + POS durumu */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1.7fr) minmax(0,0.9fr)", gap: 16 }}>
-        <Card bordered={false} title="Son İşlemler" styles={{ body: { padding: 0 } }}>
-          <Table
-            size="middle"
-            rowKey={(r) => r.id || r.receiptNo}
-            loading={loading}
-            pagination={false}
-            scroll={{ x: "max-content" }}
-            dataSource={recentSales.slice(0, 6)}
-            locale={{ emptyText: "Bu dönemde işlem yok." }}
-            onRow={() => ({ onClick: () => navigate("/pos/orders"), style: { cursor: "pointer" } })}
-            columns={[
-              { title: "Tarih", dataIndex: "soldAt", key: "soldAt", width: 150, render: (v) => <Text type="secondary" style={{ fontSize: 12 }}>{v ? dayjs(v).format("DD.MM.YYYY HH:mm") : "-"}</Text> },
-              { title: "İşlem", key: "islem", width: 110, render: () => <Space size={6}><ShoppingOutlined style={{ color: ACCENT }} />Satış</Space> },
-              { title: "Detay", dataIndex: "receiptNo", key: "receiptNo", render: (v, r) => <span>{v}{r.customerName ? <Text type="secondary"> · {r.customerName}</Text> : null}</span> },
-              { title: "Tutar", dataIndex: "grandTotal", key: "grandTotal", align: "right", width: 120, render: (v) => <Text strong>{money(v)}</Text> },
-              { title: "Durum", key: "durum", width: 120, render: () => <Tag color="success">Tamamlandı</Tag> },
-            ]}
-          />
+        <Card bordered={false} title="Son İşlemler" styles={{ body: { padding: isMobile ? 12 : 0 } }} loading={isMobile ? loading : false}>
+          {isMobile ? (
+            recentSales.length === 0 ? (
+              <Text type="secondary">Bu dönemde işlem yok.</Text>
+            ) : (
+              <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                {recentSales.slice(0, 6).map((r) => (
+                  <div
+                    key={r.id || r.receiptNo}
+                    onClick={() => navigate("/pos/orders")}
+                    style={{ padding: 12, border: "1px solid #eef0f3", borderRadius: 12, cursor: "pointer" }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <Space size={6}><ShoppingOutlined style={{ color: ACCENT }} /><Text strong style={{ fontSize: 14 }}>{r.receiptNo || "Satış"}</Text></Space>
+                      <Text strong style={{ fontSize: 14 }}>{money(r.grandTotal)}</Text>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {r.soldAt ? dayjs(r.soldAt).format("DD.MM.YYYY HH:mm") : "-"}{r.customerName ? ` · ${r.customerName}` : ""}
+                      </Text>
+                      <Tag color="success" style={{ marginInlineEnd: 0 }}>Tamamlandı</Tag>
+                    </div>
+                  </div>
+                ))}
+              </Space>
+            )
+          ) : (
+            <Table
+              size="middle"
+              rowKey={(r) => r.id || r.receiptNo}
+              loading={loading}
+              pagination={false}
+              scroll={{ x: "max-content" }}
+              dataSource={recentSales.slice(0, 6)}
+              locale={{ emptyText: "Bu dönemde işlem yok." }}
+              onRow={() => ({ onClick: () => navigate("/pos/orders"), style: { cursor: "pointer" } })}
+              columns={[
+                { title: "Tarih", dataIndex: "soldAt", key: "soldAt", width: 150, render: (v) => <Text type="secondary" style={{ fontSize: 12 }}>{v ? dayjs(v).format("DD.MM.YYYY HH:mm") : "-"}</Text> },
+                { title: "İşlem", key: "islem", width: 110, render: () => <Space size={6}><ShoppingOutlined style={{ color: ACCENT }} />Satış</Space> },
+                { title: "Detay", dataIndex: "receiptNo", key: "receiptNo", render: (v, r) => <span>{v}{r.customerName ? <Text type="secondary"> · {r.customerName}</Text> : null}</span> },
+                { title: "Tutar", dataIndex: "grandTotal", key: "grandTotal", align: "right", width: 120, render: (v) => <Text strong>{money(v)}</Text> },
+                { title: "Durum", key: "durum", width: 120, render: () => <Tag color="success">Tamamlandı</Tag> },
+              ]}
+            />
+          )}
         </Card>
 
         <Card bordered={false} title="POS Durumu" styles={{ body: { padding: 18 } }}>
