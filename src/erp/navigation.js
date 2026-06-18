@@ -33,17 +33,10 @@ export const mainMenuItems = [
     label: "Magaza",
     children: [
       { key: "/stores/list", label: "Magaza Listesi", permissionKey: "stores_list" },
-      { key: "/stores/new", label: "Magaza Tanimla", permissionKey: "stores_list", permissionWrite: true },
       { key: "/stores/shipments", label: "Gonderi Listesi", permissionKey: "stores_shipments" },
-      { key: "/stores/shipments/new", label: "Gonderi Olustur", permissionKey: "stores_shipments", permissionWrite: true },
-    ],
-  },
-  {
-    key: "store-sales",
-    label: "Mağaza Satış",
-    children: [
-      { key: "/stores/invoices", label: "Mağaza Fatura Listesi", permissionKey: "stores_invoices" },
-      { key: "/stores/cari", label: "Mağaza Cari Hesap", permissionKey: "stores_invoices" },
+      { key: "/stock/locations", label: "Magaza Stok", permissionKey: "stock_locations" },
+      { key: "/stores/invoices", label: "Magaza Fatura Listesi", permissionKey: "stores_invoices" },
+      { key: "/stores/cari", label: "Magaza Cari Hesap", permissionKey: "stores_invoices" },
     ],
   },
   {
@@ -52,7 +45,6 @@ export const mainMenuItems = [
     children: [
       { key: "/stock/entry", label: "Stok Giris Ekrani", permissionKey: "stock_entry" },
       { key: "/stock/list", label: "Stok Hareketleri", permissionKey: "stock_list" },
-      { key: "/stock/locations", label: "Stok Yerleri", permissionKey: "stock_locations" },
     ],
   },
   {
@@ -133,17 +125,10 @@ export const sidebarGroups = [
         label: "Magaza",
         children: [
           { key: "/stores/list", label: "Magaza Listesi", permissionKey: "stores_list" },
-          { key: "/stores/new", label: "Magaza Tanimla", permissionKey: "stores_list", permissionWrite: true },
           { key: "/stores/shipments", label: "Gonderi Listesi", permissionKey: "stores_shipments" },
-          { key: "/stores/shipments/new", label: "Gonderi Olustur", permissionKey: "stores_shipments", permissionWrite: true },
-        ],
-      },
-      {
-        key: "store-sales-group",
-        label: "Mağaza Satış",
-        children: [
-          { key: "/stores/invoices", label: "Mağaza Fatura Listesi", permissionKey: "stores_invoices" },
-          { key: "/stores/cari", label: "Mağaza Cari Hesap", permissionKey: "stores_invoices" },
+          { key: "/stock/locations", label: "Magaza Stok", permissionKey: "stock_locations" },
+          { key: "/stores/invoices", label: "Magaza Fatura Listesi", permissionKey: "stores_invoices" },
+          { key: "/stores/cari", label: "Magaza Cari Hesap", permissionKey: "stores_invoices" },
         ],
       },
       {
@@ -152,7 +137,6 @@ export const sidebarGroups = [
         children: [
           { key: "/stock/entry", label: "Stok Giris Ekrani", permissionKey: "stock_entry" },
           { key: "/stock/list", label: "Stok Hareketleri", permissionKey: "stock_list" },
-          { key: "/stock/locations", label: "Stok Yerleri", permissionKey: "stock_locations" },
         ],
       },
       {
