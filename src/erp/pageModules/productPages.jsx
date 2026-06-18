@@ -165,15 +165,8 @@ export function ProductListPage() {
     if (listError) message.error(listError?.message || "Urun listesi yuklenemedi.");
   }, [listError]);
 
-  React.useEffect(() => {
-    if ((viewMode !== "kanban" && !isMobile) || kanbanFetchedRef.current) return;
-    kanbanFetchedRef.current = true;
-    setKanbanImagesLoading(true);
-    listProductImagesFresh()
-      .then((imageMap) => setKanbanImageMap(imageMap))
-      .catch(() => {})
-      .finally(() => setKanbanImagesLoading(false));
-  }, [viewMode, isMobile]);
+  // Gorseller artik onbelleklenebilir /api/products/:id/image ucundan geliyor;
+  // base64 katalog harita cekimine gerek yok (her remount'ta yeniden yuklemeyi onler).
 
   const persistSavedFilters = (nextSavedFilters) => {
     setSavedFilters(nextSavedFilters);
@@ -613,10 +606,11 @@ export function ProductListPage() {
                   >
                     <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "#f5f0ee" }}>
                       <img
-                        src={kanbanImageMap[product.id] || product.image || "/products/baroque-necklace.svg"}
+                        src={`/api/products/${product.id}/image`}
                         alt={product.name}
                         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: Number(product.stock || 0) <= 0 ? 0.55 : 1 }}
                         loading="lazy"
+                        onError={(e) => { if (!e.currentTarget.src.endsWith("baroque-necklace.svg")) e.currentTarget.src = "/products/baroque-necklace.svg"; }}
                       />
                       {Number(product.stock || 0) <= 0 ? (
                         <div style={{ position: "absolute", top: 8, left: 8, background: "#cf1322", color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>
@@ -692,10 +686,11 @@ export function ProductListPage() {
                   >
                     <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", background: "#f5f0ee" }}>
                       <img
-                        src={kanbanImageMap[product.id] || product.image || "/products/baroque-necklace.svg"}
+                        src={`/api/products/${product.id}/image`}
                         alt={product.name}
                         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: Number(product.stock || 0) <= 0 ? 0.55 : 1 }}
                         loading="lazy"
+                        onError={(e) => { if (!e.currentTarget.src.endsWith("baroque-necklace.svg")) e.currentTarget.src = "/products/baroque-necklace.svg"; }}
                       />
                       {Number(product.stock || 0) <= 0 ? (
                         <div style={{ position: "absolute", top: 8, left: 8, background: "#cf1322", color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>
