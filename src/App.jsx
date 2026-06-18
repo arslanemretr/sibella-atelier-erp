@@ -24,6 +24,7 @@ const SalesReportPage = React.lazy(() => import("./erp/pageModules/analyticsRepo
 const StockReportPage = React.lazy(() => import("./erp/pageModules/analyticsReportPages").then((m) => ({ default: m.StockReportPage })));
 const StockListPage = React.lazy(() => import("./erp/pageModules/stockListPage").then((module) => ({ default: module.StockListPage })));
 const StockLocationListPage = React.lazy(() => import("./erp/pageModules/stockLocationPages").then((module) => ({ default: module.StockLocationListPage })));
+const StockLocationDetailPage = React.lazy(() => import("./erp/pageModules/stockLocationPages").then((module) => ({ default: module.StockLocationDetailPage })));
 const StockEntryListPage = React.lazy(() => import("./erp/pageModules/stockEntryPages").then((module) => ({ default: module.StockEntryListPage })));
 const StockEntryEditorPage = React.lazy(() => import("./erp/pageModules/stockEntryPages").then((module) => ({ default: module.StockEntryEditorPage })));
 const SupplierListPage = React.lazy(() => import("./erp/pageModules/supplierPages").then((module) => ({ default: module.SupplierListPage })));
@@ -195,6 +196,7 @@ function ProtectedApp() {
         <Route path="/stock/entry/:stockEntryId" element={withLazyPage(<StockEntryEditorPage />)} />
         <Route path="/stock/list" element={withLazyPage(<StockListPage />)} />
         <Route path="/stock/locations" element={withRolePage(<StockLocationListPage />, authUser, "Yonetici", "Muhasebe")} />
+        <Route path="/stock/locations/:locationId" element={withRolePage(<StockLocationDetailPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/supplier-portal/delivery-lists" element={withLazyPage(<SupplierDeliveryListsPage />)} />
         <Route path="/supplier-portal/delivery-lists/:deliveryId" element={withLazyPage(<SupplierPortalDeliveryEditorPage />)} />
         <Route path="/supplier-portal/earnings" element={withLazyPage(<SupplierEarningsManagementPage />)} />
