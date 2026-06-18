@@ -30,28 +30,42 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       locale={trTR}
       theme={{
         token: {
-          colorPrimary: '#f38b7a',
+          // Daha belirgin coral aksan + sicak ivory zemin
+          colorPrimary: '#e8674e',
+          colorInfo: '#e8674e',
           fontFamily: "'Inter', sans-serif",
-          borderRadius: 10,
+          borderRadius: 12,
+          borderRadiusLG: 14,
           colorBgContainer: '#ffffff',
-          colorBgLayout: '#f7f8fb',
+          colorBgLayout: '#f7f5f1',
+          colorBorderSecondary: '#efe9e2',
         },
         components: {
           Menu: {
-            itemSelectedBg: '#fff1ee',
-            itemSelectedColor: '#d86d5b',
-            itemHoverColor: '#d86d5b',
-            itemHoverBg: '#fff8f6',
-            groupTitleColor: '#9aa0a6',
+            itemSelectedBg: '#fbeee8',
+            itemSelectedColor: '#c75b40',
+            itemHoverColor: '#c75b40',
+            itemHoverBg: '#fbf6f3',
+            groupTitleColor: '#a99f95',
           },
           Table: {
-            headerBg: '#fafafa',
-            headerColor: '#595959',
-            borderColor: '#f0f0f0',
+            headerBg: '#f6f3ef',
+            headerColor: '#6b6359',
+            borderColor: '#efe9e2',
+            rowHoverBg: '#faf8f5',
           },
           Button: {
             primaryShadow: 'none',
-          }
+            fontWeight: 500,
+          },
+          Card: {
+            borderRadiusLG: 14,
+          },
+          Layout: {
+            siderBg: '#ffffff',
+            headerBg: '#ffffff',
+            bodyBg: '#f7f5f1',
+          },
         }
       }}
     >

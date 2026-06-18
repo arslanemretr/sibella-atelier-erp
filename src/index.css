@@ -4,7 +4,7 @@ html, body {
   margin: 0;
   padding: 0;
   font-family: 'Inter', sans-serif;
-  background-color: #f7f8fb;
+  background-color: #f7f5f1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -20,9 +20,9 @@ html, body {
 
 /* Ant Design Override for finer ERP Look */
 .ant-card {
-  border-radius: 12px;
-  box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03);
-  border: 1px solid #f0f0f0;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 18px rgba(16, 24, 40, 0.05);
+  border: 1px solid #efe9e2;
 }
 
 .ant-btn {
@@ -30,7 +30,7 @@ html, body {
 }
 
 /* === Operasyon Merkezi === */
-.erp-kpi-card { box-shadow: 0 1px 2px rgba(16,24,40,0.05); }
+.erp-kpi-card { box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 6px 18px rgba(16,24,40,0.05); }
 .erp-kpi-value { font-size: 26px; font-weight: 700; margin-top: 6px; color: #1f2733; line-height: 1.2; word-break: break-word; }
 @media (max-width: 768px) {
   .erp-kpi-value { font-size: 19px; }
