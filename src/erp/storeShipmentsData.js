@@ -188,10 +188,10 @@ export async function createStoreShipmentPdf(shipmentOrId) {
   if (logo) {
     try {
       const props = doc.getImageProperties(logo);
-      const targetH = 17;
+      const targetH = 22;
       const ratio = props?.width && props?.height ? props.width / props.height : 2.4;
-      const w = Math.min(64, targetH * ratio);
-      doc.addImage(logo, props?.fileType || (logo.includes("image/png") ? "PNG" : "JPEG"), M, 10, w, targetH);
+      const w = Math.min(72, targetH * ratio);
+      doc.addImage(logo, props?.fileType || (logo.includes("image/png") ? "PNG" : "JPEG"), M, 5, w, targetH);
     } catch { /* yoksay */ }
   }
   setText(INK);
@@ -236,9 +236,10 @@ export async function createStoreShipmentPdf(shipmentOrId) {
   doc.text(formatPdfDate(record.date), rx, y + 28);
 
   // 3 ozet kutusu (hepsi arka planli): Toplam Kalem / Adet / Tutar
-  const boxGap = 4;
-  const boxW = (W - 2 * boxGap) / 3;
-  const boxY = y + 34;
+  const innerPad = 7;
+  const boxGap = 5;
+  const boxW = (W - 2 * innerPad - 2 * boxGap) / 3;
+  const boxY = y + 33;
   const boxH = 18;
   const summary = [
     ["Toplam Kalem", String(record.lineCount || 0)],
@@ -246,7 +247,7 @@ export async function createStoreShipmentPdf(shipmentOrId) {
     ["Toplam Tutar", record.totalAmountDisplay || "-"],
   ];
   summary.forEach(([label, value], i) => {
-    const bx = M + i * (boxW + boxGap);
+    const bx = M + innerPad + i * (boxW + boxGap);
     setFill(CORAL_HL);
     doc.roundedRect(bx, boxY, boxW, boxH, 3, 3, "F");
     setFill(CORAL);
@@ -257,13 +258,11 @@ export async function createStoreShipmentPdf(shipmentOrId) {
     doc.text(value, bx + 14, boxY + 14);
   });
 
-  // ---- Urunler bolum basligi ----
-  y += cardH + 10;
-  setFill(CORAL);
-  doc.roundedRect(M, y - 5, 6, 6, 1.5, 1.5, "F");
+  // ---- Urunler bolum basligi (tablo hizasinda, ikonsuz) ----
+  y += cardH + 12;
   setText(CORAL);
   doc.setFontSize(13);
-  doc.text("ÜRÜNLER", M + 10, y);
+  doc.text("ÜRÜNLER", M, y);
   y += 6;
 
   // ---- Tablo basligi (coral bant) ----
