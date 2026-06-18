@@ -14,9 +14,9 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-// jsPDF.addImage YALNIZCA JPEG/PNG cizebilir. Sistemde webp (or. SBSE1119) gibi
-// formatlar da saklaniyor; bunlar PDF'e dogrudan gomulemez -> bos kalir.
-// Bu yardimci, cizilemeyen formatlari canvas uzerinden JPEG'e yeniden kodlar.
+// jsPDF.addImage YALNIZCA JPEG/PNG cizebilir. JPEG/PNG gorsellere DOKUNULMAZ;
+// 3 MB'lik ham foto dahil sorunsuz gomulurler (eski, calisan davranis). Yalnizca
+// jsPDF'in cizemedigi formatlar (webp gibi) canvas ile JPEG'e cevrilir.
 function isDrawableDataUrl(s) {
   return (
     typeof s === "string" &&
@@ -26,10 +26,9 @@ function isDrawableDataUrl(s) {
   );
 }
 
-// Gorseli canvas uzerinden yeniden kodlar VE buyuk boyutlari kuculttur.
-// 3 MB'lik ham telefon fotograflari jsPDF.addImage'i (bellek/performans) bos
-// birakabiliyor; thumbnail kutucugu zaten ~12mm oldugu icin ~320px yeterli.
-async function reencodeToJpeg(dataUrl, maxDim = 320) {
+// Cizilemeyen formati (webp vb.) canvas ile JPEG'e cevirir. Sadece bu formatlar
+// icin kullanilir; JPEG/PNG asla buradan gecmez (gereksiz + riskli yeniden kodlama).
+async function reencodeToJpeg(dataUrl) {
   try {
     const img = await new Promise((resolve, reject) => {
       const im = new Image();
@@ -37,13 +36,9 @@ async function reencodeToJpeg(dataUrl, maxDim = 320) {
       im.onerror = () => reject(new Error("decode"));
       im.src = dataUrl;
     });
-    let w = img.naturalWidth || img.width;
-    let h = img.naturalHeight || img.height;
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
     if (!w || !h) return null;
-    if (w > maxDim || h > maxDim) {
-      if (w >= h) { h = Math.round((h * maxDim) / w); w = maxDim; }
-      else { w = Math.round((w * maxDim) / h); h = maxDim; }
-    }
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
@@ -52,26 +47,26 @@ async function reencodeToJpeg(dataUrl, maxDim = 320) {
     ctx.fillStyle = "#ffffff"; // saydamlik JPEG'de siyah olmasin
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
-    return canvas.toDataURL("image/jpeg", 0.82);
+    const out = canvas.toDataURL("image/jpeg", 0.85);
+    // Gecerli ve anlamli bir cikti uretildi mi? Degilse null (placeholder kalir).
+    return out && out.startsWith("data:image/jpeg") && out.length > 100 ? out : null;
   } catch {
     return null;
   }
 }
 
-// Tum gorselleri kucuk bir JPEG thumbnail'e indirir: hem webp/format sorununu
-// hem de ham yuksek cozunurluklu fotograflarin PDF'e gomulememesini cozer.
-async function toDrawableDataUrl(dataUrl, maxDim = 320) {
+// JPEG/PNG ise OLDUGU GIBI dondurur (yeniden kodlama YOK). webp vb. ise JPEG'e
+// cevirmeyi dener; SVG/gecersiz/cevrilemeyen ise null.
+async function toDrawableDataUrl(dataUrl) {
   if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return null;
   if (dataUrl.includes("svg")) return null;
-  const small = await reencodeToJpeg(dataUrl, maxDim);
-  if (small) return small;
-  // Yeniden kodlama basarisizsa, zaten cizilebilir formattaysa oldugu gibi dene
-  return isDrawableDataUrl(dataUrl) ? dataUrl : null;
+  if (isDrawableDataUrl(dataUrl)) return dataUrl; // jpeg/png: dokunma
+  return reencodeToJpeg(dataUrl); // webp vb: jpeg'e cevir
 }
 
 // Bir gorsel URL'sini (or. /api/products/:id/image) PDF'e gomulebilecek data URL'e cevirir.
 // SVG (placeholder) atlanir; webp gibi formatlar JPEG'e yeniden kodlanir.
-async function fetchImageDataUrl(url, maxDim = 320) {
+async function fetchImageDataUrl(url) {
   try {
     const res = await fetch(url, { credentials: "same-origin" });
     if (!res.ok) return null;
@@ -83,7 +78,7 @@ async function fetchImageDataUrl(url, maxDim = 320) {
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(blob);
     });
-    return toDrawableDataUrl(dataUrl, maxDim);
+    return toDrawableDataUrl(dataUrl);
   } catch {
     return null;
   }
@@ -242,8 +237,8 @@ export async function createStoreShipmentPdf(shipmentOrId) {
 
   // ---- Baslik: sol logo (sistemden, dogru oran) + sag baslik ----
   let logo = null;
-  try { const b = await getBrandingFresh(); if (b?.logoUrl) logo = await fetchImageDataUrl(b.logoUrl, 600); } catch { /* yoksay */ }
-  if (!logo) { try { logo = await fetchImageDataUrl("/pdf-logo.png", 600); } catch { logo = null; } }
+  try { const b = await getBrandingFresh(); if (b?.logoUrl) logo = await fetchImageDataUrl(b.logoUrl); } catch { /* yoksay */ }
+  if (!logo) { try { logo = await fetchImageDataUrl("/pdf-logo.png"); } catch { logo = null; } }
   if (logo) {
     try {
       const props = doc.getImageProperties(logo);
