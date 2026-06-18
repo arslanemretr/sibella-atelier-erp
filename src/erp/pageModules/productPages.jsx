@@ -7,6 +7,7 @@ import { listMasterDataFresh } from "../masterData";
 import { createProduct, createProductAsync, deleteProduct, getProductByIdFresh, importProducts, listProductImagesFresh, listProductsRawFresh, listProductStockLocationsFresh, listProductsFresh, updateProductAsync } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 import { getSystemParametersFresh } from "../systemParameters";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const { Title, Text } = Typography;
 
@@ -93,13 +94,8 @@ export function ProductListPage() {
   const [stockDrawerOpen, setStockDrawerOpen] = React.useState(false);
   const [stockDrawerLoading, setStockDrawerLoading] = React.useState(false);
   const [stockBreakdownItems, setStockBreakdownItems] = React.useState([]);
-  const [products, setProducts] = React.useState([]);
-  const [tableLoading, setTableLoading] = React.useState(true);
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
-  const [categoryOptions, setCategoryOptions] = React.useState([{ value: "all", label: "Tumu" }]);
-  const [collectionOptions, setCollectionOptions] = React.useState([{ value: "all", label: "Tumu" }]);
-  const [supplierOptions, setSupplierOptions] = React.useState([]);
   const [filters, setFilters] = React.useState({
     search: "",
     categoryId: undefined,
@@ -132,52 +128,42 @@ export function ProductListPage() {
     { value: "=", label: "Eşittir (=)" },
   ];
 
-  const refreshProducts = React.useCallback(async () => {
-    setTableLoading(true);
-    try {
+  // TanStack Query: urun listesi + lookup verileri (cache + dedup; staleTime/focus global guardrail)
+  const queryClient = useQueryClient();
+  const { data: listData, isLoading: listLoading, isFetching: listFetching, error: listError } = useQuery({
+    queryKey: ["products", "list"],
+    queryFn: async () => {
       const [productRows, categoryRows, collectionRows, supplierRows] = await Promise.all([
         listProductsFresh({ slim: true }),
         listMasterDataFresh("categories"),
         listMasterDataFresh("collections"),
         listSuppliersFresh({ slim: true }),
       ]);
+      return { productRows, categoryRows, collectionRows, supplierRows };
+    },
+  });
 
-      setProducts(productRows);
-      setCategoryOptions([
-        { value: "all", label: "Tumu" },
-        ...categoryRows.map((item) => ({ value: item.id, label: item.fullPath })),
-      ]);
-      setCollectionOptions([
-        { value: "all", label: "Tumu" },
-        ...collectionRows.map((item) => ({ value: item.id, label: item.name })),
-      ]);
-      setSupplierOptions(supplierRows.map((item) => ({ value: item.id, label: item.company || item.id })));
-    } catch (error) {
-      message.error(error?.message || "Urun listesi yuklenemedi.");
-    } finally {
-      setTableLoading(false);
-    }
-  }, []);
+  const products = listData?.productRows || [];
+  const tableLoading = listLoading || listFetching;
+  const categoryOptions = React.useMemo(
+    () => [{ value: "all", label: "Tumu" }, ...((listData?.categoryRows || []).map((item) => ({ value: item.id, label: item.fullPath })))],
+    [listData],
+  );
+  const collectionOptions = React.useMemo(
+    () => [{ value: "all", label: "Tumu" }, ...((listData?.collectionRows || []).map((item) => ({ value: item.id, label: item.name })))],
+    [listData],
+  );
+  const supplierOptions = React.useMemo(
+    () => (listData?.supplierRows || []).map((item) => ({ value: item.id, label: item.company || item.id })),
+    [listData],
+  );
+
+  // Mutasyonlardan sonra yenileme artik cache invalidation ile
+  const refreshProducts = React.useCallback(() => queryClient.invalidateQueries({ queryKey: ["products"] }), [queryClient]);
 
   React.useEffect(() => {
-    void refreshProducts();
-
-    const handleFocus = () => {
-      void refreshProducts();
-    };
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void refreshProducts();
-      }
-    };
-
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [refreshProducts]);
+    if (listError) message.error(listError?.message || "Urun listesi yuklenemedi.");
+  }, [listError]);
 
   React.useEffect(() => {
     if ((viewMode !== "kanban" && !isMobile) || kanbanFetchedRef.current) return;
