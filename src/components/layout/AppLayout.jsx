@@ -3,6 +3,7 @@ import { Grid, Layout } from 'antd';
 import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import MobileTabBar from './MobileTabBar';
 
 const { Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -40,6 +41,7 @@ const AppLayout = ({ children }) => {
           style={{
             margin: isTabletOrMobile ? '8px' : '16px',
             padding: isTabletOrMobile ? 10 : 20,
+            paddingBottom: isTabletOrMobile ? 84 : 20,
             minHeight: 280,
             background: 'transparent',
             borderRadius: '8px',
@@ -50,6 +52,7 @@ const AppLayout = ({ children }) => {
           {children}
         </Content>
       </Layout>
+      {isTabletOrMobile ? <MobileTabBar /> : null}
     </Layout>
   );
 };
