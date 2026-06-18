@@ -37,8 +37,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           borderRadius: 12,
           borderRadiusLG: 14,
           colorBgContainer: '#ffffff',
-          colorBgLayout: '#f7f5f1',
-          colorBorderSecondary: '#efe9e2',
+          colorBgLayout: '#ffffff',
+          colorBorderSecondary: '#eceef2',
         },
         components: {
           Menu: {
@@ -46,13 +46,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             itemSelectedColor: '#c75b40',
             itemHoverColor: '#c75b40',
             itemHoverBg: '#fbf6f3',
-            groupTitleColor: '#a99f95',
+            groupTitleColor: '#9aa0a6',
           },
           Table: {
-            headerBg: '#f6f3ef',
-            headerColor: '#6b6359',
-            borderColor: '#efe9e2',
-            rowHoverBg: '#faf8f5',
+            headerBg: '#f7f8fa',
+            headerColor: '#5f6570',
+            borderColor: '#eef0f3',
+            rowHoverBg: '#f7f8fa',
           },
           Button: {
             primaryShadow: 'none',
@@ -64,7 +64,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           Layout: {
             siderBg: '#ffffff',
             headerBg: '#ffffff',
-            bodyBg: '#f7f5f1',
+            bodyBg: '#ffffff',
           },
         }
       }}
