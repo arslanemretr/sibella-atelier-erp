@@ -13,6 +13,25 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+// Bir gorsel URL'sini (or. /api/products/:id/image) PDF'e gomulebilecek data URL'e cevirir.
+// SVG (placeholder) atlanir; jsPDF SVG'yi addImage ile cizemez.
+async function fetchImageDataUrl(url) {
+  try {
+    const res = await fetch(url, { credentials: "same-origin" });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    if (!blob || !String(blob.type || "").startsWith("image/") || String(blob.type).includes("svg")) return null;
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 function formatMoney(value, currency = "TRY") {
   return new Intl.NumberFormat("tr-TR", {
     style: "currency",
@@ -178,7 +197,18 @@ export async function createStoreShipmentPdf(shipmentOrId) {
   drawShipmentTableHeader(doc, currentY);
   currentY += 6;
 
-  (record.lines || []).forEach((line) => {
+  // Satir gorsellerini PDF oncesi data URL'e cozumle: base64 satirda varsa onu kullan,
+  // yoksa urun gorselini onbelleklenebilir uctan (/api/products/:id/image) cekip cevir.
+  const lineImages = await Promise.all((record.lines || []).map(async (line) => {
+    if (typeof line.image === "string" && line.image.startsWith("data:image") && !line.image.includes("svg")) {
+      return line.image;
+    }
+    const url = line.productId ? `/api/products/${line.productId}/image` : (line.imageUrl || "");
+    if (!url) return null;
+    return fetchImageDataUrl(url);
+  }));
+
+  (record.lines || []).forEach((line, idx) => {
     const rowHeight = 18;
     if (currentY > 260) {
       doc.addPage();
@@ -190,9 +220,11 @@ export async function createStoreShipmentPdf(shipmentOrId) {
     doc.setDrawColor(232, 237, 243);
     doc.rect(14, currentY - 4, 182, rowHeight);
 
-    if (typeof line.image === "string" && line.image.startsWith("data:image")) {
+    const lineImg = lineImages[idx];
+    if (lineImg) {
       try {
-        doc.addImage(line.image, "JPEG", 16, currentY - 2, 10, 10);
+        const fmt = lineImg.includes("image/png") ? "PNG" : "JPEG";
+        doc.addImage(lineImg, fmt, 16, currentY - 2, 10, 10);
       } catch {
         doc.rect(16, currentY - 2, 10, 10);
       }
