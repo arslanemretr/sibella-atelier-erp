@@ -2,6 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button, Card, Descriptions, Drawer, Grid, Input, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DownloadOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listStockMovementsFresh } from "../stockMovementsData";
 
 const { Title, Text } = Typography;
@@ -79,8 +80,6 @@ export function StockListPage() {
   const isMobile = !screens.md;
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedMovement, setSelectedMovement] = React.useState(null);
-  const [movements, setMovements] = React.useState([]);
-  const [tableLoading, setTableLoading] = React.useState(true);
   const [filters, setFilters] = React.useState({
     search: "",
     movementType: undefined,
@@ -88,30 +87,24 @@ export function StockListPage() {
     stockLocationId: undefined,
   });
 
-  const refreshMovements = React.useCallback(async () => {
-    setTableLoading(true);
-    try {
+  const queryClient = useQueryClient();
+  const { data: movements = [], isLoading, isFetching, error } = useQuery({
+    queryKey: ["stock", "movements"],
+    queryFn: async () => {
       const movementRows = await listStockMovementsFresh();
-      setMovements(
-        movementRows.map((item) => ({
-          ...item,
-          key: item.id,
-          detailPath: buildDetailPath(item),
-          unitAmountDisplay: formatMoney(item.unitAmount),
-          totalAmountDisplay: formatMoney(item.totalAmount),
-          quantitySignedDisplay: buildSignedQuantity(item),
-        })),
-      );
-    } catch (error) {
-      message.error(error?.message || "Stok hareketleri yuklenemedi.");
-    } finally {
-      setTableLoading(false);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    void refreshMovements();
-  }, [refreshMovements]);
+      return movementRows.map((item) => ({
+        ...item,
+        key: item.id,
+        detailPath: buildDetailPath(item),
+        unitAmountDisplay: formatMoney(item.unitAmount),
+        totalAmountDisplay: formatMoney(item.totalAmount),
+        quantitySignedDisplay: buildSignedQuantity(item),
+      }));
+    },
+  });
+  React.useEffect(() => { if (error) message.error(error?.message || "Stok hareketleri yuklenemedi."); }, [error]);
+  const tableLoading = isLoading || isFetching;
+  const refreshMovements = React.useCallback(() => queryClient.invalidateQueries({ queryKey: ["stock", "movements"] }), [queryClient]);
 
   const movementTypeOptions = React.useMemo(
     () => [

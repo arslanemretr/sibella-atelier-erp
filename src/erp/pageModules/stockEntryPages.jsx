@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Col, Descriptions, Drawer, Form, Grid, Input, InputNumber, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createStockEntry, getStockEntryFresh, listStockEntriesFresh, updateStockEntry } from "../stockEntriesData";
 import { listSuppliersFresh } from "../suppliersData";
 import { listProductsRawFresh } from "../productsData";
@@ -362,15 +363,12 @@ export function StockEntryListPage() {
   const [createForm] = Form.useForm();
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedEntry, setSelectedEntry] = React.useState(null);
-  const [entries, setEntries] = React.useState([]);
-  const [tableLoading, setTableLoading] = React.useState(false);
   const [creating, setCreating] = React.useState(false);
   const [filters, setFilters] = React.useState({
     search: "",
     status: undefined,
     sourceType: undefined,
   });
-  const [supplierOptions, setSupplierOptions] = React.useState([]);
   const createStatusOptions = ["Alim Planlandi", "Taslak", "Tamamlandi"].map((value) => ({ value, label: value }));
   const statusOptions = ["Tumu", "Alim Planlandi", "Taslak", "Tamamlandi"].map((value) => ({ value, label: value }));
   const stockTypeOptions = ["Urun", "Hammadde", "Ambalaj"].map((value) => ({ value, label: value }));
@@ -389,44 +387,32 @@ export function StockEntryListPage() {
     });
   }, [createForm]);
 
-  const cachedLookupsRef = React.useRef(null);
-
-  const refreshEntries = React.useCallback(async (forceRefreshLookups = false) => {
-    try {
-      setTableLoading(true);
-      let lookups = cachedLookupsRef.current;
-      const needsLookups = !lookups || forceRefreshLookups;
-
+  const queryClient = useQueryClient();
+  const { data: entryData, isLoading, isFetching, error } = useQuery({
+    queryKey: ["stock", "entries"],
+    queryFn: async () => {
       const [suppliers, products, nextEntries] = await Promise.all([
-        needsLookups ? listSuppliersFresh({ slim: true }) : Promise.resolve(lookups.suppliers),
-        needsLookups ? listProductsRawFresh() : Promise.resolve(lookups.products),
+        listSuppliersFresh({ slim: true }),
+        listProductsRawFresh(),
         listStockEntriesFresh(),
       ]);
-
-      if (needsLookups) {
-        cachedLookupsRef.current = { suppliers, products };
-        setSupplierOptions(suppliers.map((item) => ({ value: item.id, label: item.company })));
-      }
-
       const productMap = Object.fromEntries(products.map((item) => [item.id, item]));
-      setEntries(nextEntries.map((entry) => ({
+      const mappedEntries = nextEntries.map((entry) => ({
         ...entry,
         lines: (entry.lines || []).map((line) => ({
           ...line,
           productCode: line.productCode || productMap[line.productId]?.code || "-",
           productName: line.productName || productMap[line.productId]?.name || "-",
         })),
-      })));
-    } catch (error) {
-      message.error(error?.message || "Stok girisleri yuklenemedi.");
-    } finally {
-      setTableLoading(false);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    void refreshEntries();
-  }, [refreshEntries]);
+      }));
+      return { entries: mappedEntries, supplierOptions: suppliers.map((item) => ({ value: item.id, label: item.company })) };
+    },
+  });
+  React.useEffect(() => { if (error) message.error(error?.message || "Stok girisleri yuklenemedi."); }, [error]);
+  const entries = entryData?.entries || [];
+  const supplierOptions = entryData?.supplierOptions || [];
+  const tableLoading = isLoading || isFetching;
+  const refreshEntries = React.useCallback(() => queryClient.invalidateQueries({ queryKey: ["stock", "entries"] }), [queryClient]);
 
   const handleCreateMainRecord = async () => {
     try {
