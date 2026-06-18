@@ -101,6 +101,8 @@ const iconMap = {
   "/supplier/earnings": menuIcon(HandCoins),
   "/supplier/deliveries/new": menuIcon(PackagePlus),
   "/supplier/deliveries": menuIcon(Truck),
+  "/supplier/reports/sales": menuIcon(TrendingUp),
+  "/supplier/reports/stock": menuIcon(PackageSearch),
 };
 
 function withIcons(items) {
