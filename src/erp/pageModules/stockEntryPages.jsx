@@ -101,7 +101,8 @@ export function StockEntryEditorPage() {
     return () => {
       cancelled = true;
     };
-  }, [form, isEditMode, navigate, stockEntryId]);
+    // Yalnizca kayit id'si degisince yeniden yukle (form/navigate stabil; gereksiz re-run/loop onlenir)
+  }, [stockEntryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async () => {
     try {
@@ -422,9 +423,9 @@ export function StockEntryListPage() {
         ...values,
         lines: [],
       });
-      await refreshEntries();
       message.success("Ana kayit olusturuldu. Kalem girisi ekranina yonlendiriliyorsunuz.");
       navigate(`/stock/entry/${savedEntry.id}`);
+      void refreshEntries();
     } catch (error) {
       if (!error?.errorFields) {
         message.error(error?.message || "Kayit islemi basarisiz oldu.");
