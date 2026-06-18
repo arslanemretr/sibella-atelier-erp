@@ -15,17 +15,16 @@ function loadStore() {
   return requestCollectionSync("/api/stock-entries", []);
 }
 
+// NOT: Senkron listProducts()/listSuppliers() KULLANILMAZ — bunlar urun basina
+// senkron master-data (collections/categories) XHR'i tetikleyip ana thread'i
+// kilitliyordu. Satir kodu/adi ve tedarikci adi backend'den gelir (fallback "-").
 function enrichStockEntry(entry) {
-  const supplierMap = Object.fromEntries(listSuppliers().map((item) => [item.id, item.company]));
-  const productMap = Object.fromEntries(listProducts().map((item) => [item.id, item]));
-
   const lines = (entry.lines || []).map((line) => {
-    const product = productMap[line.productId];
     const total = Number(line.quantity || 0) * Number(line.unitCost || 0);
     return {
       ...line,
-      productCode: product?.code || "-",
-      productName: product?.name || "-",
+      productCode: line.productCode || "-",
+      productName: line.productName || "-",
       unitCostDisplay: money(line.unitCost),
       lineTotal: total,
       lineTotalDisplay: money(total),
@@ -36,7 +35,7 @@ function enrichStockEntry(entry) {
 
   return {
     ...entry,
-    sourcePartyName: supplierMap[entry.sourcePartyId] || "-",
+    sourcePartyName: entry.sourcePartyName || "-",
     lines,
     lineCount: lines.length,
     totalAmount,
