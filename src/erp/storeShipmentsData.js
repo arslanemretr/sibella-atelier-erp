@@ -235,15 +235,22 @@ export async function createStoreShipmentPdf(shipmentOrId) {
   const R = 194;         // sag kenar
   const W = R - M;       // 178
 
-  // Satir gorsellerini PDF oncesi data URL'e cozumle (base64 yoksa urun ucundan)
-  const lineImages = await Promise.all((record.lines || []).map(async (line) => {
+  // Satir gorsellerini PDF oncesi data URL'e cozumle (base64 yoksa urun ucundan).
+  // SIRALI islenir (Promise.all DEGIL): cok sayida gorseli ayni anda new Image()
+  // ile cozmeye calismak tarayicida bazi cozumlemeleri sessizce dusuruyordu
+  // (gorsel null kaliyordu). Sirali yapinca her gorsel guvenle cozulur.
+  const lineImages = [];
+  for (const line of (record.lines || [])) {
+    let resolved = null;
     if (typeof line.image === "string" && line.image.startsWith("data:image")) {
-      const drawable = await toDrawableDataUrl(line.image);
-      if (drawable) return drawable;
+      resolved = await toDrawableDataUrl(line.image);
     }
-    const url = line.productId ? `/api/products/${line.productId}/image` : (line.imageUrl || "");
-    return url ? fetchImageDataUrl(url) : null;
-  }));
+    if (!resolved) {
+      const url = line.productId ? `/api/products/${line.productId}/image` : (line.imageUrl || "");
+      resolved = url ? await fetchImageDataUrl(url) : null;
+    }
+    lineImages.push(resolved);
+  }
 
   const cur = record.saleCurrency || "TRY";
 
