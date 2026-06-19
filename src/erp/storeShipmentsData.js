@@ -68,7 +68,10 @@ async function toDrawableDataUrl(dataUrl) {
 // SVG (placeholder) atlanir; webp gibi formatlar JPEG'e yeniden kodlanir.
 async function fetchImageDataUrl(url) {
   try {
-    const res = await fetch(url, { credentials: "same-origin" });
+    // cache: "reload" -> If-None-Match gondermez; daima taze 200 + govde gelir.
+    // Aksi halde tarayicida onbellekli gorsel icin sunucu 304 (bos govde) doner;
+    // 304 res.ok=false oldugundan gorsel null kalir ve PDF'te bos gorunurdu.
+    const res = await fetch(url, { credentials: "same-origin", cache: "reload" });
     if (!res.ok) return null;
     const blob = await res.blob();
     if (!blob || !String(blob.type || "").startsWith("image/") || String(blob.type).includes("svg")) return null;
