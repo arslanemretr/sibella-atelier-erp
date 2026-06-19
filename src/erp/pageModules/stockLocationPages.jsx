@@ -338,6 +338,7 @@ export function StockLocationDetailPage() {
         open={cartOpen}
         onClose={() => { if (!saleLoading) setCartOpen(false); }}
         width={isMobile ? "100%" : 460}
+        zIndex={1200}
         footer={(
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
             <div><Text type="secondary" style={{ fontSize: 12 }}>Toplam</Text><div style={{ fontSize: 18, fontWeight: 700 }}>{money(cartTotal)}</div></div>
