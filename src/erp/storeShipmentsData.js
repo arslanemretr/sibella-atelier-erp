@@ -26,9 +26,12 @@ function isDrawableDataUrl(s) {
   );
 }
 
-// Cizilemeyen formati (webp vb.) canvas ile JPEG'e cevirir. Sadece bu formatlar
-// icin kullanilir; JPEG/PNG asla buradan gecmez (gereksiz + riskli yeniden kodlama).
-async function reencodeToJpeg(dataUrl) {
+// Gorseli canvas uzerinden TEMIZ (baseline) bir JPEG'e cevirir ve thumbnail
+// boyutuna (varsayilan 512px) indirir. jsPDF'in kendi JPEG/PNG cozucusu bazi
+// gorsellerde (progressive JPEG, olagandisi PNG) sessizce patliyordu; canvas'tan
+// gecirilen standart JPEG her zaman guvenle gomulur. Gorseller backfill sonrasi
+// zaten kucuk (≤1280px) oldugu icin bu islem hafif ve hizlidir.
+async function reencodeToJpeg(dataUrl, maxDim = 512) {
   try {
     const img = await new Promise((resolve, reject) => {
       const im = new Image();
@@ -36,9 +39,13 @@ async function reencodeToJpeg(dataUrl) {
       im.onerror = () => reject(new Error("decode"));
       im.src = dataUrl;
     });
-    const w = img.naturalWidth || img.width;
-    const h = img.naturalHeight || img.height;
+    let w = img.naturalWidth || img.width;
+    let h = img.naturalHeight || img.height;
     if (!w || !h) return null;
+    if (w > maxDim || h > maxDim) {
+      if (w >= h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+      else { w = Math.round((w * maxDim) / h); h = maxDim; }
+    }
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
@@ -55,13 +62,15 @@ async function reencodeToJpeg(dataUrl) {
   }
 }
 
-// JPEG/PNG ise OLDUGU GIBI dondurur (yeniden kodlama YOK). webp vb. ise JPEG'e
-// cevirmeyi dener; SVG/gecersiz/cevrilemeyen ise null.
+// TUM gorseller canvas'tan gecip standart, kucuk JPEG'e cevrilir. Boylece jsPDF'in
+// decoder'inin takildigi formatlar (progressive jpeg / odd png / webp) elenir ve
+// her satir guvenle gomulur. SVG/gecersiz ise null.
 async function toDrawableDataUrl(dataUrl) {
   if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return null;
   if (dataUrl.includes("svg")) return null;
-  if (isDrawableDataUrl(dataUrl)) return dataUrl; // jpeg/png: dokunma
-  return reencodeToJpeg(dataUrl); // webp vb: jpeg'e cevir
+  const out = await reencodeToJpeg(dataUrl);
+  // Yeniden kodlama basarisizsa, cizilebilir formattaysa orijinali son care dene
+  return out || (isDrawableDataUrl(dataUrl) ? dataUrl : null);
 }
 
 // Bir gorsel URL'sini (or. /api/products/:id/image) PDF'e gomulebilecek data URL'e cevirir.
@@ -357,7 +366,9 @@ export async function createStoreShipmentPdf(shipmentOrId) {
     setDraw(SEP);
     doc.roundedRect(PX.thumb - 1, rowTop + 2, 12, 12, 2, 2, "FD");
     if (img) {
-      try { doc.addImage(img, img.includes("image/png") ? "PNG" : "JPEG", PX.thumb - 1, rowTop + 2, 12, 12); } catch { /* placeholder kalir */ }
+      // img artik daima canvas'tan gecmis standart JPEG; benzersiz alias ile
+      // jsPDF'in cizecegi her gorsel ayri saklanir (cakisma/yeniden-kullanim olmaz)
+      try { doc.addImage(img, "JPEG", PX.thumb - 1, rowTop + 2, 12, 12, `ln${idx}`); } catch { /* placeholder kalir */ }
     }
 
     setText(INK);
