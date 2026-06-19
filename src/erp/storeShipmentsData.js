@@ -41,7 +41,7 @@ async function reencodeToJpeg(dataUrl, maxDim = 512) {
     });
     let w = img.naturalWidth || img.width;
     let h = img.naturalHeight || img.height;
-    if (!w || !h) return null;
+    if (!w || !h) { console.warn("[reencode] olcu-yok"); return null; }
     if (w > maxDim || h > maxDim) {
       if (w >= h) { h = Math.round((h * maxDim) / w); w = maxDim; }
       else { w = Math.round((w * maxDim) / h); h = maxDim; }
@@ -50,14 +50,17 @@ async function reencodeToJpeg(dataUrl, maxDim = 512) {
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
+    if (!ctx) { console.warn("[reencode] ctx-yok"); return null; }
     ctx.fillStyle = "#ffffff"; // saydamlik JPEG'de siyah olmasin
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
     const out = canvas.toDataURL("image/jpeg", 0.85);
     // Gecerli ve anlamli bir cikti uretildi mi? Degilse null (placeholder kalir).
-    return out && out.startsWith("data:image/jpeg") && out.length > 100 ? out : null;
-  } catch {
+    if (out && out.startsWith("data:image/jpeg") && out.length > 100) return out;
+    console.warn("[reencode] bozuk-cikti", out?.slice(0, 24), out?.length);
+    return null;
+  } catch (e) {
+    console.warn("[reencode] ISTISNA", e?.message, "srclen", dataUrl?.length, (dataUrl || "").slice(0, 24));
     return null;
   }
 }
@@ -81,17 +84,23 @@ async function fetchImageDataUrl(url) {
     // Aksi halde tarayicida onbellekli gorsel icin sunucu 304 (bos govde) doner;
     // 304 res.ok=false oldugundan gorsel null kalir ve PDF'te bos gorunurdu.
     const res = await fetch(url, { credentials: "same-origin", cache: "reload" });
-    if (!res.ok) return null;
+    if (!res.ok) { console.warn("[fetch] status-yok", res.status, url); return null; }
     const blob = await res.blob();
-    if (!blob || !String(blob.type || "").startsWith("image/") || String(blob.type).includes("svg")) return null;
+    if (!blob || !String(blob.type || "").startsWith("image/") || String(blob.type).includes("svg")) {
+      console.warn("[fetch] kotu-blob", blob?.type, blob?.size, url); return null;
+    }
     const dataUrl = await new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(blob);
     });
-    return toDrawableDataUrl(dataUrl);
-  } catch {
+    if (!dataUrl) { console.warn("[fetch] reader-null", url); return null; }
+    const drawable = await toDrawableDataUrl(dataUrl);
+    if (!drawable) console.warn("[fetch] toDrawable-null", url, (dataUrl || "").slice(0, 20), dataUrl?.length);
+    return drawable;
+  } catch (e) {
+    console.warn("[fetch] ISTISNA", e?.message, url);
     return null;
   }
 }
