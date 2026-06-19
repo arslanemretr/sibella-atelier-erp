@@ -396,6 +396,25 @@ async function listStoreShipmentRows() {
 }
 
 // Tek kayıt için: satırlarla birlikte çek (detay/editör için)
+// Bu gönderiye "bağlı satış" var mı? Tanım: gönderinin mağazasında (store_id),
+// gönderideki ürünlerden herhangi biri için bir Mağaza Satışı satırı bulunması.
+// Varsa gönderi düzenlenemez; önce satış iptal edilmelidir.
+async function findLinkedSalesForShipment(storeId, productIds) {
+  const ids = (productIds || []).filter(Boolean);
+  if (!storeId || !ids.length) return [];
+  const rows = await sqlMany(
+    `
+      SELECT DISTINCT ss.sale_no
+      FROM store_sale_lines sl
+      INNER JOIN store_sales ss ON ss.id = sl.sale_id
+      WHERE ss.store_id = $1 AND sl.product_id = ANY($2::text[])
+      ORDER BY ss.sale_no
+    `,
+    [storeId, ids],
+  );
+  return rows.map((r) => r.sale_no).filter(Boolean);
+}
+
 async function getStoreShipmentRow(shipmentId, { withImages = true } = {}) {
   const row = await sqlOne(
     "SELECT *, to_char(date, 'YYYY-MM-DD') AS date_str FROM store_shipments WHERE id = $1",
@@ -413,6 +432,14 @@ async function getStoreShipmentRow(shipmentId, { withImages = true } = {}) {
   );
   const totalQuantity = lines.reduce((sum, l) => sum + Number(l.quantity || 0), 0);
   const totalAmount   = lines.reduce((sum, l) => sum + (Number(l.quantity || 0) * Number(l.salePrice || 0)), 0);
+  // Gönderildi ise editör için bağlı satış durumunu hesapla (kilit/uyarı için)
+  let linkedSaleNos = [];
+  if ((row.status || "") === "Gonderildi") {
+    linkedSaleNos = await findLinkedSalesForShipment(
+      row.store_id || null,
+      lines.map((l) => l.productId).filter(Boolean),
+    );
+  }
   return {
     id:             row.id,
     shipmentNo:     row.shipment_no || "",
@@ -429,6 +456,8 @@ async function getStoreShipmentRow(shipmentId, { withImages = true } = {}) {
     lineCount:      lines.length,
     totalQuantity,
     totalAmount,
+    hasLinkedSales: linkedSaleNos.length > 0,
+    linkedSaleNos,
     createdAt:      row.created_at || null,
     updatedAt:      row.updated_at || null,
   };
@@ -523,8 +552,18 @@ async function saveStoreShipment(values, existingRecord) {
     if (!store) {
       throw new Error("Hedef magaza bulunamadi.");
     }
+    // Gönderilmiş kayıt düzenleniyorsa: bağlı satış varsa engelle (önce satış iptal).
+    // Bağlı satış yoksa düzenlemeye izin ver; stok hareketi /send ile senkronlanır.
     if (existingRecord?.status === "Gonderildi") {
-      throw new Error("Gonderilen kayitlar duzenlenemez.");
+      const existingProductIds = (existingRecord.lines || []).map((l) => l.productId).filter(Boolean);
+      const newProductIds = (values.lines || []).map((l) => l.productId).filter(Boolean);
+      const linked = await findLinkedSalesForShipment(
+        existingRecord.storeId,
+        Array.from(new Set([...existingProductIds, ...newProductIds])),
+      );
+      if (linked.length) {
+        throw new Error(`Bu gonderiye bagli satis var (${linked.join(", ")}). Once ilgili satis(lar)i iptal edin.`);
+      }
     }
 
     const allShipments = await listStoreShipmentRows();
@@ -603,9 +642,6 @@ async function sendStoreShipment(shipmentId) {
     if (!shipment) {
       throw new Error("Gonderi kaydi bulunamadi.");
     }
-    if (shipment.status === "Gonderildi") {
-      return shipment.id;
-    }
 
     const invalidLine = (shipment.lines || []).find((line) => !line.productId);
     if (invalidLine) {
@@ -616,6 +652,13 @@ async function sendStoreShipment(shipmentId) {
     if (!store?.stock_location_id) {
       throw new Error("Magaza stok yeri bulunamadi.");
     }
+
+    // Yeniden gönderim/düzenleme: eski hareketlerin (lokasyon, ürün) çiftlerini topla;
+    // silinen satır veya mağaza değişiminde eski lokasyon bakiyesi de yenilensin.
+    const oldPairs = await tx.many(
+      "SELECT DISTINCT stock_location_id, product_id FROM stock_movements WHERE source_module = $1 AND source_id = $2",
+      ["store-shipment", shipment.id],
+    );
 
     await replaceStockMovementsForSource(
       "store-shipment",
@@ -641,13 +684,19 @@ async function sendStoreShipment(shipmentId) {
       })),
       tx,
     );
-    // Tüm bakiye tablosunu yeniden kurmak yerine yalnızca bu gönderinin
-    // etkilediği stok yeri + ürünleri yeniden hesapla (mobilde takılmayı önler)
-    await rebuildStockBalancesForLocationProducts(
-      store.stock_location_id,
-      (shipment.lines || []).map((line) => line.productId),
-      tx,
-    );
+    // Etkilenen TÜM (lokasyon, ürün) çiftlerini yeniden hesapla: hem yeni satırlar
+    // (yeni lokasyon) hem eski hareketler (silinen satır / mağaza değişimi).
+    const affected = new Map(); // locationId -> Set(productId)
+    const addPair = (locId, prodId) => {
+      if (!locId || !prodId) return;
+      if (!affected.has(locId)) affected.set(locId, new Set());
+      affected.get(locId).add(prodId);
+    };
+    (shipment.lines || []).forEach((line) => addPair(store.stock_location_id, line.productId));
+    (oldPairs || []).forEach((p) => addPair(p.stock_location_id, p.product_id));
+    for (const [locId, prodSet] of affected.entries()) {
+      await rebuildStockBalancesForLocationProducts(locId, Array.from(prodSet), tx);
+    }
 
     const sentAt = nowIso();
     await tx.exec(

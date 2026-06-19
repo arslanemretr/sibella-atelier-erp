@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AutoComplete, Button, Card, Drawer, Form, Input, InputNumber, Select, Space, Tag, Typography, Upload, message } from "antd";
+import { Alert, AutoComplete, Button, Card, Drawer, Form, Input, InputNumber, Select, Space, Tag, Typography, Upload, message } from "antd";
 import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, FilePdfOutlined, MinusOutlined, PlusOutlined, SaveOutlined, SendOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
@@ -56,10 +56,14 @@ export function StoreShipmentMobileEditorPage() {
   const [addOpen, setAddOpen] = React.useState(false);
   const [draft, setDraft] = React.useState(EMPTY_DRAFT);
   const lineSeqRef = React.useRef(0);
+  const [linkedSaleNos, setLinkedSaleNos] = React.useState([]);
 
   const watchedStoreId = Form.useWatch("storeId", form);
   const watchedStatus = Form.useWatch("status", form) || "Taslak";
-  const isLocked = watchedStatus === "Gonderildi";
+  // Gönderilmiş kayıt: bağlı satış VARSA kilitli (önce satış iptal edilmeli),
+  // bağlı satış YOKSA düzenlenebilir (kaydedince stok hareketi senkronlanır).
+  const isSent = watchedStatus === "Gonderildi";
+  const isLocked = isSent && linkedSaleNos.length > 0;
 
   React.useEffect(() => {
     let cancelled = false;
@@ -104,6 +108,7 @@ export function StoreShipmentMobileEditorPage() {
             };
           });
           setLines(loadedLines);
+          setLinkedSaleNos(existing.linkedSaleNos || []);
         } else {
           form.setFieldsValue({
             storeId: undefined,
@@ -400,6 +405,21 @@ export function StoreShipmentMobileEditorPage() {
 
       <div style={{ padding: 16 }}>
         <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          {isSent && linkedSaleNos.length > 0 ? (
+            <Alert
+              type="warning"
+              showIcon
+              message="Bu gönderiye bağlı satış var"
+              description={`Düzenlemek için önce ilgili satış(lar)ı iptal edin: ${linkedSaleNos.join(", ")} (Mağaza Satışlar ekranından).`}
+            />
+          ) : isSent ? (
+            <Alert
+              type="info"
+              showIcon
+              message="Gönderilmiş kayıt — düzenlenebilir"
+              description="Değişiklik yapıp 'Güncelle' dediğinizde mağaza stok hareketi yeni adetlere göre güncellenir."
+            />
+          ) : null}
           {/* Panel 1 — Genel Bilgiler */}
           <Card size="small" title="Genel Bilgiler" loading={pageLoading} styles={{ body: { paddingBottom: 4 } }}>
             <Form form={form} layout="vertical">
@@ -587,25 +607,40 @@ export function StoreShipmentMobileEditorPage() {
               <Text strong style={{ fontSize: 15 }}>{formatMoney(totalAmount)}</Text>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <Button
-                icon={<SaveOutlined />}
-                size="large"
-                loading={saving}
-                onClick={() => { void handleSaveDraft(); }}
-                style={{ flex: 1, height: 48, fontSize: 14, borderRadius: 10 }}
-              >
-                Taslak Kaydet
-              </Button>
-              <Button
-                type="primary"
-                icon={<SendOutlined />}
-                size="large"
-                loading={saving}
-                onClick={() => { void handleSend(); }}
-                style={{ flex: 1.4, height: 48, fontSize: 14, borderRadius: 10 }}
-              >
-                Gonderildi
-              </Button>
+              {isSent ? (
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  size="large"
+                  loading={saving}
+                  onClick={() => { void handleSend(); }}
+                  style={{ flex: 1, height: 48, fontSize: 14, borderRadius: 10 }}
+                >
+                  Güncelle (stoğu senkronla)
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    icon={<SaveOutlined />}
+                    size="large"
+                    loading={saving}
+                    onClick={() => { void handleSaveDraft(); }}
+                    style={{ flex: 1, height: 48, fontSize: 14, borderRadius: 10 }}
+                  >
+                    Taslak Kaydet
+                  </Button>
+                  <Button
+                    type="primary"
+                    icon={<SendOutlined />}
+                    size="large"
+                    loading={saving}
+                    onClick={() => { void handleSend(); }}
+                    style={{ flex: 1.4, height: 48, fontSize: 14, borderRadius: 10 }}
+                  >
+                    Gonderildi
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
