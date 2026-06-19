@@ -22,6 +22,11 @@ function money(v) {
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", minimumFractionDigits: 2 }).format(Number(v || 0));
 }
 
+// Ondalıksız (virgülden sonra rakam yok)
+function money0(v) {
+  return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(v || 0));
+}
+
 const PERIODS = {
   bugun: { label: "Bugün", range: () => [dayjs().startOf("day"), dayjs()] },
   hafta: { label: "Bu Hafta", range: () => [dayjs().startOf("week"), dayjs()] },
@@ -127,7 +132,7 @@ export function OperationsCenterPage() {
 
       {/* KPI kartlari */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0,1fr) minmax(0,1fr)" : "repeat(4, minmax(0,1fr))", gap: 16 }}>
-        <KpiCard title="Net Ciro" value={money(netCiro)} hint={`İade düşülmüş · ${periodLabel}`} icon={<RiseOutlined />} tint={{ bg: "#fde9e4", fg: ACCENT }} />
+        <KpiCard title="Net Ciro" value={money0(netCiro)} hint={`İade düşülmüş · ${periodLabel}`} icon={<RiseOutlined />} tint={{ bg: "#fde9e4", fg: ACCENT }} />
         <KpiCard title="Satış Adedi" value={Number(stats.totalSalesCount || 0)} hint={`${Number(stats.totalSalesQty || 0)} ürün satıldı`} icon={<ShoppingOutlined />} tint={{ bg: "#e3f5f0", fg: "#1f9d8a" }} />
         <KpiCard title="Düşük Stok" value={Number(stats.lowStockCount || 0)} hint="min. stok altında" icon={<ExclamationCircleOutlined />} tint={{ bg: "#fdf3e3", fg: "#e7a93b" }} />
         <KpiCard title="Aktif Ürün" value={Number(stats.activeProductCount || 0)} hint="katalogda aktif" icon={<AppstoreOutlined />} tint={{ bg: "#e7f6ee", fg: "#1f9d66" }} />
