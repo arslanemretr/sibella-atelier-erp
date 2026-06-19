@@ -2,6 +2,7 @@ import { mutateResourceSync, requestJson, requestJsonSync } from "./apiClient";
 
 const defaultParameters = {
   productCodeControlEnabled: true,
+  storeShipmentEditEnabled: false,
 };
 
 export function getSystemParameters() {

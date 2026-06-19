@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Alert, AutoComplete, Button, Card, Drawer, Form, Input, InputNumber, Select, Space, Tag, Typography, Upload, message } from "antd";
 import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, FilePdfOutlined, MinusOutlined, PlusOutlined, SaveOutlined, SendOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
@@ -9,6 +9,7 @@ import { getNextProductCodeFresh, getProductByIdFresh, listProductsRawFresh, upd
 import { listSuppliersFresh } from "../suppliersData";
 import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
+import { getSystemParametersFresh } from "../systemParameters";
 
 const { Text } = Typography;
 
@@ -40,9 +41,13 @@ function formatSbse(seq) {
 export function StoreShipmentMobileEditorPage() {
   const navigate = useNavigate();
   const { shipmentId } = useParams();
+  const [searchParams] = useSearchParams();
   const isEditMode = Boolean(shipmentId);
   const authUser = getAuthUser();
   const [form] = Form.useForm();
+  const [shipmentEditEnabled, setShipmentEditEnabled] = React.useState(false);
+  // Düzenleme niyeti: ?edit=1 ile gelinmiş VE parametre aktif olmalı
+  const editIntent = searchParams.get("edit") === "1" && shipmentEditEnabled;
 
   const [stores, setStores] = React.useState([]);
   const [products, setProducts] = React.useState([]);
@@ -58,12 +63,22 @@ export function StoreShipmentMobileEditorPage() {
   const lineSeqRef = React.useRef(0);
   const [linkedSaleNos, setLinkedSaleNos] = React.useState([]);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const p = await getSystemParametersFresh();
+      if (!cancelled) setShipmentEditEnabled(Boolean(p?.storeShipmentEditEnabled));
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const watchedStoreId = Form.useWatch("storeId", form);
   const watchedStatus = Form.useWatch("status", form) || "Taslak";
-  // Gönderilmiş kayıt: bağlı satış VARSA kilitli (önce satış iptal edilmeli),
-  // bağlı satış YOKSA düzenlenebilir (kaydedince stok hareketi senkronlanır).
+  // Gönderilmiş kayıt varsayılan GÖRÜNTÜLEME modundadır. Düzenleme için:
+  // (1) listeden "Düzenle" ile ?edit=1 gelinmeli + parametre aktif (editIntent),
+  // (2) bağlı satış olmamalı. Aksi halde kilitli.
   const isSent = watchedStatus === "Gonderildi";
-  const isLocked = isSent && linkedSaleNos.length > 0;
+  const isLocked = isSent && (!editIntent || linkedSaleNos.length > 0);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -405,19 +420,26 @@ export function StoreShipmentMobileEditorPage() {
 
       <div style={{ padding: 16 }}>
         <Space direction="vertical" size={16} style={{ width: "100%" }}>
-          {isSent && linkedSaleNos.length > 0 ? (
+          {isSent && editIntent && linkedSaleNos.length > 0 ? (
             <Alert
               type="warning"
               showIcon
               message="Bu gönderiye bağlı satış var"
               description={`Düzenlemek için önce ilgili satış(lar)ı iptal edin: ${linkedSaleNos.join(", ")} (Mağaza Satışlar ekranından).`}
             />
+          ) : isSent && editIntent ? (
+            <Alert
+              type="info"
+              showIcon
+              message="Düzenleme modu"
+              description="Değişiklik yapıp 'Güncelle' dediğinizde mağaza stok hareketi yeni adetlere göre güncellenir."
+            />
           ) : isSent ? (
             <Alert
               type="info"
               showIcon
-              message="Gönderilmiş kayıt — düzenlenebilir"
-              description="Değişiklik yapıp 'Güncelle' dediğinizde mağaza stok hareketi yeni adetlere göre güncellenir."
+              message="Görüntüleme modu"
+              description="Gönderilmiş kayıt. Düzenlemek için Gönderi Listesi'ndeki 'Düzenle' butonunu kullanın (parametre aktifse)."
             />
           ) : null}
           {/* Panel 1 — Genel Bilgiler */}

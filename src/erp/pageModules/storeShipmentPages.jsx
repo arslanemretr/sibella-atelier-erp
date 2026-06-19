@@ -1,5 +1,5 @@
 ﻿import React from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AutoComplete, Button, Card, Col, Descriptions, Drawer, Form, Grid, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, Tooltip, Typography, Upload, message } from "antd";
 import { CheckOutlined, DeleteOutlined, EditOutlined, FilePdfOutlined, FilterOutlined, PlusCircleOutlined, PlusOutlined, SendOutlined, UploadOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
@@ -9,6 +9,7 @@ import { listProductsRawFresh, updateProductPrice } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
 import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh, listStoreShipmentsFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
+import { getSystemParametersFresh } from "../systemParameters";
 
 const { Title, Text } = Typography;
 
@@ -100,6 +101,16 @@ export function StoreShipmentListPage() {
   React.useEffect(() => {
     void refreshShipments();
   }, [refreshShipments]);
+
+  const [shipmentEditEnabled, setShipmentEditEnabled] = React.useState(false);
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const p = await getSystemParametersFresh();
+      if (!cancelled) setShipmentEditEnabled(Boolean(p?.storeShipmentEditEnabled));
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -223,6 +234,13 @@ export function StoreShipmentListPage() {
                     </Text>
                     <Text strong style={{ color: "#1677ff" }}>{record.totalAmountDisplay}</Text>
                   </div>
+                  {record.status === "Gonderildi" && shipmentEditEnabled ? (
+                    <div style={{ marginTop: 10, textAlign: "right" }}>
+                      <Button size="small" icon={<EditOutlined />} onClick={(event) => { event.stopPropagation(); navigate(`/stores/shipments/${record.id}?edit=1`); }}>
+                        Duzenle
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </Space>
@@ -281,6 +299,20 @@ export function StoreShipmentListPage() {
               sorter: (a, b) => String(a.status || "").localeCompare(String(b.status || ""), "tr"),
               render: (value) => (
                 <Tag color={value === "Gonderildi" ? "green" : value === "Hazirlandi" ? "gold" : "default"}>{value}</Tag>
+              ),
+            },
+            {
+              title: "", key: "actions", width: 110, align: "right",
+              render: (_, record) => (
+                record.status === "Gonderildi" && shipmentEditEnabled ? (
+                  <Button
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={(event) => { event.stopPropagation(); navigate(`/stores/shipments/${record.id}?edit=1`); }}
+                  >
+                    Duzenle
+                  </Button>
+                ) : null
               ),
             },
           ]}
@@ -446,7 +478,18 @@ export function StoreShipmentListPage() {
 export function StoreShipmentEditorPage() {
   const navigate = useNavigate();
   const { shipmentId } = useParams();
+  const [searchParams] = useSearchParams();
   const isEditMode = Boolean(shipmentId);
+  const [shipmentEditEnabled, setShipmentEditEnabled] = React.useState(false);
+  const editIntent = searchParams.get("edit") === "1" && shipmentEditEnabled;
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const p = await getSystemParametersFresh();
+      if (!cancelled) setShipmentEditEnabled(Boolean(p?.storeShipmentEditEnabled));
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const authUser = getAuthUser();
   const [form] = Form.useForm();
   const [pageLoading, setPageLoading] = React.useState(false);
@@ -481,7 +524,8 @@ export function StoreShipmentEditorPage() {
   const [suppliers, setSuppliers] = React.useState([]);
   const watchedStoreId = Form.useWatch("storeId", form);
   const watchedStatus = Form.useWatch("status", form) || "Taslak";
-  const isLocked = watchedStatus === "Gonderildi";
+  // Gönderilmiş kayıt varsayılan görüntüleme modu; ?edit=1 + parametre ile düzenlenir.
+  const isLocked = watchedStatus === "Gonderildi" && !editIntent;
 
   React.useEffect(() => {
     let cancelled = false;

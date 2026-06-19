@@ -212,6 +212,8 @@ async function ensureStoresSchema() {
 async function ensureSystemParametersSchema() {
   // SBSE ürün kodu sayacı — tüm ürünleri taramak yerine sayaç tutulur
   await sqlExec(`ALTER TABLE system_parameters ADD COLUMN IF NOT EXISTS sbse_last_seq INTEGER`);
+  // Gönderilmiş gönderi düzenleme yetkisi (opt-in, varsayılan kapalı)
+  await sqlExec(`ALTER TABLE system_parameters ADD COLUMN IF NOT EXISTS store_shipment_edit_enabled BOOLEAN`);
 }
 
 async function ensurePerformanceIndexes() {

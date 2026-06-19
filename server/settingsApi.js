@@ -87,6 +87,7 @@ function nowIso() {
 function systemParametersRowToModel(row) {
   return {
     productCodeControlEnabled: row ? Boolean(row.product_code_control_enabled) : true,
+    storeShipmentEditEnabled: row ? Boolean(row.store_shipment_edit_enabled) : false,
     updatedAt: row?.updated_at || null,
   };
 }
@@ -116,16 +117,18 @@ export async function handleSystemParametersGet(_req, res) {
 export async function handleSystemParametersPut(req, res) {
   const nextValues = {
     productCodeControlEnabled: Boolean(req.body?.productCodeControlEnabled),
+    storeShipmentEditEnabled: Boolean(req.body?.storeShipmentEditEnabled),
     updatedAt: nowIso(),
   };
 
   await sqlExec(`
-    INSERT INTO system_parameters (id, product_code_control_enabled, updated_at)
-    VALUES (1, $1, $2::timestamptz)
+    INSERT INTO system_parameters (id, product_code_control_enabled, store_shipment_edit_enabled, updated_at)
+    VALUES (1, $1, $2, $3::timestamptz)
     ON CONFLICT (id) DO UPDATE SET
       product_code_control_enabled = EXCLUDED.product_code_control_enabled,
+      store_shipment_edit_enabled = EXCLUDED.store_shipment_edit_enabled,
       updated_at = EXCLUDED.updated_at
-  `, [nextValues.productCodeControlEnabled, nextValues.updatedAt]);
+  `, [nextValues.productCodeControlEnabled, nextValues.storeShipmentEditEnabled, nextValues.updatedAt]);
 
   return res.json({
     ok: true,

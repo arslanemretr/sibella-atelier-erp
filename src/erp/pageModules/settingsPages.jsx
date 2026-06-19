@@ -327,6 +327,18 @@ export function ParametersPage() {
                 </Space>
               </Card>
             </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Card size="small" title="Gonderi Duzenleme">
+                <Space vertical size={12} style={{ width: "100%" }}>
+                  <Text type="secondary">
+                    Aktifken gonderilmis gonderiler listede "Duzenle" butonuyla acilip duzenlenebilir (bagli satis yoksa). Pasifken gonderilmis gonderiler yalnizca goruntulenebilir.
+                  </Text>
+                  <Form.Item name="storeShipmentEditEnabled" valuePropName="checked" style={{ marginBottom: 0 }}>
+                    <Switch checkedChildren="Aktif" unCheckedChildren="Pasif" />
+                  </Form.Item>
+                </Space>
+              </Card>
+            </Col>
           </Row>
         </Form>
       </Card>
