@@ -54,6 +54,7 @@ const SupplierStockReportPage = React.lazy(() => import("./erp/pageModules/suppl
 const AuditLogPage = React.lazy(() => import("./erp/pageModules/auditLogPage"));
 const ActivityReportPage = React.lazy(() => import("./erp/pageModules/activityReportPage"));
 const StoreInvoiceListPage = React.lazy(() => import("./erp/pageModules/storeInvoicePages").then((m) => ({ default: m.StoreInvoiceListPage })));
+const StoreSalesListPage = React.lazy(() => import("./erp/pageModules/storeSalesPages").then((m) => ({ default: m.StoreSalesListPage })));
 const StoreInvoiceReportPage = React.lazy(() => import("./erp/pageModules/storeInvoiceReportPage"));
 const ConsolidatedSalesReportPage = React.lazy(() => import("./erp/pageModules/consolidatedSalesReportPage"));
 const StoreCariPage = React.lazy(() => import("./erp/pageModules/storeCariPage"));
@@ -180,6 +181,7 @@ function ProtectedApp() {
         <Route path="/purchasing/entry/:purchaseId" element={withLazyPage(<PurchaseEditorPage />)} />
         <Route path="/purchasing/contracts" element={withLazyPage(<ContractsPage />)} />
 
+        <Route path="/stores/sales" element={withRolePage(<StoreSalesListPage />, authUser, "Yonetici", "Muhasebe", "Magaza")} />
         <Route path="/stores/invoices" element={withRolePage(<StoreInvoiceListPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/stores/cari" element={withRolePage(<StoreCariPage />, authUser, "Yonetici", "Muhasebe")} />
         <Route path="/reports/store-invoices" element={withRolePage(<StoreInvoiceReportPage />, authUser, "Yonetici", "Muhasebe")} />

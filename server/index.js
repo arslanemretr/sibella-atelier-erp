@@ -113,6 +113,15 @@ import {
   handleStoreInvoicePayment,
   handleStoreInvoicePaymentRevert,
 } from "./storeInvoicesApi.js";
+import {
+  ensureStoreSalesReady,
+  handleStoreSalesList,
+  handleStoreSalesGet,
+  handleStoreSalesNextNo,
+  handleStoreSalesCreate,
+  handleStoreSalesUpdate,
+  handleStoreSalesDelete,
+} from "./storeSalesApi.js";
 import { handleConsolidatedSalesReport } from "./consolidatedSalesReport.js";
 import {
   handleEmailDeliveryLogsList,
@@ -188,6 +197,7 @@ void ensureDatabaseReady()
   .then(() => ensureBrandingReady())
   .then(() => migrateLegacyPasswords())
   .then(() => ensureStoreInvoicesReady())
+  .then(() => ensureStoreSalesReady())
   .then(() => { startEarningsCron(); })
   .catch((error) => {
     console.error("Database init / auth migration hatasi:", error?.message || error);
@@ -302,6 +312,13 @@ app.put("/api/store-invoices/:id", requireRole("Yonetici", "Muhasebe"), handleSt
 app.put("/api/store-invoices/:id/payment", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicePayment);
 app.put("/api/store-invoices/:id/payment-revert", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicePaymentRevert);
 app.delete("/api/store-invoices/:id", requireRole("Yonetici", "Muhasebe"), handleStoreInvoicesDelete);
+
+app.get("/api/store-sales/next-no", requireRole("Yonetici", "Muhasebe", "Magaza"), handleStoreSalesNextNo);
+app.get("/api/store-sales", requireRole("Yonetici", "Muhasebe", "Magaza"), handleStoreSalesList);
+app.get("/api/store-sales/:id", requireRole("Yonetici", "Muhasebe", "Magaza"), handleStoreSalesGet);
+app.post("/api/store-sales", requireRole("Yonetici", "Muhasebe", "Magaza"), handleStoreSalesCreate);
+app.put("/api/store-sales/:id", requireRole("Yonetici", "Muhasebe", "Magaza"), handleStoreSalesUpdate);
+app.delete("/api/store-sales/:id", requireRole("Yonetici", "Muhasebe"), handleStoreSalesDelete);
 app.get("/api/stores", requireRole("Yonetici", "Muhasebe"), handleStoresList);
 app.post("/api/stores", requireRole("Yonetici", "Muhasebe"), handleStoresCreate);
 app.put("/api/stores/:id", requireRole("Yonetici", "Muhasebe"), handleStoresUpdate);

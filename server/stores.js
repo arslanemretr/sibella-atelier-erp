@@ -330,6 +330,7 @@ async function listStockLocationBalances(stockLocationId) {
         p.name AS product_name,
         p.image AS product_image,
         p.sale_price,
+        p.store_price,
         p.sale_currency
       FROM stock_location_balances slb
       INNER JOIN products p ON p.id = slb.product_id
@@ -346,6 +347,7 @@ async function listStockLocationBalances(stockLocationId) {
     productName: row.product_name || "",
     productImage: row.product_image || "",
     salePrice: Number(row.sale_price || 0),
+    storePrice: Number(row.store_price ?? row.sale_price ?? 0),
     saleCurrency: row.sale_currency || "TRY",
     quantity: Number(row.quantity || 0),
     updatedAt: row.updated_at || null,
