@@ -368,7 +368,14 @@ export async function createStoreShipmentPdf(shipmentOrId) {
     if (img) {
       // img artik daima canvas'tan gecmis standart JPEG; benzersiz alias ile
       // jsPDF'in cizecegi her gorsel ayri saklanir (cakisma/yeniden-kullanim olmaz)
-      try { doc.addImage(img, "JPEG", PX.thumb - 1, rowTop + 2, 12, 12, `ln${idx}`); } catch { /* placeholder kalir */ }
+      try {
+        doc.addImage(img, "JPEG", PX.thumb - 1, rowTop + 2, 12, 12, `ln${idx}`);
+      } catch (e) {
+        // Sessiz kalma: hangi satirda jsPDF'in patladigini gor (gecici teshis)
+        console.warn(`[PDF] addImage HATA ${line.code || idx}:`, e?.message || e);
+      }
+    } else {
+      console.warn(`[PDF] gorsel YOK ${line.code || idx}`);
     }
 
     setText(INK);
