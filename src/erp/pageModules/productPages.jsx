@@ -923,6 +923,8 @@ export function ProductEditorPage() {
   const navigate = useNavigate();
   const { productId } = useParams();
   const isEditMode = Boolean(productId);
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
   const [pageLoading, setPageLoading] = React.useState(false);
@@ -1193,24 +1195,30 @@ export function ProductEditorPage() {
 
   return (
     <Space vertical size={20} style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-        <div>
-          <Title level={3} style={{ marginBottom: 6 }}>{isEditMode ? "Urun Duzenle" : "Urun Ekle"}</Title>
-        </div>
-        <Space>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          justifyContent: "space-between",
+          alignItems: isMobile ? "stretch" : "center",
+          gap: 12,
+        }}
+      >
+        <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>{isEditMode ? "Urun Duzenle" : "Urun Ekle"}</Title>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {isEditMode ? (
-            <Space.Compact>
-              <Button icon={<LeftOutlined />} disabled={!previousProduct} onClick={() => previousProduct && navigate(`/products/${previousProduct.id}`)}>
+            <Space.Compact block={isMobile} style={isMobile ? { flex: 1 } : undefined}>
+              <Button block={isMobile} icon={<LeftOutlined />} disabled={!previousProduct} onClick={() => previousProduct && navigate(`/products/${previousProduct.id}`)}>
                 Onceki
               </Button>
-              <Button icon={<RightOutlined />} iconPosition="end" disabled={!nextProduct} onClick={() => nextProduct && navigate(`/products/${nextProduct.id}`)}>
+              <Button block={isMobile} icon={<RightOutlined />} iconPosition="end" disabled={!nextProduct} onClick={() => nextProduct && navigate(`/products/${nextProduct.id}`)}>
                 Sonraki
               </Button>
             </Space.Compact>
           ) : null}
-          <Button onClick={() => navigate("/products/list")}>Listeye Don</Button>
-          <Button type="primary" onClick={handleSubmit} loading={loading}>Kaydet</Button>
-        </Space>
+          <Button style={{ flex: isMobile ? 1 : undefined }} onClick={() => navigate("/products/list")}>Listeye Don</Button>
+          <Button style={{ flex: isMobile ? 1 : undefined }} type="primary" onClick={handleSubmit} loading={loading}>Kaydet</Button>
+        </div>
       </div>
 
       <Form form={form} layout="vertical">
