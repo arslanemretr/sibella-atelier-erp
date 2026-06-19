@@ -438,13 +438,19 @@ async function listProductsRows({ slim = false, catalog = false, productType = n
     SELECT
       ${selectCols},
       COALESCE(stock_totals.total_stock, 0) AS total_stock,
+      COALESCE(stock_totals.merkez_stock, 0) AS merkez_stock,
+      COALESCE(stock_totals.magaza_stock, 0) AS magaza_stock,
       COALESCE(sale_totals.sold_quantity, 0) AS sold_quantity,
       COALESCE(return_totals.return_quantity, 0) AS return_quantity
     FROM products p
     LEFT JOIN (
-      SELECT product_id, SUM(quantity) AS total_stock
-      FROM stock_location_balances
-      GROUP BY product_id
+      SELECT slb.product_id,
+             SUM(slb.quantity) AS total_stock,
+             SUM(CASE WHEN sl.is_default_main THEN slb.quantity ELSE 0 END) AS merkez_stock,
+             SUM(CASE WHEN sl.is_default_main THEN 0 ELSE slb.quantity END) AS magaza_stock
+      FROM stock_location_balances slb
+      JOIN stock_locations sl ON sl.id = slb.stock_location_id
+      GROUP BY slb.product_id
     ) stock_totals ON stock_totals.product_id = p.id
     LEFT JOIN (
       SELECT product_id, SUM(quantity) AS sold_quantity
@@ -490,6 +496,8 @@ async function listProductsRows({ slim = false, catalog = false, productType = n
     supplierLeadTime: isReduced ? 0 : Number(row.supplier_lead_time || 0),
     stock: Number(row.stock || 0),
     totalStock: Number((row.total_stock ?? row.stock) || 0),
+    merkezStock: Number(row.merkez_stock || 0),
+    storeStock: Number(row.magaza_stock || 0),
     productType: row.product_type || "kendi",
     salesTax: slim ? "%20" : (row.sales_tax || "%20"),
     image: slim ? null : (row.image || "/products/baroque-necklace.svg"),
@@ -515,13 +523,19 @@ async function getProductRow(productId) {
     SELECT
       p.*,
       COALESCE(stock_totals.total_stock, 0) AS total_stock,
+      COALESCE(stock_totals.merkez_stock, 0) AS merkez_stock,
+      COALESCE(stock_totals.magaza_stock, 0) AS magaza_stock,
       COALESCE(sale_totals.sold_quantity, 0) AS sold_quantity,
       COALESCE(return_totals.return_quantity, 0) AS return_quantity
     FROM products p
     LEFT JOIN (
-      SELECT product_id, SUM(quantity) AS total_stock
-      FROM stock_location_balances
-      GROUP BY product_id
+      SELECT slb.product_id,
+             SUM(slb.quantity) AS total_stock,
+             SUM(CASE WHEN sl.is_default_main THEN slb.quantity ELSE 0 END) AS merkez_stock,
+             SUM(CASE WHEN sl.is_default_main THEN 0 ELSE slb.quantity END) AS magaza_stock
+      FROM stock_location_balances slb
+      JOIN stock_locations sl ON sl.id = slb.stock_location_id
+      GROUP BY slb.product_id
     ) stock_totals ON stock_totals.product_id = p.id
     LEFT JOIN (
       SELECT product_id, SUM(quantity) AS sold_quantity
@@ -563,6 +577,8 @@ async function getProductRow(productId) {
     supplierLeadTime: Number(row.supplier_lead_time || 0),
     stock: Number(row.stock || 0),
     totalStock: Number((row.total_stock ?? row.stock) || 0),
+    merkezStock: Number(row.merkez_stock || 0),
+    storeStock: Number(row.magaza_stock || 0),
     productType: row.product_type || "kendi",
     salesTax: row.sales_tax || "%20",
     image: row.image || "/products/baroque-necklace.svg",

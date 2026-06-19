@@ -457,11 +457,19 @@ export function ProductListPage() {
     { title: "Satis Fiyati", dataIndex: "priceDisplay", key: "priceDisplay", width: 130, sorter: (a, b) => a.salePrice - b.salePrice },
     { title: "Kategori", dataIndex: "categoryLabel", key: "categoryLabel", width: 150, sorter: (a, b) => a.categoryLabel.localeCompare(b.categoryLabel, "tr") },
     {
-      title: "Elde Miktar",
-      dataIndex: "totalStock",
-      key: "stock",
+      title: "Merkez Stok",
+      dataIndex: "merkezStock",
+      key: "merkezStock",
       width: 110,
-      sorter: (a, b) => Number(a.totalStock || 0) - Number(b.totalStock || 0),
+      sorter: (a, b) => Number(a.merkezStock || 0) - Number(b.merkezStock || 0),
+      render: (value) => <Tag color={Number(value || 0) === 0 ? "red" : "green"}>{Number(value || 0)}</Tag>,
+    },
+    {
+      title: "Mağaza Stok",
+      dataIndex: "storeStock",
+      key: "storeStock",
+      width: 110,
+      sorter: (a, b) => Number(a.storeStock || 0) - Number(b.storeStock || 0),
       render: (value, record) => (
         <Button
           type="link"
@@ -471,7 +479,7 @@ export function ProductListPage() {
             void openStockDrawer(record);
           }}
         >
-          <Tag color={Number(value || 0) === 0 ? "red" : "green"}>{value}</Tag>
+          <Tag color={Number(value || 0) > 0 ? "blue" : undefined}>{Number(value || 0)}</Tag>
         </Button>
       ),
     },
@@ -1265,24 +1273,24 @@ export function ProductEditorPage() {
                 <Row gutter={[12, 12]}>
                   <Col xs={8}>
                     <Card size="small" style={{ textAlign: "center" }}>
-                      <Text type="secondary" style={{ fontSize: 12 }}>Giriş Adet</Text>
-                      <div><Text strong style={{ fontSize: 22 }}>{Number(currentProductData?.stock ?? currentStock)}</Text></div>
+                      <Text type="secondary" style={{ fontSize: 12 }}>Merkez Stok</Text>
+                      <div><Text strong style={{ fontSize: 22, color: Number(currentProductData?.merkezStock || 0) === 0 ? "#ff4d4f" : "#52c41a" }}>{Number(currentProductData?.merkezStock || 0)}</Text></div>
+                    </Card>
+                  </Col>
+                  <Col xs={8}>
+                    <Card size="small" style={{ textAlign: "center" }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>Mağaza Stok</Text>
+                      <div>
+                        <Button type="link" style={{ padding: 0, height: "auto" }} onClick={() => void openStockDrawer()}>
+                          <Text strong style={{ fontSize: 22, color: Number(currentProductData?.storeStock || 0) > 0 ? "#1677ff" : undefined }}>{Number(currentProductData?.storeStock || 0)}</Text>
+                        </Button>
+                      </div>
                     </Card>
                   </Col>
                   <Col xs={8}>
                     <Card size="small" style={{ textAlign: "center" }}>
                       <Text type="secondary" style={{ fontSize: 12 }}>Satış Adet</Text>
                       <div><Text strong style={{ fontSize: 22, color: Number(currentProductData?.soldQuantity || 0) > 0 ? "#1677ff" : undefined }}>{Number(currentProductData?.soldQuantity || 0)}</Text></div>
-                    </Card>
-                  </Col>
-                  <Col xs={8}>
-                    <Card size="small" style={{ textAlign: "center" }}>
-                      <Text type="secondary" style={{ fontSize: 12 }}>Elde Adet</Text>
-                      <div>
-                        <Button type="link" style={{ padding: 0, height: "auto" }} onClick={() => void openStockDrawer()}>
-                          <Text strong style={{ fontSize: 22, color: Number(currentProductData?.totalStock || 0) === 0 ? "#ff4d4f" : "#52c41a" }}>{Number(currentProductData?.totalStock || 0)}</Text>
-                        </Button>
-                      </div>
                     </Card>
                   </Col>
                 </Row>
