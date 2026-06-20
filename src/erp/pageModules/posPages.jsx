@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Badge, Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Grid, Input, InputNumber, Modal, Popconfirm, Radio, Row, Select, Space, Table, Tag, Tooltip, Typography, message } from "antd";
 import { BarcodeOutlined, CloseCircleOutlined, CloseOutlined, DeleteOutlined, EditOutlined, FilterOutlined, MenuOutlined, PlusCircleOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
 import { buildPosProductCatalogFresh, createPosReturn, getOpenPosSessionsFresh, listPosSalesFresh, listPosReturnsFresh, listPosSessionsFresh, updatePosSaleTags } from "../posData";
@@ -338,14 +339,19 @@ export function PosScreenPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const DRAFT_STORAGE_KEY = "sibella.erp.posDraftOrders.v1";
-  const [catalog, setCatalog] = React.useState([]);
+  // Ürün kataloğu (büyük payload) TanStack Query ile önbelleklenir → ekrana her
+  // dönüşte yeniden indirilmez, anında gelir.
+  const { data: catalog = [], isFetching: catalogLoading } = useQuery({
+    queryKey: ["pos", "catalog"],
+    queryFn: () => buildPosProductCatalogFresh(),
+    staleTime: 60000,
+  });
   const [stockLocations, setStockLocations] = React.useState([]);
   const [stockBalancesByLocation, setStockBalancesByLocation] = React.useState({});
   const [sessions, setSessions] = React.useState([]);
   const [posSales, setPosSales] = React.useState([]);
   const [posCategoryStateOptions, setPosCategoryStateOptions] = React.useState([{ id: "all", name: "Tumu", color: "#fee89a" }]);
   const [pageLoading, setPageLoading] = React.useState(false);
-  const [catalogLoading, setCatalogLoading] = React.useState(false);
   const [ordersLoading, setOrdersLoading] = React.useState(false);
   const [activeSessionId, setActiveSessionId] = React.useState();
   const [orderDraftsBySession, setOrderDraftsBySession] = React.useState(() => {
@@ -473,17 +479,11 @@ export function PosScreenPage() {
           })),
       ]);
       setActiveSessionId((prev) => prev || nextSessions[0]?.id);
-      setPageLoading(false); // Ekranı göster — katalog henüz yüklenmedi
-
-      // Faz 2: Ürün kataloğu arka planda yüklenir (büyük payload, ayrı beklenir)
-      setCatalogLoading(true);
-      const nextCatalog = await buildPosProductCatalogFresh();
-      setCatalog(nextCatalog);
+      // Katalog TanStack Query ile (cache'li) ayrıca yüklenir.
     } catch (error) {
       message.error(error?.message || "POS verileri yuklenemedi.");
     } finally {
       setPageLoading(false);
-      setCatalogLoading(false);
     }
   }, []);
 
