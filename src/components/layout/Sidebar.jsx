@@ -166,7 +166,7 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
           position: "sticky",
           top: 0,
           zIndex: 11,
-          height: 68,
+          height: isTabletOrMobile ? 88 : 68,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -195,7 +195,7 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
               <span style={{ fontSize: 10, color: "#9a5a4c", marginTop: 1 }}>Tedarikci Portali</span>
             </div>
           ) : (
-            <img src={logoSrc} alt={appName} style={{ height: 40, maxWidth: 168, objectFit: "contain" }} />
+            <img src={logoSrc} alt={appName} style={{ height: isTabletOrMobile ? 56 : 40, maxWidth: isTabletOrMobile ? 200 : 168, objectFit: "contain" }} />
           )}
         </div>
       </div>
