@@ -1199,7 +1199,7 @@ export function PosScreenPage() {
             ) : filteredCatalog.map((product) => (
               <button key={product.id} type="button" className="erp-pos-product-card" onClick={() => addProductToCart(product)}>
                 <div className="erp-pos-product-image-wrap">
-                  <img src={product.imageUrl} alt={product.name} className="erp-pos-product-image" />
+                  <img src={product.imageUrl} alt={product.name} className="erp-pos-product-image" loading="lazy" onError={(e) => { if (!e.currentTarget.src.endsWith("baroque-necklace.svg")) e.currentTarget.src = "/products/baroque-necklace.svg"; }} />
                 </div>
                 <div className="erp-pos-product-info">
                   <div className="erp-pos-product-code">{product.code}</div>
@@ -1376,7 +1376,7 @@ export function PosScreenPage() {
         </div>
       </div>
       ) : null}
-      <Modal title="Satışı Tamamla" open={paymentModalOpen} onCancel={() => setPaymentModalOpen(false)} onOk={handlePayment} okText="Satışı Kaydet" cancelText="Vazgeç">
+      <Modal title="Satışı Tamamla" zIndex={1100} open={paymentModalOpen} onCancel={() => setPaymentModalOpen(false)} onOk={handlePayment} okText="Satışı Kaydet" cancelText="Vazgeç">
         <Form form={paymentForm} layout="vertical" initialValues={{ customerName: activeOrder?.customerName || "Magaza Musterisi", paymentMethod: "Nakit", note: activeOrder?.note || "" }}>
           <Descriptions column={1} size="small" bordered style={{ marginBottom: 16 }}>
             <Descriptions.Item label="Oturum">{activeSession?.sessionNo || "-"}</Descriptions.Item>

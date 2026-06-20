@@ -214,14 +214,15 @@ export function buildPosProductCatalog() {
 }
 
 export async function buildPosProductCatalogFresh() {
-  // catalog=true: slim gibi ama image dahil; features/notes/cost alanları hariç
-  const products = await requestCollection("/api/products?catalog=true", []);
+  // images=false: agir base64 gorseller govdeye girmez → payload kucuk, mobil hizli.
+  // Gorsel /api/products/:id/image ucundan (onbellekli) yuklenir.
+  const products = await requestCollection("/api/products?catalog=true&images=false", []);
   return products
     .filter((item) => item.useInPos && item.status === "Aktif")
     .map((item) => ({
       ...item,
       quantityAvailable: Number((item.totalStock ?? item.stock) || 0),
-      imageUrl: item.image,
+      imageUrl: `/api/products/${item.id}/image`,
     }));
 }
 

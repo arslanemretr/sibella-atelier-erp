@@ -419,10 +419,13 @@ async function getSupplierRow(supplierId) {
 
 // slim=true → image, features, notes hariç tutulur (liste ekranı için)
 // catalog=true → slim gibi ama image dahil, useInPos/isForSale/trackInventory dahil (POS ekranı için)
-async function listProductsRows({ slim = false, catalog = false, productType = null } = {}) {
+async function listProductsRows({ slim = false, catalog = false, productType = null, includeImage = true } = {}) {
   // catalog modu: slim + image + pos alanları (features/notes hariç)
+  // includeImage=false: agir base64 gorsel cikarilir (POS gibi cok urunlu/mobil
+  // ekranlarda payload kucuk kalir; gorsel /api/products/:id/image'den onbellekli yuklenir)
+  const catalogImageCol = includeImage ? "p.image," : "";
   const selectCols = catalog
-    ? `p.id, p.code, p.name, p.sale_price, p.store_price, p.sale_currency, p.image,
+    ? `p.id, p.code, p.name, p.sale_price, p.store_price, p.sale_currency, ${catalogImageCol}
        p.category_id, p.collection_id, p.pos_category_id, p.supplier_id,
        p.barcode, p.supplier_code, p.stock, p.product_type, p.status, p.workflow_status,
        p.use_in_pos, p.is_for_sale, p.track_inventory, p.sales_tax,
@@ -865,7 +868,8 @@ export async function handleProductsList(req, res) {
   const slim = req.query.slim === "true";
   const catalog = req.query.catalog === "true";
   const productType = req.query.productType || null;
-  let items = await listProductsRows({ slim, catalog, productType });
+  const includeImage = req.query.images !== "false";
+  let items = await listProductsRows({ slim, catalog, productType, includeImage });
   // Tedarikci rolü sadece kendi ürünlerini görebilir
   if (req.authUser?.role === "Tedarikci") {
     const supplierId = req.authUser.supplierId;
