@@ -6,7 +6,7 @@ import {
   PlusCircleOutlined, PrinterOutlined, RightOutlined, RiseOutlined, ShoppingOutlined,
   DownloadOutlined, AppstoreAddOutlined, ShopOutlined, FileTextOutlined,
 } from "@ant-design/icons";
-import { Area, AreaChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Cell, Pie, PieChart, Tooltip as RTooltip, XAxis, YAxis } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { fetchDashboardSummary } from "../dashboardApi";
@@ -14,6 +14,27 @@ import { listStoresFresh } from "../storesData";
 import { listPosSessionsFresh } from "../posData";
 
 const { Title, Text } = Typography;
+
+// Genişliği kendi ölçen sarmalayıcı: ölçülmeden çocuk (grafik) render edilmez
+// → Recharts'ın "width(-1)/height(-1)" konsol uyarısı oluşmaz.
+function ChartBox({ height, children }) {
+  const ref = React.useRef(null);
+  const [width, setWidth] = React.useState(0);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const update = () => setWidth(el.clientWidth || 0);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={ref} style={{ width: "100%", height }}>
+      {width > 0 ? children(width, height) : null}
+    </div>
+  );
+}
 
 const ACCENT = "#e8674e";
 const DONUT_COLORS = ["#e8674e", "#1f9d8a", "#e7a93b", "#3f72d8", "#9aa3b2"];
@@ -141,10 +162,10 @@ export function OperationsCenterPage() {
       {/* Grafik + donut + hizli islemler */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0,1fr)" : "minmax(0,1.4fr) minmax(0,1.2fr) minmax(0,0.9fr)", gap: 16 }}>
         <Card bordered={false} title="Günlük Ciro Grafiği" styles={{ body: { padding: 12 } }}>
-          <div style={{ height: 230 }}>
-            {dailySales.length === 0 ? <div style={{ padding: 40, textAlign: "center", color: "#98a2b3" }}>Veri yok</div> : (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <AreaChart data={dailySales} margin={{ top: 10, right: 12, left: -8, bottom: 0 }}>
+          {dailySales.length === 0 ? <div style={{ height: 230, padding: 40, textAlign: "center", color: "#98a2b3" }}>Veri yok</div> : (
+            <ChartBox height={230}>
+              {(w, h) => (
+                <AreaChart width={w} height={h} data={dailySales} margin={{ top: 10, right: 12, left: -8, bottom: 0 }}>
                   <defs>
                     <linearGradient id="ocFill" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={ACCENT} stopOpacity={0.28} />
@@ -156,23 +177,21 @@ export function OperationsCenterPage() {
                   <RTooltip formatter={(v) => money(v)} labelFormatter={(l) => l} />
                   <Area type="monotone" dataKey="amount" stroke={ACCENT} strokeWidth={2.5} fill="url(#ocFill)" name="Ciro" />
                 </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+              )}
+            </ChartBox>
+          )}
         </Card>
 
         <Card bordered={false} title="En Çok Satan Ürünler" styles={{ body: { padding: 12 } }}>
           {donutData.length === 0 ? <div style={{ padding: 40, textAlign: "center", color: "#98a2b3" }}>Veri yok</div> : (
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 150, height: 170, flexShrink: 0 }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                  <PieChart>
-                    <Pie data={donutData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} stroke="none">
-                      {donutData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
-                    </Pie>
-                    <RTooltip formatter={(v) => `${v} adet`} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <PieChart width={150} height={170}>
+                  <Pie data={donutData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} stroke="none">
+                    {donutData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
+                  </Pie>
+                  <RTooltip formatter={(v) => `${v} adet`} />
+                </PieChart>
               </div>
               <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                 {donutData.map((d, i) => (
