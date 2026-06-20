@@ -153,7 +153,13 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
   }, [isTabletOrMobile, location.pathname, setCollapsed]);
 
   const sidebarContent = (
-    <>
+    <div
+      className="erp-rail-bg"
+      style={{
+        minHeight: "100%",
+        background: "linear-gradient(180deg, #ef7a5f 0%, #e8674e 48%, #d2543c 100%)",
+      }}
+    >
       <div
         className="erp-rail-header"
         style={{
@@ -207,7 +213,7 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
         }}
         style={{ borderRight: 0, padding: "12px 8px 32px" }}
       />
-    </>
+    </div>
   );
 
   if (isTabletOrMobile) {
