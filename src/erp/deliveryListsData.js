@@ -1,7 +1,8 @@
 import { getProductById, listProductsFresh } from "./productsData";
 import { mutateResourceSync, requestCollection, requestCollectionSync, requestJson } from "./apiClient";
 import { getSupplierById, listSuppliers, listSuppliersFresh } from "./suppliersData";
-import { jsPDF, ensurePdfFont, drawPdfLogo, drawDeliveryTableHeader, formatPdfDate, formatPdfMoney } from "./pdfUtils";
+import { getBrandingFresh } from "./brandingData";
+import { jsPDF, ensurePdfFont, formatPdfDate, formatPdfMoney, fetchImageDataUrl, toDrawableDataUrl, resolveImageData, renderItemsPdf } from "./pdfUtils";
 
 function createId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -188,98 +189,50 @@ export async function createDeliveryPdf(recordOrId, supplierData = null) {
 
   const doc = new jsPDF();
   await ensurePdfFont(doc);
-  let currentY = 18;
 
-  doc.setFillColor(250, 242, 239);
-  doc.roundedRect(14, 12, 182, 30, 3, 3, "F");
-  await drawPdfLogo(doc);
-  doc.setFontSize(18);
-  doc.setTextColor(36, 36, 36);
-  doc.text("Teslim Formu", 105, 28, { align: "center" });
-  doc.setFontSize(11);
-  currentY = 50;
-
-  doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(220, 226, 235);
-  doc.roundedRect(14, currentY, 182, 52, 3, 3, "FD");
-  currentY += 8;
-
-  doc.setFontSize(11);
   const supplier = supplierData || listSuppliers().find((item) => item.id === deliveryRecord.supplierId);
-  const headerRows = [
-    `Teslimat Kodu: ${deliveryRecord.deliveryNo}`,
-    `Tedarikci Firma: ${deliveryRecord.supplierName}`,
-    `Yetkili Kisi: ${deliveryRecord.contactName || supplier?.contact || "-"}`,
-    `E-posta: ${deliveryRecord.supplierEmail || supplier?.email || "-"}`,
-    `Tarih: ${formatPdfDate(deliveryRecord.date)}`,
-    `Durum: ${deliveryRecord.status || "Taslak"}`,
-    `Gonderim Sekli: ${deliveryRecord.shippingMethod || "-"}`,
-    `Kargo Takip No: ${deliveryRecord.trackingNo || "-"}`,
-    `Toplam Adet: ${deliveryRecord.totalQuantity}`,
-    `Toplam Tutar: ${formatPdfMoney(deliveryRecord.totalAmount, "TRY")}`,
-  ];
 
-  headerRows.forEach((row, index) => {
-    const x = index % 2 === 0 ? 18 : 108;
-    const y = currentY + Math.floor(index / 2) * 7;
-    doc.text(row, x, y);
-  });
-  currentY += 48;
-
-  doc.setFontSize(12);
-  doc.text("Urunler", 14, currentY);
-  currentY += 8;
-
-  drawDeliveryTableHeader(doc, currentY);
-  currentY += 6;
-
-  deliveryRecord.lines.forEach((line) => {
-    const rowHeight = 18;
-    if (currentY > 260) {
-      doc.addPage();
-      currentY = 18;
-      drawDeliveryTableHeader(doc, currentY);
-      currentY += 6;
-    }
-
-    doc.setDrawColor(232, 237, 243);
-    doc.rect(14, currentY - 4, 182, rowHeight);
-
+  // Satir gorsellerini SIRALI cozumle (gonderi PDF'i ile ayni mantik)
+  const lineImages = [];
+  for (const line of (deliveryRecord.lines || [])) {
+    let resolved = null;
     if (typeof line.image === "string" && line.image.startsWith("data:image")) {
-      try {
-        doc.addImage(line.image, "JPEG", 16, currentY - 2, 10, 10);
-      } catch {
-        doc.rect(16, currentY - 2, 10, 10);
-      }
-    } else {
-      doc.rect(16, currentY - 2, 10, 10);
+      resolved = await toDrawableDataUrl(line.image);
     }
-
-    doc.text(line.code || "-", 38, currentY + 3);
-    const nameLines = doc.splitTextToSize(String(line.name || "-"), 58);
-    doc.text(nameLines.slice(0, 2), 68, currentY + 1);
-    doc.text(formatPdfMoney(line.salePrice, line.saleCurrency), 148, currentY + 3, { align: "right" });
-    doc.text(String(line.quantity || 0), 156, currentY + 3, { align: "center" });
-    doc.text(formatPdfMoney((Number(line.quantity || 0) * Number(line.salePrice || 0)), line.saleCurrency), 192, currentY + 3, { align: "right" });
-
-    if (line.description) {
-      const descLines = doc.splitTextToSize(line.description, 120);
-      doc.setFontSize(8);
-      doc.text(descLines.slice(0, 1), 68, currentY + 8);
-      doc.setFontSize(10);
+    if (!resolved) {
+      const url = line.productId ? `/api/products/${line.productId}/image` : (line.image || "");
+      resolved = url ? await resolveImageData(url) : null;
     }
+    lineImages.push(resolved);
+  }
 
-    currentY += rowHeight + 2;
+  // Marka (Sibella, alici) logosu — sistemden
+  let brandingLogo = null;
+  try { const b = await getBrandingFresh(); if (b?.logoUrl) brandingLogo = await fetchImageDataUrl(b.logoUrl); } catch { /* yoksay */ }
+  if (!brandingLogo) { try { brandingLogo = await fetchImageDataUrl("/pdf-logo.png"); } catch { brandingLogo = null; } }
+
+  // Gonderen firma (tedarikci) logosu — parti kartinda gosterilir
+  let partyLogo = null;
+  try { if (supplier?.logo) partyLogo = await resolveImageData(supplier.logo); } catch { partyLogo = null; }
+
+  renderItemsPdf(doc, {
+    title: "TESLİMAT FORMU",
+    partyLabel: "TEDARİKÇİ",
+    partyName: deliveryRecord.supplierName || supplier?.company || "-",
+    partyLogo,
+    docNoLabel: "Teslimat No",
+    docNo: deliveryRecord.deliveryNo || "-",
+    dateText: formatPdfDate(deliveryRecord.date),
+    summary: [
+      ["Toplam Kalem", String(deliveryRecord.lineCount || (deliveryRecord.lines || []).length || 0)],
+      ["Toplam Adet", String(deliveryRecord.totalQuantity || 0)],
+      ["Toplam Tutar", formatPdfMoney(deliveryRecord.totalAmount, "TRY")],
+    ],
+    lines: deliveryRecord.lines || [],
+    lineImages,
+    currency: "TRY",
+    brandingLogo,
   });
-
-  currentY += 8;
-  doc.setFontSize(10);
-  doc.text(`Not: ${deliveryRecord.note || "-"}`, 14, currentY);
-  currentY += 20;
-  doc.line(20, currentY, 80, currentY);
-  doc.line(120, currentY, 180, currentY);
-  doc.text("Tedarikci Imza / Kase", 24, currentY + 6);
-  doc.text("Alici Imza / Kase", 128, currentY + 6);
 
   doc.save(`${deliveryRecord.deliveryNo || "teslimat"}.pdf`);
   return deliveryRecord;

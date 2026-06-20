@@ -1,7 +1,7 @@
 import { mutateResourceSync, requestCollection, requestCollectionSync, requestJson } from "./apiClient";
 import { getStoreById, listStoresFresh } from "./storesData";
 import { getBrandingFresh } from "./brandingData";
-import { jsPDF, ensurePdfFont, drawPdfLogo, drawShipmentTableHeader, formatPdfDate, formatPdfMoney } from "./pdfUtils";
+import { jsPDF, ensurePdfFont, formatPdfDate, fetchImageDataUrl, toDrawableDataUrl, renderItemsPdf } from "./pdfUtils";
 
 function createId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -12,92 +12,6 @@ function createId(prefix) {
 
 function nowIso() {
   return new Date().toISOString();
-}
-
-// jsPDF.addImage YALNIZCA JPEG/PNG cizebilir. JPEG/PNG gorsellere DOKUNULMAZ;
-// 3 MB'lik ham foto dahil sorunsuz gomulurler (eski, calisan davranis). Yalnizca
-// jsPDF'in cizemedigi formatlar (webp gibi) canvas ile JPEG'e cevrilir.
-function isDrawableDataUrl(s) {
-  return (
-    typeof s === "string" &&
-    (s.startsWith("data:image/jpeg") ||
-      s.startsWith("data:image/jpg") ||
-      s.startsWith("data:image/png"))
-  );
-}
-
-// Gorseli canvas uzerinden TEMIZ (baseline) bir JPEG'e cevirir ve thumbnail
-// boyutuna (varsayilan 512px) indirir. jsPDF'in kendi JPEG/PNG cozucusu bazi
-// gorsellerde (progressive JPEG, olagandisi PNG) sessizce patliyordu; canvas'tan
-// gecirilen standart JPEG her zaman guvenle gomulur. Gorseller backfill sonrasi
-// zaten kucuk (≤1280px) oldugu icin bu islem hafif ve hizlidir.
-async function reencodeToJpeg(dataUrl, maxDim = 512) {
-  try {
-    const img = await new Promise((resolve, reject) => {
-      const im = new Image();
-      im.onload = () => resolve(im);
-      im.onerror = () => reject(new Error("decode"));
-      im.src = dataUrl;
-    });
-    let w = img.naturalWidth || img.width;
-    let h = img.naturalHeight || img.height;
-    if (!w || !h) return null;
-    if (w > maxDim || h > maxDim) {
-      if (w >= h) { h = Math.round((h * maxDim) / w); w = maxDim; }
-      else { w = Math.round((w * maxDim) / h); h = maxDim; }
-    }
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    ctx.fillStyle = "#ffffff"; // saydamlik JPEG'de siyah olmasin
-    ctx.fillRect(0, 0, w, h);
-    ctx.drawImage(img, 0, 0, w, h);
-    const out = canvas.toDataURL("image/jpeg", 0.85);
-    // Gecerli ve anlamli bir cikti uretildi mi? Degilse null (placeholder kalir).
-    return out && out.startsWith("data:image/jpeg") && out.length > 100 ? out : null;
-  } catch {
-    return null;
-  }
-}
-
-// TUM gorseller canvas'tan gecip standart, kucuk JPEG'e cevrilir. Boylece jsPDF'in
-// decoder'inin takildigi formatlar (progressive jpeg / odd png / webp) elenir ve
-// her satir guvenle gomulur. SVG/gecersiz ise null.
-async function toDrawableDataUrl(dataUrl) {
-  if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return null;
-  // SVG kontrolu YALNIZCA MIME basliginda yapilir. Eskiden tum data URL'de
-  // "svg" araniyordu; buyuk base64 govdesinde tesadufen "svg" alt dizisi gecince
-  // gecerli JPEG/PNG'ler eleniyor ve PDF'te bos kutucuk olusuyordu (gercek neden).
-  const header = dataUrl.slice(0, (dataUrl.indexOf(",") + 1) || 32);
-  if (header.includes("svg")) return null;
-  const out = await reencodeToJpeg(dataUrl);
-  // Yeniden kodlama basarisizsa, cizilebilir formattaysa orijinali son care dene
-  return out || (isDrawableDataUrl(dataUrl) ? dataUrl : null);
-}
-
-// Bir gorsel URL'sini (or. /api/products/:id/image) PDF'e gomulebilecek data URL'e cevirir.
-// SVG (placeholder) atlanir; webp gibi formatlar JPEG'e yeniden kodlanir.
-async function fetchImageDataUrl(url) {
-  try {
-    // cache: "reload" -> If-None-Match gondermez; daima taze 200 + govde gelir.
-    // Aksi halde tarayicida onbellekli gorsel icin sunucu 304 (bos govde) doner;
-    // 304 res.ok=false oldugundan gorsel null kalir ve PDF'te bos gorunurdu.
-    const res = await fetch(url, { credentials: "same-origin", cache: "reload" });
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    if (!blob || !String(blob.type || "").startsWith("image/") || String(blob.type).includes("svg")) return null;
-    const dataUrl = await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-    return toDrawableDataUrl(dataUrl);
-  } catch {
-    return null;
-  }
 }
 
 function formatMoney(value, currency = "TRY") {
@@ -222,27 +136,8 @@ export async function createStoreShipmentPdf(shipmentOrId) {
 
   const doc = new jsPDF();
   await ensurePdfFont(doc);
-  const FONT = doc.getFontList()?.NotoSans ? "NotoSans" : "helvetica";
 
-  // Renk paleti
-  const CORAL = [232, 103, 78];
-  const CORAL_SOFT = [253, 238, 233];
-  const CORAL_HL = [250, 224, 215];
-  const INK = [45, 45, 50];
-  const GRAY = [148, 142, 134];
-  const SEP = [238, 236, 240];
-  const setFill = (c) => doc.setFillColor(c[0], c[1], c[2]);
-  const setText = (c) => doc.setTextColor(c[0], c[1], c[2]);
-  const setDraw = (c) => doc.setDrawColor(c[0], c[1], c[2]);
-
-  const M = 16;          // sol kenar
-  const R = 194;         // sag kenar
-  const W = R - M;       // 178
-
-  // Satir gorsellerini PDF oncesi data URL'e cozumle (base64 yoksa urun ucundan).
-  // SIRALI islenir (Promise.all DEGIL): cok sayida gorseli ayni anda new Image()
-  // ile cozmeye calismak tarayicida bazi cozumlemeleri sessizce dusuruyordu
-  // (gorsel null kaliyordu). Sirali yapinca her gorsel guvenle cozulur.
+  // Satir gorsellerini SIRALI cozumle (Promise.all degil; paralel cozumde bazilari dusuyordu)
   const lineImages = [];
   for (const line of (record.lines || [])) {
     let resolved = null;
@@ -256,162 +151,28 @@ export async function createStoreShipmentPdf(shipmentOrId) {
     lineImages.push(resolved);
   }
 
-  const cur = record.saleCurrency || "TRY";
+  // Marka (Sibella) logosu — sistemden
+  let brandingLogo = null;
+  try { const b = await getBrandingFresh(); if (b?.logoUrl) brandingLogo = await fetchImageDataUrl(b.logoUrl); } catch { /* yoksay */ }
+  if (!brandingLogo) { try { brandingLogo = await fetchImageDataUrl("/pdf-logo.png"); } catch { brandingLogo = null; } }
 
-  // ---- Baslik: sol logo (sistemden, dogru oran) + sag baslik ----
-  let logo = null;
-  try { const b = await getBrandingFresh(); if (b?.logoUrl) logo = await fetchImageDataUrl(b.logoUrl); } catch { /* yoksay */ }
-  if (!logo) { try { logo = await fetchImageDataUrl("/pdf-logo.png"); } catch { logo = null; } }
-  if (logo) {
-    try {
-      const props = doc.getImageProperties(logo);
-      const targetH = 22;
-      const ratio = props?.width && props?.height ? props.width / props.height : 2.4;
-      const w = Math.min(72, targetH * ratio);
-      doc.addImage(logo, props?.fileType || (logo.includes("image/png") ? "PNG" : "JPEG"), M, 5, w, targetH);
-    } catch { /* yoksay */ }
-  }
-  setText(INK);
-  doc.setFontSize(16);
-  doc.text("MAĞAZA GÖNDERİ FORMU", R, 21, { align: "right" });
-  setDraw(CORAL);
-  doc.setLineWidth(0.4);
-  doc.line(M, 30, R, 30);
-  setFill(CORAL);
-  doc.circle(105, 30, 1.4, "F");
-
-  // ---- Ust bilgi karti (daraltilmis) ----
-  let y = 36;
-  const cardH = 58;
-  setFill([252, 248, 246]);
-  setDraw([241, 232, 227]);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(M, y, W, cardH, 4, 4, "FD");
-
-  // Magaza ikon kutusu + ad
-  setFill(CORAL);
-  doc.roundedRect(M + 6, y + 7, 20, 20, 4, 4, "F");
-  setFill([255, 255, 255]);
-  doc.rect(M + 11, y + 15, 10, 7, "F");
-  doc.triangle(M + 9, y + 15, M + 23, y + 15, M + 16, y + 11, "F");
-  setText(CORAL);
-  doc.setFontSize(8);
-  doc.text("MAĞAZA", M + 32, y + 13);
-  setText(INK);
-  doc.setFontSize(14);
-  doc.text(String(record.storeName || "-"), M + 32, y + 22);
-
-  // Gonderi No + Tarih — magaza adinin sagindaki bosluga alt alta
-  const rx = M + W - 62;
-  setText(GRAY); doc.setFontSize(7.5);
-  doc.text("Gönderi No", rx, y + 11);
-  setText(INK); doc.setFontSize(10);
-  doc.text(String(record.shipmentNo || "-"), rx, y + 16);
-  setText(GRAY); doc.setFontSize(7.5);
-  doc.text("Tarih", rx, y + 23);
-  setText(INK); doc.setFontSize(10);
-  doc.text(formatPdfDate(record.date), rx, y + 28);
-
-  // 3 ozet kutusu (hepsi arka planli): Toplam Kalem / Adet / Tutar
-  const innerPad = 7;
-  const boxGap = 5;
-  const boxW = (W - 2 * innerPad - 2 * boxGap) / 3;
-  const boxY = y + 33;
-  const boxH = 18;
-  const summary = [
-    ["Toplam Kalem", String(record.lineCount || 0)],
-    ["Toplam Adet", String(record.totalQuantity || 0)],
-    ["Toplam Tutar", record.totalAmountDisplay || "-"],
-  ];
-  summary.forEach(([label, value], i) => {
-    const bx = M + innerPad + i * (boxW + boxGap);
-    setFill(CORAL_HL);
-    doc.roundedRect(bx, boxY, boxW, boxH, 3, 3, "F");
-    setFill(CORAL);
-    doc.circle(bx + 8, boxY + boxH / 2, 3, "F");
-    setText(GRAY); doc.setFontSize(7.5);
-    doc.text(label, bx + 14, boxY + 7);
-    setText(CORAL); doc.setFontSize(11);
-    doc.text(value, bx + 14, boxY + 14);
-  });
-
-  // ---- Urunler bolum basligi (tablo hizasinda, ikonsuz) ----
-  y += cardH + 12;
-  setText(CORAL);
-  doc.setFontSize(13);
-  doc.text("ÜRÜNLER", M, y);
-  y += 6;
-
-  // ---- Tablo basligi (coral bant) ----
-  const PX = { thumb: 19, code: 40, name: 64, price: 150, qty: 166, total: R - 2 };
-  const drawHeadBand = (top) => {
-    setFill(CORAL);
-    doc.roundedRect(M, top, W, 9, 2, 2, "F");
-    setText([255, 255, 255]);
-    doc.setFontSize(8.5);
-    doc.text("Görsel", PX.thumb, top + 6);
-    doc.text("Kod", PX.code, top + 6);
-    doc.text("Ürün Adı", PX.name, top + 6);
-    doc.text("Birim Fiyat", PX.price, top + 6, { align: "right" });
-    doc.text("Adet", PX.qty, top + 6, { align: "center" });
-    doc.text("Toplam", PX.total, top + 6, { align: "right" });
-  };
-  drawHeadBand(y);
-  y += 9;
-
-  // ---- Satirlar ----
-  const ROW_H = 16;
-  (record.lines || []).forEach((line, idx) => {
-    if (y + ROW_H > 276) {
-      doc.addPage();
-      y = 16;
-      drawHeadBand(y);
-      y += 9;
-    }
-    const rowTop = y;
-    const midY = rowTop + ROW_H / 2;
-
-    // gorsel
-    const img = lineImages[idx];
-    setFill([247, 245, 242]);
-    setDraw(SEP);
-    doc.roundedRect(PX.thumb - 1, rowTop + 2, 12, 12, 2, 2, "FD");
-    if (img) {
-      // img artik daima canvas'tan gecmis standart JPEG; benzersiz alias ile
-      // jsPDF'in cizecegi her gorsel ayri saklanir (cakisma/yeniden-kullanim olmaz)
-      // img daima canvas'tan gecmis standart JPEG; benzersiz alias ile her gorsel ayri saklanir
-      try { doc.addImage(img, "JPEG", PX.thumb - 1, rowTop + 2, 12, 12, `ln${idx}`); } catch { /* placeholder kalir */ }
-    }
-
-    setText(INK);
-    doc.setFontSize(9);
-    doc.text(String(line.code || "-").slice(0, 16), PX.code, midY + 1);
-    const nameLines = doc.splitTextToSize(String(line.name || "-"), 78).slice(0, 2);
-    doc.text(nameLines, PX.name, nameLines.length > 1 ? midY - 1.5 : midY + 1);
-    doc.text(formatPdfMoney(line.salePrice, cur), PX.price, midY + 1, { align: "right" });
-    doc.text(String(line.quantity || 0), PX.qty, midY + 1, { align: "center" });
-    setText(CORAL);
-    doc.text(formatPdfMoney((line.quantity || 0) * (line.salePrice || 0), cur), PX.total, midY + 1, { align: "right" });
-
-    setDraw(SEP);
-    doc.setLineWidth(0.2);
-    doc.line(M, rowTop + ROW_H, R, rowTop + ROW_H);
-    y += ROW_H;
-  });
-
-  // ---- Footer ----
-  const fy = 280;
-  setFill(CORAL_SOFT);
-  doc.roundedRect(M, fy, W, 13, 3, 3, "F");
-  setText(CORAL);
-  doc.setFontSize(8.5);
-  const footY = fy + 8;
-  const foot = [["Sibella Atelier", M + 14], ["info@sibellaatelier.com", M + 70], ["www.sibellaatelier.com", M + 128]];
-  foot.forEach(([txt, fx]) => {
-    setFill(CORAL);
-    doc.circle(fx - 5, footY - 1.5, 2, "F");
-    setText(CORAL);
-    doc.text(txt, fx, footY);
+  renderItemsPdf(doc, {
+    title: "MAĞAZA GÖNDERİ FORMU",
+    partyLabel: "MAĞAZA",
+    partyName: record.storeName || "-",
+    partyLogo: null,
+    docNoLabel: "Gönderi No",
+    docNo: record.shipmentNo || "-",
+    dateText: formatPdfDate(record.date),
+    summary: [
+      ["Toplam Kalem", String(record.lineCount || 0)],
+      ["Toplam Adet", String(record.totalQuantity || 0)],
+      ["Toplam Tutar", record.totalAmountDisplay || "-"],
+    ],
+    lines: record.lines || [],
+    lineImages,
+    currency: record.saleCurrency || "TRY",
+    brandingLogo,
   });
 
   doc.save(`${record.shipmentNo || "gonderi"}.pdf`);
