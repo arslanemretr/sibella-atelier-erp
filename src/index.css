@@ -1334,12 +1334,12 @@ html, body {
 /* Logo beyaz çip (coral zeminde görünsün) */
 .erp-rail-logo {
   background: #fff;
-  border-radius: 14px;
-  padding: 7px 16px;
+  border-radius: 11px;
+  padding: 5px 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 14px rgba(120, 40, 25, 0.22);
+  box-shadow: 0 3px 10px rgba(120, 40, 25, 0.20);
 }
 
 /* Menü: şeffaf zemin, krem metin/ikon */
@@ -1347,23 +1347,23 @@ html, body {
 .erp-sidebar-drawer .ant-menu {
   background: transparent !important;
   border-inline-end: 0 !important;
-  font-size: 14.5px;
-  padding: 8px 10px 36px;
+  font-size: 13px;
+  padding: 6px 8px 28px;
 }
 .erp-sidebar.erp-rail .ant-menu-item,
 .erp-sidebar.erp-rail .ant-menu-submenu-title,
 .erp-sidebar-drawer .ant-menu-item,
 .erp-sidebar-drawer .ant-menu-submenu-title {
-  height: 46px;
-  line-height: 46px;
-  border-radius: 12px !important;
-  margin: 4px 0 !important;
+  height: 38px;
+  line-height: 38px;
+  border-radius: 10px !important;
+  margin: 2px 0 !important;
   font-weight: 600;
   color: #fff6f1 !important;
 }
 .erp-sidebar.erp-rail .ant-menu-title-content,
 .erp-sidebar-drawer .ant-menu-title-content {
-  margin-inline-start: 12px;
+  margin-inline-start: 9px;
 }
 /* İkon + açılır ok krem */
 .erp-sidebar.erp-rail .ant-menu-item .anticon,

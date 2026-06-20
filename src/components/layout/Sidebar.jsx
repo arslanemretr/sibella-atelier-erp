@@ -37,7 +37,7 @@ import { getAuthUser, onAuthChange } from "../../auth";
 const { Sider } = Layout;
 
 function menuIcon(IconComponent) {
-  return <IconComponent size={18} strokeWidth={2.1} />;
+  return <IconComponent size={16} strokeWidth={2} />;
 }
 
 const iconMap = {
@@ -160,7 +160,7 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
           position: "sticky",
           top: 0,
           zIndex: 11,
-          height: 76,
+          height: 60,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -182,14 +182,14 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
         ) : null}
         <div className="erp-rail-logo">
           {collapsed ? (
-            <img src={mobileLogoSrc} alt={appName} style={{ height: 30, maxWidth: 40, objectFit: "contain" }} />
+            <img src={mobileLogoSrc} alt={appName} style={{ height: 24, maxWidth: 36, objectFit: "contain" }} />
           ) : authUser?.role === "Tedarikci" ? (
             <div className="erp-sidebar-brand-multiline">
-              <img src={logoSrc} alt={appName} style={{ height: 30, maxWidth: 120, objectFit: "contain" }} />
-              <span style={{ fontSize: 11, color: "#9a5a4c", marginTop: 2 }}>Tedarikci Portali</span>
+              <img src={logoSrc} alt={appName} style={{ height: 24, maxWidth: 110, objectFit: "contain" }} />
+              <span style={{ fontSize: 10, color: "#9a5a4c", marginTop: 1 }}>Tedarikci Portali</span>
             </div>
           ) : (
-            <img src={logoSrc} alt={appName} style={{ height: 34, maxWidth: 140, objectFit: "contain" }} />
+            <img src={logoSrc} alt={appName} style={{ height: 28, maxWidth: 124, objectFit: "contain" }} />
           )}
         </div>
       </div>
@@ -219,7 +219,7 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
         maskClosable
         closable={false}
         rootClassName="erp-sidebar-drawer"
-        styles={{ body: { padding: 0 }, header: { display: "none" }, wrapper: { width: 288 } }}
+        styles={{ body: { padding: 0 }, header: { display: "none" }, wrapper: { width: 248 } }}
       >
         {sidebarContent}
       </Drawer>
@@ -232,9 +232,9 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
       trigger={null}
       collapsible
       collapsed={collapsed}
-      collapsedWidth={isTabletOrMobile ? 0 : 80}
+      collapsedWidth={isTabletOrMobile ? 0 : 72}
       theme="light"
-      width={280}
+      width={244}
       breakpoint="lg"
       style={{
         boxShadow: "2px 0 18px rgba(210, 84, 60, 0.25)",
