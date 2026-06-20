@@ -220,7 +220,12 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
         closable={false}
         zIndex={1100}
         rootClassName="erp-sidebar-drawer"
-        styles={{ body: { padding: 0 }, header: { display: "none" }, wrapper: { width: 252 } }}
+        styles={{
+          content: { background: "linear-gradient(180deg, #ef7a5f 0%, #e8674e 48%, #d2543c 100%)" },
+          body: { padding: 0, background: "transparent" },
+          header: { display: "none" },
+          wrapper: { width: 252 },
+        }}
       >
         {sidebarContent}
       </Drawer>
