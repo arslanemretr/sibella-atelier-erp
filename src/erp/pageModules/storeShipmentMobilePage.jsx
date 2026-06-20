@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Alert, AutoComplete, Button, Card, Drawer, Form, Input, InputNumber, Select, Space, Tag, Typography, Upload, message } from "antd";
+import dayjs from "dayjs";
+import { Alert, AutoComplete, Button, Card, DatePicker, Drawer, Form, Input, InputNumber, Select, Space, Tag, Typography, Upload, message } from "antd";
 import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, FilePdfOutlined, MinusOutlined, PlusOutlined, SaveOutlined, SendOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
@@ -474,8 +475,18 @@ export function StoreShipmentMobileEditorPage() {
                 label="Tarih"
                 rules={[{ required: true, message: "Tarih zorunludur." }]}
                 style={{ marginBottom: 16 }}
+                getValueProps={(v) => ({ value: v ? dayjs(v) : null })}
+                normalize={(v) => (v ? dayjs(v).format("YYYY-MM-DD") : v)}
               >
-                <Input type="date" size="large" disabled={isLocked} style={{ width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box" }} />
+                <DatePicker
+                  size="large"
+                  format="DD.MM.YYYY"
+                  inputReadOnly
+                  allowClear={false}
+                  disabled={isLocked}
+                  style={{ width: "100%" }}
+                  getPopupContainer={(trigger) => trigger.parentElement}
+                />
               </Form.Item>
 
               <Form.Item name="note" label="Not" style={{ marginBottom: 8 }}>
