@@ -328,7 +328,6 @@ async function listStockLocationBalances(stockLocationId) {
         slb.updated_at,
         p.code AS product_code,
         p.name AS product_name,
-        p.image AS product_image,
         p.sale_price,
         p.store_price,
         p.sale_currency
@@ -345,7 +344,6 @@ async function listStockLocationBalances(stockLocationId) {
     productId: row.product_id,
     productCode: row.product_code || "",
     productName: row.product_name || "",
-    productImage: row.product_image || "",
     salePrice: Number(row.sale_price || 0),
     storePrice: Number(row.store_price ?? row.sale_price ?? 0),
     saleCurrency: row.sale_currency || "TRY",

@@ -45,7 +45,7 @@ html, body {
 
 /* === Mobil alt sekme cubugu + bolum sheet === */
 .erp-tabbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1002;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
   display: flex; background: #fff; border-top: 1px solid #eef0f3;
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -2px 12px rgba(16,24,40,0.05);
