@@ -143,7 +143,7 @@ export function OperationsCenterPage() {
         <Card bordered={false} title="Günlük Ciro Grafiği" styles={{ body: { padding: 12 } }}>
           <div style={{ height: 230 }}>
             {dailySales.length === 0 ? <div style={{ padding: 40, textAlign: "center", color: "#98a2b3" }}>Veri yok</div> : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <AreaChart data={dailySales} margin={{ top: 10, right: 12, left: -8, bottom: 0 }}>
                   <defs>
                     <linearGradient id="ocFill" x1="0" y1="0" x2="0" y2="1">
@@ -165,7 +165,7 @@ export function OperationsCenterPage() {
           {donutData.length === 0 ? <div style={{ padding: 40, textAlign: "center", color: "#98a2b3" }}>Veri yok</div> : (
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 150, height: 170, flexShrink: 0 }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <PieChart>
                     <Pie data={donutData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} stroke="none">
                       {donutData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
