@@ -737,6 +737,14 @@ export function ProductListPage() {
       >
         {selectedProduct ? (
           <>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+              <img
+                src={`/api/products/${selectedProduct.id}/image`}
+                alt={selectedProduct.name}
+                onError={(e) => { if (!e.currentTarget.src.endsWith("baroque-necklace.svg")) e.currentTarget.src = "/products/baroque-necklace.svg"; }}
+                style={{ width: "100%", maxWidth: 260, aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 14, background: "#f4f5f7", border: "1px solid #eceef2" }}
+              />
+            </div>
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label="Urun Kodu">{selectedProduct.code}</Descriptions.Item>
               <Descriptions.Item label="Urun Adi">{selectedProduct.name}</Descriptions.Item>
