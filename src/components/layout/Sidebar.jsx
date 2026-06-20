@@ -110,37 +110,10 @@ const iconMap = {
   "/supplier/reports/stock": menuIcon(PackageSearch),
 };
 
-// Üst düzey grupların sabit renkleri (görsele göre); diğer öğeler anahtardan
-// türetilen stabil bir paletten renk alır → renkli ikon kutucuğu görünümü.
-const GROUP_TINT = {
-  "/dashboard": "#5b8def",
-  products: "#f5455c", "products-group": "#f5455c",
-  pos: "#3b82f6", "pos-group": "#3b82f6",
-  purchasing: "#fb923c", "purchasing-group": "#fb923c",
-  stores: "#22c55e", "stores-group": "#22c55e",
-  stock: "#8b5cf6", "stock-group": "#8b5cf6",
-  "supplier-portal": "#06b6d4", "supplier-portal-group": "#06b6d4",
-  reports: "#f59e0b", "reports-group": "#f59e0b",
-  settings: "#94a3b8", "settings-group": "#94a3b8",
-  "/supplier/dashboard": "#5b8def",
-};
-const TINT_PALETTE = ["#5b8def", "#f5455c", "#8b5cf6", "#22c55e", "#fb923c", "#06b6d4", "#f59e0b", "#ec4899", "#14b8a6", "#6366f1"];
-function tintFor(key) {
-  if (GROUP_TINT[key]) return GROUP_TINT[key];
-  const s = String(key || "");
-  let h = 0;
-  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return TINT_PALETTE[h % TINT_PALETTE.length];
-}
-function tile(iconEl, bg) {
-  if (!iconEl) return undefined;
-  return <span className="erp-nav-tile" style={{ background: bg }}>{iconEl}</span>;
-}
-
 function withIcons(items) {
   return items.map((item) => ({
     ...item,
-    icon: tile(iconMap[item.key] || iconMap[item.label] || item.icon, tintFor(item.key)),
+    icon: iconMap[item.key] || iconMap[item.label] || item.icon,
     children: item.children ? withIcons(item.children) : undefined,
   }));
 }
@@ -182,19 +155,15 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
   const sidebarContent = (
     <>
       <div
+        className="erp-rail-header"
         style={{
           position: "sticky",
           top: 0,
           zIndex: 11,
-          height: 72,
+          height: 76,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "#f38b7a",
-          fontWeight: 800,
-          fontSize: collapsed ? 14 : 18,
-          borderBottom: "1px solid #f0f0f0",
-          background: "#fff",
         }}
       >
         {isTabletOrMobile ? (
@@ -204,23 +173,25 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
             onClick={() => setCollapsed(true)}
             style={{
               position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
-              border: "none", background: "transparent", cursor: "pointer", color: "#1f2430",
+              border: "none", background: "transparent", cursor: "pointer", color: "#fff6f1",
               display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 6,
             }}
           >
             <X size={22} strokeWidth={2.2} />
           </button>
         ) : null}
-        {collapsed ? (
-          <img src={mobileLogoSrc} alt={appName} style={{ height: 32, maxWidth: 40, objectFit: "contain" }} />
-        ) : authUser?.role === "Tedarikci" ? (
-          <div className="erp-sidebar-brand-multiline">
-            <img src={logoSrc} alt={appName} style={{ height: 32, maxWidth: 120, objectFit: "contain" }} />
-            <span style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Tedarikci Portali</span>
-          </div>
-        ) : (
-          <img src={logoSrc} alt={appName} style={{ height: 36, maxWidth: 140, objectFit: "contain" }} />
-        )}
+        <div className="erp-rail-logo">
+          {collapsed ? (
+            <img src={mobileLogoSrc} alt={appName} style={{ height: 30, maxWidth: 40, objectFit: "contain" }} />
+          ) : authUser?.role === "Tedarikci" ? (
+            <div className="erp-sidebar-brand-multiline">
+              <img src={logoSrc} alt={appName} style={{ height: 30, maxWidth: 120, objectFit: "contain" }} />
+              <span style={{ fontSize: 11, color: "#9a5a4c", marginTop: 2 }}>Tedarikci Portali</span>
+            </div>
+          ) : (
+            <img src={logoSrc} alt={appName} style={{ height: 34, maxWidth: 140, objectFit: "contain" }} />
+          )}
+        </div>
       </div>
       <Menu
         mode="inline"
@@ -257,7 +228,7 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
 
   return (
     <Sider
-      className="erp-sidebar"
+      className="erp-sidebar erp-rail"
       trigger={null}
       collapsible
       collapsed={collapsed}
@@ -266,16 +237,14 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
       width={280}
       breakpoint="lg"
       style={{
-        boxShadow: "2px 0 12px rgba(15, 23, 42, 0.06)",
+        boxShadow: "2px 0 18px rgba(210, 84, 60, 0.25)",
         zIndex: isTabletOrMobile ? 1003 : 10,
         height: "100vh",
         overflow: "auto",
-        borderRight: "1px solid #f0f0f0",
         position: isTabletOrMobile ? "fixed" : "sticky",
         insetInlineStart: 0,
         top: 0,
         bottom: 0,
-        background: "#fff",
       }}
     >
       {sidebarContent}

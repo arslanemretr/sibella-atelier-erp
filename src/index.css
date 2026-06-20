@@ -1322,72 +1322,100 @@ html, body {
   font-weight: 700;
 }
 
-/* ── Renkli ikon kutucuğu (sidebar menü) ───────────────────────────── */
-.erp-nav-tile {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
+/* ══ Coral marka rayı (sidebar) ═════════════════════════════════════ */
+.erp-rail.ant-layout-sider,
+.erp-sidebar-drawer .ant-drawer-content {
+  background: linear-gradient(180deg, #ef7a5f 0%, #e8674e 48%, #d2543c 100%) !important;
+}
+/* İnce kayan çubuk */
+.erp-rail.ant-layout-sider::-webkit-scrollbar { width: 6px; }
+.erp-rail.ant-layout-sider::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+
+/* Logo beyaz çip (coral zeminde görünsün) */
+.erp-rail-logo {
+  background: #fff;
+  border-radius: 14px;
+  padding: 7px 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  flex: 0 0 auto;
-  box-shadow: 0 2px 6px rgba(16, 24, 40, 0.12);
+  box-shadow: 0 4px 14px rgba(120, 40, 25, 0.22);
 }
 
-/* Menü öğeleri: yuvarlatılmış, ferah satırlar + kalın etiket */
-.erp-sidebar .ant-menu,
+/* Menü: şeffaf zemin, krem metin/ikon */
+.erp-sidebar.erp-rail .ant-menu,
 .erp-sidebar-drawer .ant-menu {
+  background: transparent !important;
+  border-inline-end: 0 !important;
   font-size: 14.5px;
+  padding: 8px 10px 36px;
 }
-.erp-sidebar .ant-menu-item,
-.erp-sidebar .ant-menu-submenu-title,
+.erp-sidebar.erp-rail .ant-menu-item,
+.erp-sidebar.erp-rail .ant-menu-submenu-title,
 .erp-sidebar-drawer .ant-menu-item,
 .erp-sidebar-drawer .ant-menu-submenu-title {
-  height: 48px;
-  line-height: 48px;
+  height: 46px;
+  line-height: 46px;
   border-radius: 12px !important;
   margin: 4px 0 !important;
   font-weight: 600;
-  color: #2d3340;
+  color: #fff6f1 !important;
 }
-/* İkon ile etiket arası boşluk + ikon hizası */
-.erp-sidebar .ant-menu-item .ant-menu-item-icon,
-.erp-sidebar .ant-menu-submenu-title .ant-menu-item-icon,
-.erp-sidebar-drawer .ant-menu-item .ant-menu-item-icon,
-.erp-sidebar-drawer .ant-menu-submenu-title .ant-menu-item-icon {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0;
-}
-.erp-sidebar .ant-menu-title-content,
+.erp-sidebar.erp-rail .ant-menu-title-content,
 .erp-sidebar-drawer .ant-menu-title-content {
   margin-inline-start: 12px;
 }
-/* Alt öğelerde girinti + biraz daha küçük tile */
-.erp-sidebar-drawer .ant-menu-sub .erp-nav-tile,
-.erp-sidebar .ant-menu-sub .erp-nav-tile {
-  width: 27px;
-  height: 27px;
-  border-radius: 8px;
+/* İkon + açılır ok krem */
+.erp-sidebar.erp-rail .ant-menu-item .anticon,
+.erp-sidebar.erp-rail .ant-menu-submenu-title .anticon,
+.erp-sidebar.erp-rail .ant-menu-submenu-arrow,
+.erp-sidebar-drawer .ant-menu-submenu-arrow {
+  color: #fff6f1 !important;
 }
-/* Seçili öğe: coral pill + coral metin (görseldeki gibi) */
-.erp-sidebar .ant-menu-item-selected,
-.erp-sidebar-drawer .ant-menu-item-selected {
-  background: #fdeae6 !important;
-  color: #e8674e !important;
-  font-weight: 700;
-}
-.erp-sidebar .ant-menu-submenu-selected > .ant-menu-submenu-title,
-.erp-sidebar-drawer .ant-menu-submenu-selected > .ant-menu-submenu-title {
-  color: #e8674e !important;
-}
-/* Açık grup başlığının oku + hover */
-.erp-sidebar .ant-menu-item:hover,
-.erp-sidebar .ant-menu-submenu-title:hover,
+/* Hover: hafif beyaz */
+.erp-sidebar.erp-rail .ant-menu-item:hover,
+.erp-sidebar.erp-rail .ant-menu-submenu-title:hover,
 .erp-sidebar-drawer .ant-menu-item:hover,
 .erp-sidebar-drawer .ant-menu-submenu-title:hover {
-  background: #f6f7f9;
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+/* Alt menü grubu şeffaf + biraz girinti */
+.erp-sidebar.erp-rail .ant-menu-sub,
+.erp-sidebar-drawer .ant-menu-sub {
+  background: transparent !important;
+}
+.erp-sidebar.erp-rail .ant-menu-sub .ant-menu-item,
+.erp-sidebar-drawer .ant-menu-sub .ant-menu-item {
+  color: rgba(255, 246, 241, 0.86) !important;
+  font-weight: 500;
+}
+/* Seçili öğe: yarı saydam beyaz pill + sol krem şerit + beyaz kalın metin */
+.erp-sidebar.erp-rail .ant-menu-item-selected,
+.erp-sidebar-drawer .ant-menu-item-selected {
+  background: rgba(255, 255, 255, 0.20) !important;
+  color: #fff !important;
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 #fff;
+}
+.erp-sidebar.erp-rail .ant-menu-item-selected .anticon,
+.erp-sidebar-drawer .ant-menu-item-selected .anticon {
+  color: #fff !important;
+}
+/* Açık/aktif grup başlığı beyaza yakın */
+.erp-sidebar.erp-rail .ant-menu-submenu-selected > .ant-menu-submenu-title,
+.erp-sidebar-drawer .ant-menu-submenu-selected > .ant-menu-submenu-title {
+  color: #fff !important;
+}
+/* Daraltılmış modda açılan flyout da coral */
+.ant-menu-submenu-popup .ant-menu {
+  background: #e8674e !important;
+}
+.ant-menu-submenu-popup .ant-menu-item {
+  color: #fff6f1 !important;
+}
+.ant-menu-submenu-popup .ant-menu-item-selected {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
 }
 
 .erp-product-kanban-card {
