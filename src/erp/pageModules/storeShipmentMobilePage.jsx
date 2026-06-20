@@ -475,7 +475,7 @@ export function StoreShipmentMobileEditorPage() {
                 rules={[{ required: true, message: "Tarih zorunludur." }]}
                 style={{ marginBottom: 16 }}
               >
-                <Input type="date" size="large" disabled={isLocked} style={{ width: "100%" }} />
+                <Input type="date" size="large" disabled={isLocked} style={{ width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box" }} />
               </Form.Item>
 
               <Form.Item name="note" label="Not" style={{ marginBottom: 8 }}>
