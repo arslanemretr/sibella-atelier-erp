@@ -734,6 +734,7 @@ export function ProductListPage() {
         width={isMobile ? "100%" : 420}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
+        styles={{ body: { paddingBottom: isMobile ? 96 : 24 } }}
       >
         {selectedProduct ? (
           <>
