@@ -1365,6 +1365,19 @@ html, body {
 .erp-sidebar-drawer .ant-menu-title-content {
   margin-inline-start: 9px;
 }
+/* Mobil drawer: daha okunur font + ferah satır */
+.erp-sidebar-drawer .ant-menu {
+  font-size: 15px;
+  padding: 8px 10px 32px;
+}
+.erp-sidebar-drawer .ant-menu-item,
+.erp-sidebar-drawer .ant-menu-submenu-title {
+  height: 46px;
+  line-height: 46px;
+}
+.erp-sidebar-drawer .ant-menu-title-content {
+  margin-inline-start: 12px;
+}
 /* İkon + açılır ok krem */
 .erp-sidebar.erp-rail .ant-menu-item .anticon,
 .erp-sidebar.erp-rail .ant-menu-submenu-title .anticon,
