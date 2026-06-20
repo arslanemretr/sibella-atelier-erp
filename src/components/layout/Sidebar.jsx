@@ -160,7 +160,7 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
           position: "sticky",
           top: 0,
           zIndex: 11,
-          height: 60,
+          height: 68,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -182,14 +182,14 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
         ) : null}
         <div className="erp-rail-logo">
           {collapsed ? (
-            <img src={mobileLogoSrc} alt={appName} style={{ height: 24, maxWidth: 36, objectFit: "contain" }} />
+            <img src={mobileLogoSrc} alt={appName} style={{ height: 26, maxWidth: 38, objectFit: "contain" }} />
           ) : authUser?.role === "Tedarikci" ? (
             <div className="erp-sidebar-brand-multiline">
-              <img src={logoSrc} alt={appName} style={{ height: 24, maxWidth: 110, objectFit: "contain" }} />
+              <img src={logoSrc} alt={appName} style={{ height: 34, maxWidth: 150, objectFit: "contain" }} />
               <span style={{ fontSize: 10, color: "#9a5a4c", marginTop: 1 }}>Tedarikci Portali</span>
             </div>
           ) : (
-            <img src={logoSrc} alt={appName} style={{ height: 28, maxWidth: 124, objectFit: "contain" }} />
+            <img src={logoSrc} alt={appName} style={{ height: 40, maxWidth: 168, objectFit: "contain" }} />
           )}
         </div>
       </div>
@@ -218,8 +218,9 @@ const Sidebar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
         onClose={() => setCollapsed(true)}
         maskClosable
         closable={false}
+        zIndex={1100}
         rootClassName="erp-sidebar-drawer"
-        styles={{ body: { padding: 0 }, header: { display: "none" }, wrapper: { width: 248 } }}
+        styles={{ body: { padding: 0 }, header: { display: "none" }, wrapper: { width: 252 } }}
       >
         {sidebarContent}
       </Drawer>
