@@ -96,6 +96,7 @@ import {
   handleStoreShipmentsList,
   handleStoreShipmentsGet,
   handleStoreShipmentsSend,
+  handleStoreShipmentEmail,
   handleStoreShipmentsUpdate,
   handleStoresCreate,
   handleStoresDelete,
@@ -328,6 +329,7 @@ app.get("/api/store-shipments/:id", requireRole("Yonetici", "Muhasebe"), handleS
 app.post("/api/store-shipments", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsCreate);
 app.put("/api/store-shipments/:id", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsUpdate);
 app.post("/api/store-shipments/:id/send", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsSend);
+app.post("/api/store-shipments/:id/email", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentEmail);
 
 app.listen(port, () => {
   console.log(`ERP DB API running on http://localhost:${port}`);

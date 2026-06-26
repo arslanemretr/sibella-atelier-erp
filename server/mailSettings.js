@@ -234,6 +234,33 @@ export const mailEventDefinitions = [
     ],
   },
   {
+    key: "store_shipment_email",
+    label: "Magaza Gonderi E-postasi",
+    variables: ["appName", "storeName", "shipmentNo", "shipmentDate", "lineCount", "totalQuantity", "totalAmount", "contactEmail"],
+    sampleContext: {
+      appName: APP_NAME,
+      storeName: "Ornek Magaza",
+      shipmentNo: "GND-MGZ0001-0002",
+      shipmentDate: "22.04.2026",
+      lineCount: "12",
+      totalQuantity: "18",
+      totalAmount: "40.400,00 TL",
+      contactEmail: "magaza@ornek.com",
+    },
+    conditionFields: [
+      {
+        key: "storeName",
+        label: "Magaza Adi",
+        operators: ["equals", "contains", "starts_with", "ends_with", "not_equals", "is_empty", "is_not_empty"],
+      },
+      {
+        key: "shipmentNo",
+        label: "Gonderi No",
+        operators: ["equals", "contains", "starts_with", "ends_with", "not_equals", "is_empty", "is_not_empty"],
+      },
+    ],
+  },
+  {
     key: "audit_log_action",
     label: "Audit Log Aksiyonu",
     variables: ["appName", "actionType", "resource", "resourceId", "userName", "userRole", "description", "ipAddress", "actionAt"],
@@ -405,6 +432,31 @@ const defaultTemplates = [
     status: "Aktif",
     isSystem: true,
   },
+  {
+    id: "mailtpl-store-shipment-default",
+    name: "Varsayilan Magaza Gonderi",
+    code: "store-shipment-default",
+    eventKey: "store_shipment_email",
+    description: "Magaza gonderisi PDF'i e-posta ile gonderilirken kullanilan varsayilan sablon.",
+    subject: "{{shipmentNo}} - Magaza Gonderi Formu",
+    textBody: "Sayin {{storeName}},\n\n{{shipmentNo}} numarali magaza gonderiniz ektedir.\nGonderi tarihi: {{shipmentDate}}\nToplam kalem: {{lineCount}} - Toplam adet: {{totalQuantity}}\nToplam tutar: {{totalAmount}}\n\nIyi calismalar,\n{{appName}}",
+    htmlBody: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color:#2d2d32;">
+        <h2 style="margin:0 0 12px; color:#e8674e;">Magaza Gonderi Formu</h2>
+        <p>Sayin <strong>{{storeName}}</strong>,</p>
+        <p><strong>{{shipmentNo}}</strong> numarali magaza gonderiniz bu e-postanin ekinde (PDF) yer almaktadir.</p>
+        <table style="border-collapse:collapse; margin:12px 0;">
+          <tr><td style="padding:2px 12px 2px 0; color:#888;">Gonderi Tarihi</td><td><strong>{{shipmentDate}}</strong></td></tr>
+          <tr><td style="padding:2px 12px 2px 0; color:#888;">Toplam Kalem</td><td><strong>{{lineCount}}</strong></td></tr>
+          <tr><td style="padding:2px 12px 2px 0; color:#888;">Toplam Adet</td><td><strong>{{totalQuantity}}</strong></td></tr>
+          <tr><td style="padding:2px 12px 2px 0; color:#888;">Toplam Tutar</td><td><strong>{{totalAmount}}</strong></td></tr>
+        </table>
+        <p>Iyi calismalar,<br/>{{appName}}</p>
+      </div>
+    `.trim(),
+    status: "Aktif",
+    isSystem: true,
+  },
 ];
 
 const defaultScenarios = [
@@ -434,6 +486,26 @@ const defaultScenarios = [
     code: "smtp-test-default-scenario",
     eventKey: "smtp_test_requested",
     templateId: "mailtpl-smtp-test-default",
+    recipientMode: "event",
+    fixedToEmails: "",
+    ccEmails: "",
+    bccEmails: "",
+    matchType: "all",
+    roleCondition: "",
+    emailContains: "",
+    conditions: [],
+    attachments: [],
+    sortOrder: 100,
+    stopAfterMatch: true,
+    status: "Aktif",
+    isSystem: true,
+  },
+  {
+    id: "mailscn-store-shipment-default",
+    name: "Varsayilan Magaza Gonderi Senaryosu",
+    code: "store-shipment-default-scenario",
+    eventKey: "store_shipment_email",
+    templateId: "mailtpl-store-shipment-default",
     recipientMode: "event",
     fixedToEmails: "",
     ccEmails: "",

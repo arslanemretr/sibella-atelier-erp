@@ -1,13 +1,13 @@
 ﻿import React from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AutoComplete, Button, Card, Col, Descriptions, Drawer, Form, Grid, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, Tooltip, Typography, Upload, message } from "antd";
-import { CheckOutlined, DeleteOutlined, EditOutlined, FilePdfOutlined, FilterOutlined, PlusCircleOutlined, PlusOutlined, SendOutlined, UploadOutlined } from "@ant-design/icons";
+import { CheckOutlined, DeleteOutlined, EditOutlined, FilePdfOutlined, FilterOutlined, MailOutlined, PlusCircleOutlined, PlusOutlined, SendOutlined, UploadOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
 import { listMasterDataFresh } from "../masterData";
 import { listProductsRawFresh, updateProductPrice } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
-import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh, listStoreShipmentsFresh } from "../storeShipmentsData";
+import { createStoreShipmentPdf, emailStoreShipment, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh, listStoreShipmentsFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
 import { getSystemParametersFresh } from "../systemParameters";
 
@@ -854,6 +854,33 @@ export function StoreShipmentEditorPage() {
     }
   };
 
+  const handleSendMail = () => {
+    const store = stores.find((s) => s.id === form.getFieldValue("storeId"));
+    const email = String(store?.contactEmail || "").trim();
+    if (!email) { message.warning("Bu mağaza için e-posta adresi tanımlı değil."); return; }
+    Modal.confirm({
+      title: "Mağazaya Mail Gönder",
+      content: (
+        <div>
+          Gönderi PDF&apos;i e-posta eki olarak şu adrese gönderilecek:
+          <div style={{ marginTop: 8, fontWeight: 700, fontSize: 15, wordBreak: "break-all" }}>{email}</div>
+        </div>
+      ),
+      okText: "Gönder",
+      cancelText: "Vazgeç",
+      onOk: async () => {
+        try {
+          const base64 = await createStoreShipmentPdf(shipmentId, { returnBase64: true });
+          if (!base64) throw new Error("PDF üretilemedi.");
+          await emailStoreShipment(shipmentId, base64);
+          message.success(`Mail gönderildi: ${email}`);
+        } catch (err) {
+          message.error(err?.message || "Mail gönderilemedi.");
+        }
+      },
+    });
+  };
+
   // Magaza fiyati gonderi sirasinda revize edildiyse urun master fiyatina yansit + gecmise yaz
   const syncStorePrices = async (referenceId) => {
     for (const line of shipmentLines) {
@@ -904,6 +931,9 @@ export function StoreShipmentEditorPage() {
         <Space wrap>
           <Button onClick={() => navigate("/stores/shipments")}>Listeye Don</Button>
           <Button icon={<FilePdfOutlined />} onClick={() => void handleDownloadPdf()} loading={loading}>PDF Olustur</Button>
+          {isEditMode && watchedStatus === "Gonderildi" ? (
+            <Button icon={<MailOutlined />} onClick={() => void handleSendMail()} loading={loading}>Mail Gonder</Button>
+          ) : null}
           <Button onClick={() => void handleSave("Taslak")} loading={loading} disabled={isLocked}>Taslak Kaydet</Button>
           <Button icon={<CheckOutlined />} onClick={() => void handlePrepare()} loading={loading} disabled={isLocked}>Hazirla</Button>
           <Button type="primary" icon={<SendOutlined />} onClick={() => void handleSend()} loading={loading} disabled={isLocked}>Gonderildi Olarak Isle</Button>

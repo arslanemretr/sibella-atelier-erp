@@ -1,14 +1,14 @@
 import React from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
-import { Alert, AutoComplete, Button, Card, DatePicker, Drawer, Form, Input, InputNumber, Select, Space, Tag, Typography, Upload, message } from "antd";
-import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, FilePdfOutlined, MinusOutlined, PlusOutlined, SaveOutlined, SendOutlined } from "@ant-design/icons";
+import { Alert, AutoComplete, Button, Card, DatePicker, Drawer, Form, Input, InputNumber, Modal, Select, Space, Tag, Typography, Upload, message } from "antd";
+import { ArrowLeftOutlined, CameraOutlined, DeleteOutlined, FilePdfOutlined, MailOutlined, MinusOutlined, PlusOutlined, SaveOutlined, SendOutlined } from "@ant-design/icons";
 import { getAuthUser } from "../../auth";
 import { requestJson } from "../apiClient";
 import { compressImageFile } from "../imageCompress";
 import { getNextProductCodeFresh, getProductByIdFresh, listProductsRawFresh, updateProductPrice } from "../productsData";
 import { listSuppliersFresh } from "../suppliersData";
-import { createStoreShipmentPdf, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh } from "../storeShipmentsData";
+import { createStoreShipmentPdf, emailStoreShipment, getNextStoreShipmentNoPreviewFresh, getStoreShipmentFresh } from "../storeShipmentsData";
 import { listStoresFresh } from "../storesData";
 import { getSystemParametersFresh } from "../systemParameters";
 
@@ -381,6 +381,33 @@ export function StoreShipmentMobileEditorPage() {
     }
   };
 
+  const handleSendMail = () => {
+    const store = stores.find((s) => s.id === (form.getFieldValue("storeId") || watchedStoreId));
+    const email = String(store?.contactEmail || "").trim();
+    if (!email) { message.warning("Bu mağaza için e-posta adresi tanımlı değil."); return; }
+    Modal.confirm({
+      title: "Mağazaya Mail Gönder",
+      content: (
+        <div>
+          Gönderi PDF'i e-posta eki olarak şu adrese gönderilecek:
+          <div style={{ marginTop: 8, fontWeight: 700, fontSize: 15, wordBreak: "break-all" }}>{email}</div>
+        </div>
+      ),
+      okText: "Gönder",
+      cancelText: "Vazgeç",
+      onOk: async () => {
+        try {
+          const base64 = await createStoreShipmentPdf(shipmentId, { returnBase64: true });
+          if (!base64) throw new Error("PDF üretilemedi.");
+          await emailStoreShipment(shipmentId, base64);
+          message.success(`Mail gönderildi: ${email}`);
+        } catch (err) {
+          message.error(err?.message || "Mail gönderilemedi.");
+        }
+      },
+    });
+  };
+
   const totalQty = lines.reduce((sum, l) => sum + Number(l.quantity || 0), 0);
   const totalAmount = lines.reduce((sum, l) => sum + Number(l.quantity || 0) * Number(l.salePrice || 0), 0);
 
@@ -410,6 +437,11 @@ export function StoreShipmentMobileEditorPage() {
             onClick={() => { void handleDownloadPdf(); }}
           >
             PDF
+          </Button>
+        ) : null}
+        {isEditMode && isSent ? (
+          <Button type="text" icon={<MailOutlined />} onClick={handleSendMail}>
+            Mail
           </Button>
         ) : null}
         {isEditMode ? (

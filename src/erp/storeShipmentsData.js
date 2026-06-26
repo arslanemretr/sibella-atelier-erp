@@ -124,7 +124,7 @@ export function sendStoreShipment(shipmentId) {
   return enrichShipment(mutateResourceSync("POST", `/api/store-shipments/${encodeURIComponent(shipmentId)}/send`, {}));
 }
 
-export async function createStoreShipmentPdf(shipmentOrId) {
+export async function createStoreShipmentPdf(shipmentOrId, { returnBase64 = false } = {}) {
   const record =
     typeof shipmentOrId === "string"
       ? await getStoreShipmentFresh(shipmentOrId, { withImages: true })
@@ -175,7 +175,18 @@ export async function createStoreShipmentPdf(shipmentOrId) {
     brandingLogo,
   });
 
+  if (returnBase64) {
+    // "data:application/pdf;base64,...." → yalnizca base64 govde
+    const uri = doc.output("datauristring");
+    return String(uri).split(",")[1] || "";
+  }
   doc.save(`${record.shipmentNo || "gonderi"}.pdf`);
+  return null;
+}
+
+// Gonderi PDF'ini (base64) backend'e gonderip magaza e-postasina mailler
+export async function emailStoreShipment(shipmentId, pdfBase64) {
+  return requestJson("POST", `/api/store-shipments/${encodeURIComponent(shipmentId)}/email`, { pdfBase64 });
 }
 
 export async function getNextStoreShipmentNoPreviewFresh(storeId) {

@@ -6,6 +6,7 @@ import {
   replaceStockMovementsForSource,
   withInventoryTransaction,
 } from "./inventory.js";
+import { sendManagedEmail } from "./mailer.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -804,5 +805,59 @@ export async function handleStoreShipmentsSend(req, res) {
     const message = error?.message || "Gonderi islenemedi.";
     const status = message.includes("bulunamadi") ? 404 : 400;
     return httpError(res, status, message);
+  }
+}
+
+// Gonderi PDF'ini magazanin contact_email adresine e-posta eki olarak gonderir.
+// PDF tarayicida uretildigi icin base64 govdede gelir.
+export async function handleStoreShipmentEmail(req, res) {
+  try {
+    const shipment = await getStoreShipmentRow(req.params.id, { withImages: false });
+    if (!shipment) return httpError(res, 404, "Gonderi kaydi bulunamadi.");
+    if (shipment.status !== "Gonderildi") {
+      return httpError(res, 400, "Once gonderiyi 'Gonderildi' olarak isaretleyin.");
+    }
+    const store = await sqlOne("SELECT name, contact_email FROM stores WHERE id = $1", [shipment.storeId]);
+    const toEmail = String(store?.contact_email || "").trim();
+    if (!toEmail) return httpError(res, 400, "Magaza icin e-posta adresi tanimli degil.");
+
+    const pdfBase64 = String(req.body?.pdfBase64 || "");
+    if (!pdfBase64) return httpError(res, 400, "PDF verisi bulunamadi.");
+
+    const totalAmountText = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      .format(Number(shipment.totalAmount || 0)) + " TL";
+
+    const result = await sendManagedEmail({
+      eventKey: "store_shipment_email",
+      toEmailsOverride: [toEmail],
+      context: {
+        storeName: shipment.storeName || store?.name || "-",
+        shipmentNo: shipment.shipmentNo || "-",
+        shipmentDate: shipment.date ? String(shipment.date).slice(0, 10) : "-",
+        lineCount: String(shipment.lineCount || 0),
+        totalQuantity: String(shipment.totalQuantity || 0),
+        totalAmount: totalAmountText,
+        contactEmail: toEmail,
+        toEmail,
+      },
+      extraAttachments: [{
+        filename: `${shipment.shipmentNo || "gonderi"}.pdf`,
+        contentBase64: pdfBase64,
+        contentType: "application/pdf",
+      }],
+    });
+
+    if (!result?.sent) {
+      const reason = result?.reason || "MAIL_FAILED";
+      const msg = reason === "SMTP_NOT_CONFIGURED"
+        ? "SMTP ayarlari yapilandirilmamis."
+        : reason === "EMAIL_SCENARIO_NOT_FOUND"
+          ? "Aktif mail sablonu/senaryosu bulunamadi."
+          : "Mail gonderilemedi.";
+      return httpError(res, 400, msg);
+    }
+    return res.json({ ok: true, toEmail });
+  } catch (error) {
+    return httpError(res, 400, error?.message || "Mail gonderilemedi.");
   }
 }

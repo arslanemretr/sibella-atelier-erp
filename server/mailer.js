@@ -93,7 +93,23 @@ function resolveAttachments(attachments) {
     .filter(Boolean);
 }
 
-export async function sendManagedEmail({ eventKey, context }) {
+// Calisma anindaki ekler: { filename, contentBase64, contentType } → nodemailer Buffer eki
+function buildRuntimeAttachments(items) {
+  return (items || [])
+    .map((a) => {
+      const raw = String(a?.contentBase64 || "");
+      const data = raw.includes(",") ? raw.slice(raw.indexOf(",") + 1) : raw;
+      if (!data) return null;
+      return {
+        filename: String(a?.filename || "ek.pdf").trim() || "ek.pdf",
+        content: Buffer.from(data, "base64"),
+        contentType: a?.contentType || "application/octet-stream",
+      };
+    })
+    .filter(Boolean);
+}
+
+export async function sendManagedEmail({ eventKey, context, toEmailsOverride = null, extraAttachments = [] }) {
   const settings = await getSmtpSettings();
   if (!settings) {
     return { sent: false, reason: "SMTP_NOT_CONFIGURED" };
@@ -105,7 +121,12 @@ export async function sendManagedEmail({ eventKey, context }) {
   };
 
   const content = await buildEmailContent(eventKey, finalContext);
-  if (!content?.subject || !content?.textBody || !content?.htmlBody || !Array.isArray(content?.toEmails) || content.toEmails.length === 0) {
+  // Alici: override verilirse senaryo alicilerini ezer (or. magaza contactEmail)
+  const overrideTo = Array.isArray(toEmailsOverride)
+    ? toEmailsOverride.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  const effectiveTo = overrideTo.length ? overrideTo : (content?.toEmails || []);
+  if (!content?.subject || !content?.textBody || !content?.htmlBody || effectiveTo.length === 0) {
     await recordEmailDeliveryLog({
       eventKey,
       scenarioId: content?.scenarioId || null,
@@ -125,14 +146,17 @@ export async function sendManagedEmail({ eventKey, context }) {
   }
 
   const transporter = createTransportFromSettings(settings);
-  const resolvedAttachments = resolveAttachments(content.attachments);
+  const resolvedAttachments = [
+    ...resolveAttachments(content.attachments),
+    ...buildRuntimeAttachments(extraAttachments),
+  ];
 
   try {
     const info = await transporter.sendMail({
       from: settings.fromName
         ? `"${settings.fromName}" <${settings.fromEmail}>`
         : settings.fromEmail,
-      to: content.toEmails,
+      to: effectiveTo,
       cc: content.ccEmails.length ? content.ccEmails : undefined,
       bcc: content.bccEmails.length ? content.bccEmails : undefined,
       subject: content.subject,
@@ -148,7 +172,7 @@ export async function sendManagedEmail({ eventKey, context }) {
       scenarioName: content.scenarioName,
       templateId: content.templateId,
       templateName: content.templateName,
-      toEmails: content.toEmails,
+      toEmails: effectiveTo,
       ccEmails: content.ccEmails,
       bccEmails: content.bccEmails,
       subject: content.subject,
@@ -167,7 +191,7 @@ export async function sendManagedEmail({ eventKey, context }) {
       accepted: info?.accepted || [],
       rejected: info?.rejected || [],
       messageId: info?.messageId || null,
-      toEmails: content.toEmails,
+      toEmails: effectiveTo,
       ccEmails: content.ccEmails,
       bccEmails: content.bccEmails,
       attachmentCount: resolvedAttachments.length,
@@ -179,7 +203,7 @@ export async function sendManagedEmail({ eventKey, context }) {
       scenarioName: content.scenarioName,
       templateId: content.templateId,
       templateName: content.templateName,
-      toEmails: content.toEmails,
+      toEmails: effectiveTo,
       ccEmails: content.ccEmails,
       bccEmails: content.bccEmails,
       subject: content.subject,
