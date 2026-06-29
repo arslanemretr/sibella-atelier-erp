@@ -52,6 +52,8 @@ const SupplierPortalProductListPage = React.lazy(() => import("./erp/pageModules
 const SupplierSalesReportPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierSalesReportPage })));
 const SupplierStockReportPage = React.lazy(() => import("./erp/pageModules/supplierPortalPages").then((module) => ({ default: module.SupplierStockReportPage })));
 const AuditLogPage = React.lazy(() => import("./erp/pageModules/auditLogPage"));
+const AiTestConsolePage = React.lazy(() => import("./erp/pageModules/aiTestConsolePage"));
+const AiEntryConsolePage = React.lazy(() => import("./erp/pageModules/aiEntryConsolePage"));
 const ActivityReportPage = React.lazy(() => import("./erp/pageModules/activityReportPage"));
 const StoreInvoiceListPage = React.lazy(() => import("./erp/pageModules/storeInvoicePages").then((m) => ({ default: m.StoreInvoiceListPage })));
 const StoreSalesListPage = React.lazy(() => import("./erp/pageModules/storeSalesPages").then((m) => ({ default: m.StoreSalesListPage })));
@@ -218,6 +220,8 @@ function ProtectedApp() {
         <Route path="/settings/mail-management" element={withLazyPage(<MailManagementPage />)} />
         <Route path="/settings/branding" element={withLazyPage(<BrandingPage />)} />
         <Route path="/settings/audit-log" element={withRolePage(<AuditLogPage />, authUser, "Yonetici")} />
+        <Route path="/settings/ai-console" element={withRolePage(<AiTestConsolePage />, authUser, "Yonetici")} />
+        <Route path="/settings/ai-entry-console" element={withRolePage(<AiEntryConsolePage />, authUser, "Yonetici")} />
         <Route path="/reports/activity" element={withRolePage(<ActivityReportPage />, authUser, "Yonetici")} />
         <Route path="/settings/smtp" element={<Navigate to="/settings/mail-management" replace />} />
 

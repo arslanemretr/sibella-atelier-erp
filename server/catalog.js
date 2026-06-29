@@ -952,7 +952,7 @@ async function recordPriceChange(productId, prices, meta = {}) {
 }
 
 // Tek ürünü oluşturur (hem tekil hem toplu uçta yeniden kullanılır)
-async function createProductRecord(body, authUser) {
+export async function createProductRecord(body, authUser) {
   const item = normalizeProduct(body || {});
   // Tedarikci kendi supplierId'si dışında ürün oluşturamaz
   if (authUser?.role === "Tedarikci") {

@@ -55,6 +55,10 @@ const SCREEN_PERMISSIONS = [
   { key: "settings_payment_terms", label: "Ayarlar — Ödeme Koşulları" },
   { key: "settings_parameters", label: "Ayarlar — Parametreler" },
   { key: "settings_mail", label: "Ayarlar — Mail Yönetimi" },
+  { key: "settings_branding", label: "Ayarlar — Tema Ayarları" },
+  { key: "settings_audit_log", label: "Ayarlar — Aktivite Günlüğü" },
+  { key: "settings_ai_console", label: "Ayarlar — AI Test Konsolu" },
+  { key: "settings_ai_entry_console", label: "Ayarlar — AI Veri Giriş Konsolu" },
 ];
 
 const statusOptions = ["Aktif", "Pasif"].map((v) => ({ value: v, label: v }));

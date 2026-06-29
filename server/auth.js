@@ -18,7 +18,7 @@ const SCREEN_KEYS = [
   "purchasing_suppliers", "purchasing_contracts", "stores_list", "stores_shipments", "stores_invoices",
   "stock_entry", "stock_list", "stock_locations", "reports_sales", "reports_stock", "reports_consolidated", "reports_supplier",
   "settings_users", "settings_categories", "settings_collections", "settings_pos_categories",
-  "settings_barcode", "settings_procurement", "settings_payment_terms", "settings_parameters", "settings_mail", "settings_branding", "settings_audit_log",
+  "settings_barcode", "settings_procurement", "settings_payment_terms", "settings_parameters", "settings_mail", "settings_branding", "settings_audit_log", "settings_ai_console", "settings_ai_entry_console",
   "supplier_portal_dashboard", "supplier_portal_products", "supplier_portal_deliveries", "supplier_portal_earnings",
 ];
 

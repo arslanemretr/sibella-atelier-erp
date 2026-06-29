@@ -103,6 +103,7 @@ import {
   handleStoresList,
   handleStoresUpdate,
 } from "./stores.js";
+import { handleAiBuildPrompt, handleAiExecuteAction, handleAiExecuteWrite, handleAiPrepareWrite } from "./aiAssistant.js";
 import {
   ensureStoreInvoicesReady,
   handleStoreInvoicesCreate,
@@ -330,6 +331,12 @@ app.post("/api/store-shipments", requireRole("Yonetici", "Muhasebe"), handleStor
 app.put("/api/store-shipments/:id", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsUpdate);
 app.post("/api/store-shipments/:id/send", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentsSend);
 app.post("/api/store-shipments/:id/email", requireRole("Yonetici", "Muhasebe"), handleStoreShipmentEmail);
+
+// AI Asistan (manuel test asamasi) - yalnizca Yonetici
+app.post("/api/ai/build-prompt", requireRole("Yonetici"), handleAiBuildPrompt);
+app.post("/api/ai/execute-action", requireRole("Yonetici"), handleAiExecuteAction);
+app.post("/api/ai/prepare-write", requireRole("Yonetici"), handleAiPrepareWrite);
+app.post("/api/ai/execute-write", requireRole("Yonetici"), handleAiExecuteWrite);
 
 app.listen(port, () => {
   console.log(`ERP DB API running on http://localhost:${port}`);
