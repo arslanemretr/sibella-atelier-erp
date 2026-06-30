@@ -33,6 +33,8 @@ import {
   updateEmailTemplate,
 } from "../mailManagement";
 import { getSmtpSettingsFresh, updateSmtpSettings } from "../smtpSettings";
+import ConsolidatedEarningsReportPage from "./reportPages";
+import SupplierEarningsReportPage from "./supplierEarningsReportPage";
 
 const { Title, Text } = Typography;
 
@@ -698,6 +700,35 @@ function MailManagementPage() {
                 <Card className="erp-list-table-card">
                   <Table rowKey="id" loading={scenariosLoading} columns={scenarioColumns} dataSource={scenarios} pagination={{ pageSize: 8 }}  size="small"/>
                 </Card>
+              </Space>
+            ),
+          },
+          {
+            key: "reports",
+            label: "Otomatik Raporlar",
+            children: (
+              <Space vertical size={16} style={{ width: "100%" }}>
+                <Alert
+                  type="info"
+                  showIcon
+                  message="Otomatik hakedis rapor mailleri"
+                  description="Bu raporlarin gonderim plani, alicilari ve mail sablonu burada yonetilir. Raporun kendisi (ozet ve tablo) Raporlar menusunde kalir."
+                />
+                <Tabs
+                  defaultActiveKey="consolidated"
+                  items={[
+                    {
+                      key: "consolidated",
+                      label: "Toplu Hakedis Maili",
+                      children: <ConsolidatedEarningsReportPage mode="mail" />,
+                    },
+                    {
+                      key: "supplier",
+                      label: "Tedarikci Hakedis Maili",
+                      children: <SupplierEarningsReportPage mode="mail" />,
+                    },
+                  ]}
+                />
               </Space>
             ),
           },

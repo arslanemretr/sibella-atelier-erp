@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import dayjs from "dayjs";
-import { Button, Card, Col, DatePicker, Descriptions, Form, Input, InputNumber, Row, Select, Space, Switch, Table, Tag, Typography, message } from "antd";
+import { Button, Card, Col, DatePicker, Descriptions, Empty, Form, Grid, Input, InputNumber, Row, Select, Space, Switch, Table, Tag, Typography, message } from "antd";
 import { EyeOutlined, MailOutlined, ReloadOutlined, SaveOutlined } from "@ant-design/icons";
 import { listContractsFresh } from "../contractsData";
 import { listEarningsRecordsFresh } from "../earningsData";
@@ -134,7 +134,17 @@ function buildReportContext({ previewRows, totals, previewPeriodKey }) {
   };
 }
 
-export default function ConsolidatedEarningsReportPage() {
+export default function ConsolidatedEarningsReportPage({ mode = "report" }) {
+  const isMail = mode === "mail";
+  const isReport = !isMail;
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
+  const kvRow = (label, value, opts = {}) => (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "2px 0" }}>
+      <Text type="secondary" style={{ fontSize: 13 }}>{label}</Text>
+      <span style={{ fontWeight: opts.strong ? 700 : 400, color: opts.color || "inherit" }}>{value}</span>
+    </div>
+  );
   const [form] = Form.useForm();
   const [rows, setRows] = React.useState([]);
   const [pageLoading, setPageLoading] = React.useState(false);
@@ -276,21 +286,27 @@ export default function ConsolidatedEarningsReportPage() {
       <Space vertical size={20} style={{ width: "100%" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
           <div>
-            <Title level={3} style={{ marginBottom: 6 }}>Toplu Hakedis Raporu</Title>
+            <Title level={3} style={{ marginBottom: 6 }}>{isMail ? "Toplu Hakedis Maili" : "Toplu Hakedis Raporu"}</Title>
           </div>
           <Space wrap>
             <Button icon={<ReloadOutlined />} loading={pageLoading} onClick={() => void refresh()}>
               Yenile
             </Button>
-            <Button icon={<MailOutlined />} loading={sending} onClick={() => void handleSendNow()}>
-              Simdi Gonder
-            </Button>
-            <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => void handleSave()}>
-              Ayarlari Kaydet
-            </Button>
+            {isMail ? (
+              <Button icon={<MailOutlined />} loading={sending} onClick={() => void handleSendNow()}>
+                Simdi Gonder
+              </Button>
+            ) : null}
+            {isMail ? (
+              <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => void handleSave()}>
+                Ayarlari Kaydet
+              </Button>
+            ) : null}
           </Space>
         </div>
 
+        {isMail ? (
+        <>
         <Row gutter={[16, 16]}>
           <Col xs={24} xl={14}>
             <Card bordered={false} className="erp-list-toolbar-card" title="Rapor Plani">
@@ -442,7 +458,29 @@ export default function ConsolidatedEarningsReportPage() {
             </Card>
           </Col>
         </Row>
+        </>
+        ) : null}
 
+        {isReport ? (
+          <Card bordered={false} className="erp-list-toolbar-card">
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <Title level={5} style={{ margin: 0 }}>Donem</Title>
+              <Space>
+                <DatePicker
+                  picker="month"
+                  value={previewMonth}
+                  allowClear={false}
+                  format="MMMM YYYY"
+                  onChange={(value) => { if (value) { setPreviewMonth(value.startOf("month")); } }}
+                />
+                <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>Yenile</Button>
+              </Space>
+            </div>
+          </Card>
+        ) : null}
+
+        {isReport ? (
+        <>
         <Row gutter={[16, 16]}>
           <Col xs={12} sm={12} xl={6}>
             <Card bordered={false} style={{ background: "#fff7e6", border: "1px solid #ffd591" }}>
@@ -475,6 +513,28 @@ export default function ConsolidatedEarningsReportPage() {
         </Row>
 
         <Card bordered={false} className="erp-list-table-card" style={{ paddingBottom: 16 }}>
+          {isMobile ? (
+            previewRows.length ? previewRows.map((row) => {
+              const meta = EARNINGS_STATUS_META[row.status] || { color: "default" };
+              return (
+                <Card size="small" key={row.key} style={{ marginBottom: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <Text strong>{row.supplierName}</Text>
+                    <Tag color={meta.color}>{row.status}</Tag>
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>{row.periodLabel}</Text>
+                  <div style={{ marginTop: 8 }}>
+                    {kvRow("Toplam Satis", formatMoney(row.grossTotal))}
+                    {kvRow("Iade", row.returnTotal ? `-${formatMoney(row.returnTotal)}` : "-")}
+                    {kvRow("Net Satis", formatMoney(row.netTotal))}
+                    {kvRow("Komisyon", formatMoney(Number(row.netTotal || 0) - Number(row.earningsTotal || 0)))}
+                    {kvRow("Hakedis", formatMoney(row.earningsTotal), { strong: true, color: "#389e0d" })}
+                    {kvRow("Odeme Son Tarihi", formatDate(getThirdFridayAfterPeriodEnd(row.periodKey)))}
+                  </div>
+                </Card>
+              );
+            }) : <Empty description="Secili donem icin raporlanacak hakedis satiri bulunamadi." />
+          ) : (
           <Table
           size="small"
             rowKey="key"
@@ -520,7 +580,10 @@ export default function ConsolidatedEarningsReportPage() {
               },
             ]}
           />
+          )}
         </Card>
+        </>
+        ) : null}
       </Space>
     </Form>
   );

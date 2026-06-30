@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import dayjs from "dayjs";
-import { Button, Card, Col, DatePicker, Descriptions, Form, Input, InputNumber, Row, Select, Space, Switch, Table, Tag, Typography, message } from "antd";
+import { Button, Card, Col, DatePicker, Descriptions, Empty, Form, Grid, Input, InputNumber, Row, Select, Space, Switch, Table, Tag, Typography, message } from "antd";
 import { EyeOutlined, MailOutlined, ReloadOutlined, SaveOutlined } from "@ant-design/icons";
 import { listContractsFresh } from "../contractsData";
 import { listEarningsRecordsFresh } from "../earningsData";
@@ -153,7 +153,17 @@ function formatPeriodOffsetLabel(offset) {
   return `${Math.abs(Number(offset || 0))} ay once`;
 }
 
-export default function SupplierEarningsReportPage() {
+export default function SupplierEarningsReportPage({ mode = "report" }) {
+  const isMail = mode === "mail";
+  const isReport = !isMail;
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
+  const kvRow = (label, value, opts = {}) => (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "2px 0" }}>
+      <Text type="secondary" style={{ fontSize: 13 }}>{label}</Text>
+      <span style={{ fontWeight: opts.strong ? 700 : 400, color: opts.color || "inherit" }}>{value}</span>
+    </div>
+  );
   const [form] = Form.useForm();
   const [pageLoading, setPageLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -342,24 +352,32 @@ export default function SupplierEarningsReportPage() {
       <Space vertical size={20} style={{ width: "100%" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
           <div>
-            <Title level={3} style={{ marginBottom: 6 }}>Tedarikci Hakedis Raporu</Title>
+            <Title level={3} style={{ marginBottom: 6 }}>{isMail ? "Tedarikci Hakedis Maili" : "Tedarikci Hakedis Raporu"}</Title>
           </div>
           <Space wrap>
             <Button icon={<ReloadOutlined />} loading={pageLoading} onClick={() => void refresh()}>
               Yenile
             </Button>
-            <Button icon={<MailOutlined />} loading={sendingMode === "supplier"} onClick={() => void handleSendNow("supplier")}>
-              Simdi Gonder
-            </Button>
-            <Button icon={<MailOutlined />} loading={sendingMode === "manual"} onClick={() => void handleSendNow("manual")}>
-              Elle Girilen Adrese Gonder
-            </Button>
-            <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => void handleSave()}>
-              Ayarlari Kaydet
-            </Button>
+            {isMail ? (
+              <Button icon={<MailOutlined />} loading={sendingMode === "supplier"} onClick={() => void handleSendNow("supplier")}>
+                Simdi Gonder
+              </Button>
+            ) : null}
+            {isMail ? (
+              <Button icon={<MailOutlined />} loading={sendingMode === "manual"} onClick={() => void handleSendNow("manual")}>
+                Elle Girilen Adrese Gonder
+              </Button>
+            ) : null}
+            {isMail ? (
+              <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => void handleSave()}>
+                Ayarlari Kaydet
+              </Button>
+            ) : null}
           </Space>
         </div>
 
+        {isMail ? (
+        <>
         <Row gutter={[16, 16]}>
           <Col xs={24} xl={14}>
             <Card bordered={false} className="erp-list-toolbar-card" title="Rapor Plani">
@@ -512,7 +530,41 @@ export default function SupplierEarningsReportPage() {
             </Card>
           </Col>
         </Row>
+        </>
+        ) : null}
 
+        {isReport ? (
+          <Card bordered={false} className="erp-list-toolbar-card">
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <Title level={5} style={{ margin: 0 }}>Tedarikci ve Donem</Title>
+              <Space wrap>
+                <Select
+                  showSearch
+                  style={{ width: 280 }}
+                  value={selectedSupplierId}
+                  options={suppliers.map((item) => ({
+                    value: item.id,
+                    label: `${item.company}${item.email ? ` - ${item.email}` : ""}`,
+                  }))}
+                  onChange={setSelectedSupplierId}
+                  placeholder="Tedarikci secin"
+                  optionFilterProp="label"
+                />
+                <DatePicker
+                  picker="month"
+                  value={previewMonth}
+                  allowClear={false}
+                  format="MMMM YYYY"
+                  onChange={(value) => { if (value) { setPreviewMonth(value.startOf("month")); } }}
+                />
+                <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>Yenile</Button>
+              </Space>
+            </div>
+          </Card>
+        ) : null}
+
+        {isReport ? (
+        <>
         <Row gutter={[16, 16]}>
           <Col xs={12} sm={12} xl={6}>
             <Card bordered={false} style={{ background: "#fff8ea", border: "1px solid #f5dfb4" }}>
@@ -544,6 +596,22 @@ export default function SupplierEarningsReportPage() {
         </Row>
 
         <Card bordered={false} className="erp-list-table-card" style={{ paddingBottom: 16 }}>
+          {isMobile ? (
+            (currentSummary.detailRows || []).length ? currentSummary.detailRows.map((row) => (
+              <Card size="small" key={row.key} style={{ marginBottom: 10 }}>
+                <Text strong>{row.productName}</Text>
+                <div><Text type="secondary" style={{ fontSize: 12 }}>{row.productCode}</Text></div>
+                <div style={{ marginTop: 8 }}>
+                  {kvRow("Satis Adet", row.salesQuantity)}
+                  {kvRow("Iade", row.returnQuantity)}
+                  {kvRow("Net Adet", row.netQuantity)}
+                  {kvRow("Satis Tutari", formatSupplierReportMoney(row.salesAmount))}
+                  {kvRow("Komisyon", formatSupplierReportMoney(row.commissionAmount))}
+                  {kvRow("Hakedis", formatSupplierReportMoney(row.netAmount), { strong: true, color: "#2f7d46" })}
+                </div>
+              </Card>
+            )) : <Empty description="Secili tedarikci ve donem icin satis bulunamadi." />
+          ) : (
           <Table
           size="small"
             rowKey="key"
@@ -574,7 +642,10 @@ export default function SupplierEarningsReportPage() {
                 render: (value) => <Text strong>{formatSupplierReportMoney(value)}</Text> },
             ]}
           />
+          )}
         </Card>
+        </>
+        ) : null}
       </Space>
     </Form>
   );
