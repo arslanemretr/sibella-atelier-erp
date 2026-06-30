@@ -342,7 +342,129 @@ export function ParametersPage() {
           </Row>
         </Form>
       </Card>
+
+      <AiAssistantSettingsCard />
     </Space>
+  );
+}
+
+function AiAssistantSettingsCard() {
+  const [loading, setLoading] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [testing, setTesting] = React.useState(false);
+  const [info, setInfo] = React.useState(null); // {hasKey, keySource, keyMasked, model}
+  const [apiKey, setApiKey] = React.useState(""); // yalnizca yeni deger girilince gonderilir
+  const [model, setModel] = React.useState("claude-opus-4-8");
+  const [testResult, setTestResult] = React.useState(null);
+
+  const load = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const payload = await requestJson("GET", "/api/ai/settings");
+      const item = payload?.item || {};
+      setInfo(item);
+      setModel(item.model || "claude-opus-4-8");
+    } catch {
+      // sessiz
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => { void load(); }, [load]);
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const body = { model };
+      if (apiKey.trim()) body.apiKey = apiKey.trim();
+      const payload = await requestJson("PUT", "/api/ai/settings", body);
+      setInfo(payload?.item || null);
+      setApiKey("");
+      message.success("AI ayarlari kaydedildi.");
+    } catch (error) {
+      message.error(error?.message || "Kaydedilemedi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    try {
+      setTesting(true);
+      setTestResult(null);
+      const body = apiKey.trim() ? { apiKey: apiKey.trim() } : {};
+      const payload = await requestJson("POST", "/api/ai/test-key", body);
+      setTestResult({ ok: true, message: payload?.message || "Baglanti basarili." });
+    } catch (error) {
+      setTestResult({ ok: false, message: error?.message || "Test basarisiz." });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleClear = async () => {
+    try {
+      setSaving(true);
+      const payload = await requestJson("PUT", "/api/ai/settings", { model, apiKey: "__CLEAR__" });
+      setInfo(payload?.item || null);
+      setApiKey("");
+      setTestResult(null);
+      message.success("API anahtari silindi.");
+    } catch (error) {
+      message.error(error?.message || "Silinemedi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card title="AI Asistan" extra={info?.hasKey ? <Tag color="green">Anahtar tanimli</Tag> : <Tag color="orange">Anahtar yok</Tag>} loading={loading}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={16} xl={12}>
+          <Space vertical size={12} style={{ width: "100%" }}>
+            <Text type="secondary">
+              Otomatik AI Asistan ekrani icin Anthropic API anahtari. Anahtar sunucuda sifreli saklanir, tarayiciya tam haliyle hic donmez.
+            </Text>
+            {info?.hasKey ? (
+              <Text>
+                Mevcut anahtar: <Text code>{info.keyMasked}</Text>{" "}
+                <Tag>{info.keySource === "env" ? "ortam degiskeni" : "kayitli"}</Tag>
+              </Text>
+            ) : null}
+            <Form layout="vertical" style={{ marginBottom: 0 }}>
+              <Form.Item label="Anthropic API Anahtari" style={{ marginBottom: 12 }}>
+                <Input.Password
+                  placeholder={info?.hasKey ? "Degistirmek icin yeni anahtar girin" : "sk-ant-..."}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  autoComplete="off"
+                />
+              </Form.Item>
+              <Form.Item label="Model" style={{ marginBottom: 0 }}>
+                <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="claude-opus-4-8" />
+              </Form.Item>
+            </Form>
+            <Space wrap>
+              <Button type="primary" onClick={handleSave} loading={saving}>Kaydet</Button>
+              <Button onClick={handleTest} loading={testing}>Test Et</Button>
+              {info?.hasKey && info?.keySource === "db" ? (
+                <Popconfirm title="API anahtari silinsin mi?" onConfirm={handleClear} okText="Sil" cancelText="Vazgec">
+                  <Button danger>Anahtari Sil</Button>
+                </Popconfirm>
+              ) : null}
+            </Space>
+            {testResult ? (
+              <Alert
+                type={testResult.ok ? "success" : "error"}
+                showIcon
+                message={testResult.message}
+              />
+            ) : null}
+          </Space>
+        </Col>
+      </Row>
+    </Card>
   );
 }
 

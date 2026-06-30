@@ -1,7 +1,9 @@
-import React, { useMemo } from "react";
+import React, { Suspense, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Layout, Button, Avatar, Dropdown, Space } from "antd";
-import { MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined } from "@ant-design/icons";
+import { Layout, Button, Avatar, Dropdown, Space, Spin, Tooltip } from "antd";
+import { CloseOutlined, MenuFoldOutlined, MenuUnfoldOutlined, RobotOutlined, UserOutlined } from "@ant-design/icons";
+
+const AiAssistantChat = React.lazy(() => import("../../erp/pageModules/aiAssistantPage"));
 import { filterNavigationItems, mainMenuItems, supplierMainMenuItems } from "../../erp/navigation";
 import { getAuthUser, logoutUser, onAuthChange } from "../../auth";
 import { useBranding } from "../../erp/BrandingContext";
@@ -13,8 +15,12 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
   const location = useLocation();
   const [authUser, setAuthUser] = React.useState(() => getAuthUser());
   const { appName, logoSrc, mobileLogoSrc } = useBranding();
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiMounted, setAiMounted] = useState(false);
 
   React.useEffect(() => onAuthChange(() => setAuthUser(getAuthUser())), []);
+
+  const canUseAssistant = authUser?.role === "Yonetici";
 
   const visibleMenuItems = authUser?.role === "Tedarikci"
     ? supplierMainMenuItems
@@ -121,6 +127,16 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
       ) : null}
 
       <Space size={isTabletOrMobile ? "middle" : "large"} className="erp-topbar-right">
+        {canUseAssistant ? (
+          <Tooltip title="AI Asistan">
+            <Button
+              type={aiOpen ? "primary" : "text"}
+              aria-label="AI Asistan"
+              icon={<RobotOutlined style={{ fontSize: 20 }} />}
+              onClick={() => setAiOpen((v) => { if (!v) setAiMounted(true); return !v; })}
+            />
+          </Tooltip>
+        ) : null}
         <Dropdown menu={userMenu} placement="bottomRight">
           <Space style={{ cursor: "pointer" }} className="erp-topbar-user">
             <Avatar icon={<UserOutlined />} />
@@ -128,6 +144,48 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
           </Space>
         </Dropdown>
       </Space>
+
+      {canUseAssistant && aiMounted ? (
+        <div
+          className="erp-ai-panel"
+          style={{
+            position: "fixed",
+            zIndex: 1001,
+            background: "#fff",
+            display: aiOpen ? "flex" : "none",
+            flexDirection: "column",
+            overflow: "hidden",
+            border: "1px solid #ececec",
+            borderRadius: isTabletOrMobile ? 14 : 16,
+            boxShadow: "0 14px 44px rgba(0,0,0,.20)",
+            ...(isTabletOrMobile
+              ? { left: 8, right: 8, bottom: 8, height: "78vh" }
+              : { right: 20, bottom: 20, width: 400, height: "min(640px, 82vh)" }),
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "10px 14px",
+              borderBottom: "1px solid #f0f0f0",
+              flex: "0 0 auto",
+            }}
+          >
+            <Space size={8}>
+              <RobotOutlined style={{ fontSize: 18 }} />
+              <span style={{ fontWeight: 600 }}>AI Asistan</span>
+            </Space>
+            <Button type="text" size="small" icon={<CloseOutlined />} onClick={() => setAiOpen(false)} aria-label="Kapat" />
+          </div>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}><Spin /></div>}>
+              <AiAssistantChat />
+            </Suspense>
+          </div>
+        </div>
+      ) : null}
     </Header>
   );
 };

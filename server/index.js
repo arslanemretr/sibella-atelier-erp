@@ -103,7 +103,8 @@ import {
   handleStoresList,
   handleStoresUpdate,
 } from "./stores.js";
-import { handleAiBuildPrompt, handleAiExecuteAction, handleAiExecuteWrite, handleAiPrepareWrite } from "./aiAssistant.js";
+import { handleAiBuildPrompt, handleAiChat, handleAiExecuteAction, handleAiExecuteWrite, handleAiPrepareWrite, handleAiTestKey } from "./aiAssistant.js";
+import { ensureAiSettingsReady, handleAiSettingsGet, handleAiSettingsPut } from "./aiSettings.js";
 import {
   ensureStoreInvoicesReady,
   handleStoreInvoicesCreate,
@@ -200,6 +201,7 @@ void ensureDatabaseReady()
   .then(() => migrateLegacyPasswords())
   .then(() => ensureStoreInvoicesReady())
   .then(() => ensureStoreSalesReady())
+  .then(() => ensureAiSettingsReady())
   .then(() => { startEarningsCron(); })
   .catch((error) => {
     console.error("Database init / auth migration hatasi:", error?.message || error);
@@ -337,6 +339,10 @@ app.post("/api/ai/build-prompt", requireRole("Yonetici"), handleAiBuildPrompt);
 app.post("/api/ai/execute-action", requireRole("Yonetici"), handleAiExecuteAction);
 app.post("/api/ai/prepare-write", requireRole("Yonetici"), handleAiPrepareWrite);
 app.post("/api/ai/execute-write", requireRole("Yonetici"), handleAiExecuteWrite);
+app.post("/api/ai/chat", requireRole("Yonetici"), handleAiChat);
+app.get("/api/ai/settings", requireRole("Yonetici"), handleAiSettingsGet);
+app.put("/api/ai/settings", requireRole("Yonetici"), handleAiSettingsPut);
+app.post("/api/ai/test-key", requireRole("Yonetici"), handleAiTestKey);
 
 app.listen(port, () => {
   console.log(`ERP DB API running on http://localhost:${port}`);

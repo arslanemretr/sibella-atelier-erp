@@ -7,9 +7,13 @@
 // degismeyecek.
 
 import { Pool } from "pg";
+import Anthropic from "@anthropic-ai/sdk";
 import { sqlMany } from "./db.js";
 import { createProductRecord } from "./catalog.js";
 import { writeAuditLog } from "./auditLog.js";
+import { getAiApiKey, getAiModel } from "./aiSettings.js";
+
+const MAX_CHAT_ITERATIONS = 8;
 
 // db.js kendi havuzunu disari acmiyor; salt-okunur sorgular icin ayri,
 // kucuk bir havuz kullaniyoruz (ayni DATABASE_URL).
@@ -694,5 +698,112 @@ export async function handleAiExecuteWrite(req, res) {
     return res.status(201).json({ ok: true, ...out });
   } catch (error) {
     return res.status(400).json({ ok: false, code: "AI_WRITE_EXEC_ERROR", message: error?.message || "Yazma islemi tamamlanamadi." });
+  }
+}
+
+// ─── Otomatik (API) sohbet dongusu ────────────────────────────────────────────
+// Manuel ekranla AYNI sozlesmeyi kullanir; tek fark transport: Claude'u sunucu cagirir.
+async function assemblePrompt(steps, mode) {
+  const extraContext = mode === "write"
+    ? productEntryReferenceText(await getProductEntryReferenceData())
+    : "";
+  return buildPromptText(steps, mode, extraContext);
+}
+
+function parseActionText(text) {
+  const stripped = String(text || "").replace(/```json/gi, "").replace(/```/g, "").trim();
+  try {
+    return JSON.parse(stripped);
+  } catch {
+    const start = stripped.indexOf("{");
+    const end = stripped.lastIndexOf("}");
+    if (start === -1 || end <= start) throw new Error("Modelden gecerli JSON alinamadi.");
+    return JSON.parse(stripped.slice(start, end + 1));
+  }
+}
+
+async function callClaudeAction(client, model, prompt) {
+  const msg = await client.messages.create({
+    model,
+    max_tokens: 8192,
+    thinking: { type: "adaptive" },
+    system: "Yalnizca tek bir JSON nesnesi dondur. JSON disinda hicbir aciklama, metin veya kod blogu isaretleyici yazma.",
+    messages: [{ role: "user", content: prompt }],
+  });
+  const text = (msg.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
+  return { action: parseActionText(text), usage: msg.usage || null };
+}
+
+export async function handleAiChat(req, res) {
+  const mode = normalizePromptMode(req.body?.mode);
+  const steps = Array.isArray(req.body?.steps) ? [...req.body.steps] : [];
+
+  const apiKey = await getAiApiKey();
+  if (!apiKey) {
+    return res.status(400).json({ ok: false, code: "AI_NO_KEY", message: "Anthropic API anahtari tanimli degil. Ayarlar > Parametreler'den ekleyin." });
+  }
+  const model = await getAiModel();
+  const client = new Anthropic({ apiKey });
+
+  try {
+    for (let i = 0; i < MAX_CHAT_ITERATIONS; i += 1) {
+      const prompt = await assemblePrompt(steps, mode);
+      const { action } = await callClaudeAction(client, model, prompt);
+
+      if (action?.action === "answer") {
+        return res.json({ ok: true, status: "answer", text: String(action.text || ""), steps });
+      }
+      if (action?.action === "clarify") {
+        return res.json({ ok: true, status: "clarify", text: String(action.text || ""), steps });
+      }
+      if (action?.action === "write") {
+        if (mode !== "write") {
+          steps.push({ type: "result", action, error: "Bu modda yazma yapilamaz." });
+          continue;
+        }
+        const write = await prepareAiWrite(action);
+        return res.json({ ok: true, status: "write", action, write, steps });
+      }
+      if (action?.action === "tool" || action?.action === "sql") {
+        try {
+          const out = await executeAiAction(action);
+          steps.push({ type: "result", action, result: out.result, truncated: out.truncated, rowCount: out.rowCount });
+        } catch (execError) {
+          steps.push({ type: "result", action, error: execError?.message || "Calistirilamadi." });
+        }
+        continue;
+      }
+      steps.push({ type: "result", action, error: `Bilinmeyen action: ${action?.action}` });
+    }
+    return res.json({ ok: true, status: "maxiter", text: "Islem iterasyon sinirina ulasti; lutfen soruyu sadelestirin.", steps });
+  } catch (error) {
+    const message = error?.status === 401
+      ? "API anahtari gecersiz (401). Ayarlardan kontrol edin."
+      : (error?.message || "AI cagrisi basarisiz oldu.");
+    return res.status(400).json({ ok: false, code: "AI_CHAT_ERROR", message });
+  }
+}
+
+export async function handleAiTestKey(req, res) {
+  try {
+    const incoming = typeof req.body?.apiKey === "string" ? req.body.apiKey.trim() : "";
+    const apiKey = incoming || await getAiApiKey();
+    if (!apiKey) {
+      return res.status(400).json({ ok: false, message: "Test edilecek API anahtari yok." });
+    }
+    const model = await getAiModel();
+    const client = new Anthropic({ apiKey });
+    const msg = await client.messages.create({
+      model,
+      max_tokens: 16,
+      messages: [{ role: "user", content: "Sadece 'OK' yaz." }],
+    });
+    const txt = (msg.content || []).filter((b) => b.type === "text").map((b) => b.text).join("").trim();
+    return res.json({ ok: true, message: `Baglanti basarili (model: ${model}). Yanit: ${txt.slice(0, 40) || "(bos)"}` });
+  } catch (error) {
+    const message = error?.status === 401
+      ? "API anahtari gecersiz (401)."
+      : (error?.message || "Test basarisiz oldu.");
+    return res.status(400).json({ ok: false, message });
   }
 }
