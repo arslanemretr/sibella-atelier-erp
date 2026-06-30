@@ -159,7 +159,7 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
             borderRadius: isTabletOrMobile ? 14 : 16,
             boxShadow: "0 14px 44px rgba(0,0,0,.20)",
             ...(isTabletOrMobile
-              ? { left: 8, right: 8, bottom: 8, height: "78vh" }
+              ? { left: 8, right: 8, top: 64, bottom: "calc(64px + env(safe-area-inset-bottom, 0px) + 8px)" }
               : { right: 20, bottom: 20, width: 400, height: "min(640px, 82vh)" }),
           }}
         >
