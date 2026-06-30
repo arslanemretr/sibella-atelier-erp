@@ -1,11 +1,12 @@
 import React, { Suspense, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Layout, Button, Avatar, Dropdown, Space, Spin, Tooltip } from "antd";
-import { CloseOutlined, MenuFoldOutlined, MenuUnfoldOutlined, RobotOutlined, UserOutlined } from "@ant-design/icons";
+import { Layout, Button, Avatar, Badge, Dropdown, List, Popover, Space, Spin, Tag, Tooltip } from "antd";
+import { CloseOutlined, MenuFoldOutlined, MenuUnfoldOutlined, RobotOutlined, TeamOutlined, UserOutlined } from "@ant-design/icons";
 
 const AiAssistantChat = React.lazy(() => import("../../erp/pageModules/aiAssistantPage"));
 import { filterNavigationItems, mainMenuItems, supplierMainMenuItems } from "../../erp/navigation";
 import { getAuthUser, logoutUser, onAuthChange } from "../../auth";
+import { requestJson } from "../../erp/apiClient";
 import { useBranding } from "../../erp/BrandingContext";
 
 const { Header } = Layout;
@@ -17,10 +18,69 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
   const { appName, logoSrc, mobileLogoSrc } = useBranding();
   const [aiOpen, setAiOpen] = useState(false);
   const [aiMounted, setAiMounted] = useState(false);
+  const [onlineOpen, setOnlineOpen] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [onlineLoading, setOnlineLoading] = useState(false);
 
   React.useEffect(() => onAuthChange(() => setAuthUser(getAuthUser())), []);
 
   const canUseAssistant = authUser?.role === "Yonetici";
+  const isAdmin = authUser?.role === "Yonetici";
+
+  const fetchOnlineUsers = React.useCallback(async () => {
+    try {
+      setOnlineLoading(true);
+      const payload = await requestJson("GET", "/api/users/online");
+      setOnlineUsers(Array.isArray(payload?.items) ? payload.items : []);
+    } catch {
+      /* sessiz */
+    } finally {
+      setOnlineLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (!isAdmin) return undefined;
+    void fetchOnlineUsers();
+    const id = setInterval(() => { void fetchOnlineUsers(); }, 60000);
+    return () => clearInterval(id);
+  }, [isAdmin, fetchOnlineUsers]);
+
+  const relativeSeen = (iso) => {
+    if (!iso) return "";
+    const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (minutes <= 0) return "az once";
+    if (minutes < 60) return `${minutes} dk once`;
+    return `${Math.floor(minutes / 60)} sa once`;
+  };
+
+  const onlineContent = (
+    <div style={{ width: 300, maxHeight: 380, overflow: "auto" }}>
+      {onlineLoading && !onlineUsers.length ? (
+        <div style={{ textAlign: "center", padding: 16 }}><Spin size="small" /></div>
+      ) : onlineUsers.length ? (
+        <List
+          size="small"
+          dataSource={onlineUsers}
+          renderItem={(u) => (
+            <List.Item>
+              <List.Item.Meta
+                avatar={<Badge dot status="success"><Avatar size="small" icon={<UserOutlined />} /></Badge>}
+                title={(
+                  <span>
+                    {u.fullName || u.email} {u.role ? <Tag style={{ marginInlineStart: 4 }}>{u.role}</Tag> : null}
+                  </span>
+                )}
+                description={<span style={{ fontSize: 12 }}>{u.email}{u.lastSeenAt ? ` · ${relativeSeen(u.lastSeenAt)}` : ""}</span>}
+              />
+            </List.Item>
+          )}
+        />
+      ) : (
+        <div style={{ textAlign: "center", padding: 16, color: "#999" }}>Su an aktif kullanici yok</div>
+      )}
+    </div>
+  );
 
   const visibleMenuItems = authUser?.role === "Tedarikci"
     ? supplierMainMenuItems
@@ -127,6 +187,22 @@ const TopBar = ({ collapsed, setCollapsed, isTabletOrMobile }) => {
       ) : null}
 
       <Space size={isTabletOrMobile ? "middle" : "large"} className="erp-topbar-right">
+        {isAdmin ? (
+          <Popover
+            open={onlineOpen}
+            onOpenChange={(v) => { setOnlineOpen(v); if (v) void fetchOnlineUsers(); }}
+            trigger="click"
+            placement="bottomRight"
+            title="Aktif Kullanicilar"
+            content={onlineContent}
+          >
+            <Badge count={onlineUsers.length} size="small" offset={[-2, 4]}>
+              <Tooltip title="Aktif kullanicilar">
+                <Button type={onlineOpen ? "primary" : "text"} aria-label="Aktif kullanicilar" icon={<TeamOutlined style={{ fontSize: 20 }} />} />
+              </Tooltip>
+            </Badge>
+          </Popover>
+        ) : null}
         {canUseAssistant ? (
           <Tooltip title="AI Asistan">
             <Button

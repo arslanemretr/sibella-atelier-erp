@@ -19,6 +19,7 @@ import {
   handleUsersDelete,
   handleUsersList,
   handleUsersUpdate,
+  handleOnlineUsers,
   migrateLegacyPasswords,
 } from "./auth.js";
 import {
@@ -225,6 +226,7 @@ app.get("/api/auth/session", handleSession);
 app.post("/api/auth/logout", handleLogout);
 app.post("/api/auth/forgot-password/request", handleForgotPasswordRequest);
 app.post("/api/auth/forgot-password/confirm", handleForgotPasswordConfirm);
+app.get("/api/users/online", requireRole("Yonetici"), handleOnlineUsers);
 app.get("/api/users", requireRole("Yonetici"), handleUsersList);
 app.post("/api/users", requireRole("Yonetici"), handleUsersCreate);
 app.put("/api/users/:id", requireRole("Yonetici"), handleUsersUpdate);

@@ -740,6 +740,34 @@ export async function handleUsersList(_req, res) {
   });
 }
 
+// Sistemde su an aktif (oturumu canli ve son N dakikada gorulmus) kullanicilar.
+export async function handleOnlineUsers(req, res) {
+  const windowMinutes = Math.min(60, Math.max(1, Number(req.query?.windowMinutes || 5)));
+  const cutoff = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
+  const rows = await sqlMany(`
+    SELECT u.id, u.full_name, u.email, u.role, MAX(s.last_seen_at) AS last_seen_at
+    FROM auth_sessions s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.expires_at > $1::timestamptz
+      AND s.last_seen_at >= $2::timestamptz
+      AND u.status = 'Aktif'
+    GROUP BY u.id, u.full_name, u.email, u.role
+    ORDER BY MAX(s.last_seen_at) DESC
+  `, [nowIso(), cutoff]);
+
+  return res.json({
+    ok: true,
+    windowMinutes,
+    items: rows.map((row) => ({
+      id: row.id,
+      fullName: row.full_name || "",
+      email: row.email || "",
+      role: row.role || "",
+      lastSeenAt: row.last_seen_at || null,
+    })),
+  });
+}
+
 export async function handleUsersCreate(req, res) {
   try {
     const user = await createUserRow(req.body || {});
