@@ -11,6 +11,7 @@ import {
   StopOutlined,
 } from "@ant-design/icons";
 import { requestJson } from "../apiClient";
+import { configureUtterance, getAiVoicePrefs } from "../aiClientPrefs";
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -34,7 +35,7 @@ export default function AiAssistantPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
-  const [autoSpeak, setAutoSpeak] = useState(true);
+  const [autoSpeak, setAutoSpeak] = useState(() => getAiVoicePrefs().autoSpeak !== false);
   const [speakingId, setSpeakingId] = useState(null);
 
   const recognitionRef = useRef(null);
@@ -59,9 +60,7 @@ export default function AiAssistantPage() {
     try {
       window.speechSynthesis.cancel();
       const utter = new window.SpeechSynthesisUtterance(text);
-      utter.lang = "tr-TR";
-      const trVoice = window.speechSynthesis.getVoices().find((v) => /tr/i.test(v.lang));
-      if (trVoice) utter.voice = trVoice;
+      configureUtterance(utter);
       utter.onend = () => setSpeakingId(null);
       utter.onerror = () => setSpeakingId(null);
       setSpeakingId(id || "x");

@@ -342,13 +342,11 @@ export function ParametersPage() {
           </Row>
         </Form>
       </Card>
-
-      <AiAssistantSettingsCard />
     </Space>
   );
 }
 
-function AiAssistantSettingsCard() {
+export function AiAssistantSettingsCard() {
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [testing, setTesting] = React.useState(false);

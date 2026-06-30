@@ -103,6 +103,7 @@ const iconMap = {
   "/settings/smtp": menuIcon(Mail),
   "/settings/branding": menuIcon(Palette),
   "/settings/audit-log": menuIcon(Activity),
+  "/settings/ai-settings": menuIcon(Sparkles),
   "/settings/ai-console": menuIcon(Bot),
   "/settings/ai-entry-console": menuIcon(Sparkles),
   "/supplier/dashboard": menuIcon(LayoutDashboard),
